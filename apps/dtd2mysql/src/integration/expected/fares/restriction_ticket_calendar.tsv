@@ -1,0 +1,2 @@
+id	cf_mkr	ticket_code	cal_type	route_code	country_code	date_from	date_to	monday	tuesday	wednesday	thursday	friday	saturday	sunday	start_date	end_date
+1	A	AAA	A	11111	A	AAAA	AAAA	1	1	1	1	1	1	1	\N	\N

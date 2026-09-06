@@ -1,4 +1,4 @@
-import {defineProject} from "vitest/config";
+import {configDefaults, defineProject} from "vitest/config";
 
 /**
  * Every workspace gets the same vitest project shape, named after the package so
@@ -21,7 +21,11 @@ export function project(name: string) {
       include: [
         "src/**/*.spec.ts", "src/**/*.spec.mts",
         "test/**/*.spec.ts", "test/**/*.spec.mts"
-      ]
+      ],
+      // the integration suite needs a database, so it is a separate run - see
+      // vitest.integration.config.mts. The defaults are kept because naming
+      // exclude replaces them, which would un-exclude node_modules and dist
+      exclude: [...configDefaults.exclude, "src/integration/**"]
     }
   });
 }

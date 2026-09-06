@@ -27,6 +27,7 @@
   "exclude": [
     "**/*.spec.ts",
     "**/*.spec.mts",
-    "**/testing/**"
+    "**/testing/**",
+    "**/integration/**"
   ]
 }
