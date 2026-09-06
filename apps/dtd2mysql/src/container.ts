@@ -6,6 +6,7 @@ import mysqlPromise from "mysql2/promise";
 import {Kysely, MysqlDialect, PostgresDialect} from "kysely";
 import config, {downloadUrl} from "@gb-transit/dtd-schema";
 import {BuildFeed, buildContext, dateRange, GTFSOutput, stationCoordinates} from "@gb-transit/gtfs";
+import type {BuildContext, TimetableSource} from "@gb-transit/gtfs";
 import {FileOutput, OutputGTFSZipCommand} from "@gb-transit/gtfs-output";
 import {
   DownloadAndProcessCommand,
@@ -28,6 +29,7 @@ import {NodeSqliteDialect} from "./database/NodeSqliteDriver";
 import schema from "./database/schema";
 import {LogTableFeedCursor} from "./source/LogTableFeedCursor";
 import {MySqlTimetableSource} from "./source/MySqlTimetableSource";
+import {KyselyTimetableSource} from "./source/KyselyTimetableSource";
 
 /**
  * Composition root for the dtd2mysql CLI: it resolves a flag to the command that
@@ -292,16 +294,34 @@ const getDownloadCommand = once(async (directory: string) =>
 function buildFeed(output: GTFSOutput): BuildFeed {
   const context = buildContext(process.argv);
 
-  return new BuildFeed(
-    new MySqlTimetableSource(
+  return new BuildFeed(timetableSource(context), output, context);
+}
+
+/**
+ * Where the build reads the timetable from.
+ *
+ * MySQL keeps its own source: it streams through mysql2 directly, which is faster than going through
+ * the query builder for the millions of stop time rows a full feed has. The other two go through
+ * Kysely, which is the only way they can be read at all.
+ */
+function timetableSource(context: BuildContext): TimetableSource {
+  const configuration = databaseConfiguration();
+
+  if (configuration.dialect === "mysql") {
+    return new MySqlTimetableSource(
       databaseConnection(),
       databaseStream(),
       stationCoordinates,
       dateRange(context),
       context.removePassingPoints
-    ),
-    output,
-    context
+    );
+  }
+
+  return new KyselyTimetableSource(
+    kysely(),
+    stationCoordinates,
+    dateRange(context),
+    context.removePassingPoints
   );
 }
 
