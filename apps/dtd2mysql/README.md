@@ -32,7 +32,7 @@ Every command reads its database settings from the environment. For example
 | `DATABASE_DIALECT` | `mysql`, `postgres` or `sqlite`. Defaults to `mysql` |
 | `DATABASE_NAME` | the database, or the file to use for SQLite |
 | `DATABASE_HOSTNAME` | defaults to `localhost` |
-| `DATABASE_PORT` | defaults to `3306` |
+| `DATABASE_PORT` | defaults to `3306`, or `5432` for Postgres |
 | `DATABASE_USERNAME` | defaults to `root` |
 | `DATABASE_PASSWORD` | |
 
@@ -53,7 +53,7 @@ DATABASE_DIALECT=sqlite DATABASE_NAME=./feed.sqlite dtd2mysql --timetable RJTTFx
 DATABASE_DIALECT=sqlite DATABASE_NAME=./feed.sqlite dtd2mysql --gtfs ./gtfs
 ```
 
-To build a GTFS feed and nothing else, `dtd2gtfs` reads the DTD files directly and needs no
+To build a GTFS feed and nothing else, `cif2gtfs` reads the DTD files directly and needs no
 database at all.
 
 ## Fares 
