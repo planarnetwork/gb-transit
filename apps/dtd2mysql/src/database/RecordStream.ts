@@ -1,8 +1,8 @@
 import {Writable} from "stream";
-import {MySQLTable} from "./MySQLTable";
+import {TableWriter} from "./TableWriter";
 import {FeedFile} from "@gb-transit/feed-parser";
 
-export class MySQLStream extends Writable {
+export class RecordStream extends Writable {
 
   constructor(
     private readonly filename: string,
@@ -49,5 +49,5 @@ export class MySQLStream extends Writable {
 export type WritableCallback = (error?: Error | null) => void;
 
 export type TableIndex = {
-  [tableName: string]: MySQLTable;
+  [tableName: string]: TableWriter;
 }
