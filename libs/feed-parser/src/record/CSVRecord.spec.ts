@@ -26,7 +26,7 @@ describe("CSVRecord", () => {
       values: {
         id: null,
         field: 10.12,
-        field2: "Hi ",
+        field2: "Hi",
         field3: "2999-12-31"
       }
     });
@@ -49,7 +49,7 @@ describe("CSVRecord", () => {
       values: {
         id: null,
         field: 10.12,
-        field2: "Hi "
+        field2: "Hi"
       }
     });
   });
