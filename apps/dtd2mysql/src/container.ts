@@ -67,7 +67,7 @@ export function databaseConfiguration(): DatabaseConfiguration {
     user: process.env.DATABASE_USERNAME || "root",
     password: process.env.DATABASE_PASSWORD || null,
     database: <string>process.env.DATABASE_NAME,
-    port: +(process.env.DATABASE_PORT || 3306),
+    port: +(process.env.DATABASE_PORT || defaultPort()),
     connectionLimit: 20,
     multipleStatements: true,
     // return DATE columns as YYYY-MM-DD rather than a Date at local midnight, so that reading a
@@ -85,6 +85,13 @@ function poolOptions(): mysql.PoolOptions {
   const {dialect, ...options} = databaseConfiguration();
 
   return options as unknown as mysql.PoolOptions;
+}
+
+/**
+ * The port to use when DATABASE_PORT says nothing. SQLite has no port and never reads this.
+ */
+function defaultPort(): number {
+  return dialectName() === "postgres" ? 5432 : 3306;
 }
 
 /**
