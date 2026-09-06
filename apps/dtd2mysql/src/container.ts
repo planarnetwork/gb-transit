@@ -27,6 +27,7 @@ import {DialectName, dialectNames, SchemaDialect} from "./database/SchemaDialect
 import {getSchemaDialect} from "./database/dialect";
 import {NodeSqliteDialect} from "./database/NodeSqliteDriver";
 import schema from "./database/schema";
+import gtfsSchema from "./gtfs/schema";
 import {LogTableFeedCursor} from "./source/LogTableFeedCursor";
 import {MySqlTimetableSource} from "./source/MySqlTimetableSource";
 import {KyselyTimetableSource} from "./source/KyselyTimetableSource";
@@ -280,7 +281,7 @@ const getSFTP = once((_: null): Promise<PromiseSFTP> =>
  * refresh"; constructing it eagerly is what turned that into a failure instead.
  */
 export function feedCursor(): FeedCursor {
-  return process.env.DATABASE_NAME ? new LogTableFeedCursor(databaseConnection()) : NO_CURSOR;
+  return process.env.DATABASE_NAME ? new LogTableFeedCursor(kysely()) : NO_CURSOR;
 }
 
 const getDownloadCommand = once(async (directory: string) =>
@@ -349,12 +350,12 @@ async function getDownloadAndProcessCommand(
  */
 export const commands: {[flag: string]: () => CLICommand | Promise<CLICommand>} = {
   "--fares": () => getImportFeedCommand("fares"),
-  "--fares-clean": () => new CleanFaresCommand(databaseConnection()),
+  "--fares-clean": () => new CleanFaresCommand(kysely(), schemaDialect()),
   "--routeing": () => getImportFeedCommand("routeing"),
   "--timetable": () => getImportFeedCommand("timetable"),
   "--nfm64": () => getImportFeedCommand("nfm64"),
   "--gtfs": () => getBuildFeedCommand(null),
-  "--gtfs-import": () => new GTFSImportCommand(databaseConfiguration()),
+  "--gtfs-import": () => new GTFSImportCommand(kysely(), schemaDialect(), gtfsSchema),
   "--gtfs-zip": () => new OutputGTFSZipCommand(getBuildFeedCommand(null)),
   "--download-fares": () => getDownloadCommand("/fares/"),
   "--download-timetable": () => getDownloadCommand("/timetable/"),

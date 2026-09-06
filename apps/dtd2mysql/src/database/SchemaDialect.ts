@@ -27,6 +27,7 @@ export type FieldType =
   | { type: "date" }
   | { type: "time" }
   | { type: "double", length: number, decimalDigits: number }
+  | { type: "decimal", length: number, decimalDigits: number }
   | { type: "float" }
   | { type: "int", length: number }
   | { type: "foreignKey" };
