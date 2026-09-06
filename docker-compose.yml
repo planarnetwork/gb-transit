@@ -11,5 +11,19 @@ services:
     volumes:
       - mariadb_data:/var/lib/mysql
 
+  # The integration suite runs against all three databases and CI provides both
+  # of these as service containers. SQLite needs nothing.
+  postgres:
+    image: postgres:18
+    container_name: dtd2mysql-postgres
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: dtd2mysql
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
 volumes:
   mariadb_data:
+  postgres_data:
