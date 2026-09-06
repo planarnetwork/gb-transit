@@ -26,6 +26,7 @@
   ],
   "exclude": [
     "**/*.spec.ts",
-    "**/*.spec.mts"
+    "**/*.spec.mts",
+    "**/testing/**"
   ]
 }
