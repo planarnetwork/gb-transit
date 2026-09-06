@@ -159,6 +159,21 @@ export class ScheduleBuilder {
     this.flush(cursor);
   }
 
+  /**
+   * Take rows from an async iterable, in the same order a stream would deliver
+   * them. This is what a query builder that yields rows rather than emitting
+   * them uses, where loadSchedules takes a driver's own emitter.
+   */
+  public async loadStream(rows: AsyncIterable<ScheduleStopTimeRow>): Promise<void> {
+    const cursor = newCursor();
+
+    for await (const row of rows) {
+      this.processRow(cursor, row);
+    }
+
+    this.flush(cursor);
+  }
+
   private processRow(cursor: Cursor, row: ScheduleStopTimeRow): void {
     const startsSchedule = !cursor.prevRow || cursor.prevRow.id !== row.id;
 
