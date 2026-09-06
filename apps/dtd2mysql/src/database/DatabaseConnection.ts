@@ -1,3 +1,4 @@
+import {DialectName} from "./SchemaDialect";
 
 export interface DatabaseConnection {
   getConnection(): Promise<DatabaseConnection>;
@@ -7,6 +8,7 @@ export interface DatabaseConnection {
 }
 
 export interface DatabaseConfiguration {
+  dialect: DialectName,
   host: string,
   user: string,
   password: string | null,
