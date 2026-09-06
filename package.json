@@ -17,7 +17,9 @@
     "gtfs-zip": "yarn workspace dtd2mysql run gtfs-zip",
     "changeset": "changeset",
     "release": "yarn workspaces foreach -A --no-private --topological exec node $PROJECT_CWD/scripts/publish-workspace.mjs",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:integration": "yarn build && vitest run --config vitest.integration.config.mts",
+    "fixture:generate": "tsx apps/dtd2mysql/src/integration/generateFixtures.ts"
   },
   "repository": {
     "type": "git",

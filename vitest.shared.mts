@@ -21,7 +21,10 @@ export function project(name: string) {
       include: [
         "src/**/*.spec.ts", "src/**/*.spec.mts",
         "test/**/*.spec.ts", "test/**/*.spec.mts"
-      ]
+      ],
+      // the integration suite needs a database, so it is a separate run - see
+      // vitest.integration.config.mts
+      exclude: ["src/integration/**"]
     }
   });
 }

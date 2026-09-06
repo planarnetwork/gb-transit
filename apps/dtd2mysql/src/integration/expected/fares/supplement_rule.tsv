@@ -1,0 +1,2 @@
+id	rule_number	end_date	start_date	quote_date	train_uid	train_uid_desc	fare_class	quota	weekend_first	silver_standard	railcard	catering_code	sleeper	accom_class	status	reservation_status	sectors
+1	111	2025-01-01	2025-01-01	2025-01-01	AAAAAAA	AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA	A	A	A	A	A	A	A	A	A	AAA	AAA
