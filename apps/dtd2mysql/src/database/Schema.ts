@@ -66,6 +66,16 @@ export const double = (length: number, decimalDigits: number): Column<number> =>
   column({ type: "double", length, decimalDigits });
 
 /**
+ * An exact number with the given total digits and decimal places, signed.
+ *
+ * Unlike double, what is written is what is stored: a value written to six places reads back as those
+ * six places rather than the nearest double to them. Both MySQL and Postgres return it as a string to
+ * keep it exact, so it is read as one.
+ */
+export const decimal = (length: number, decimalDigits: number): Column<string> =>
+  column({ type: "decimal", length, decimalDigits });
+
+/**
  * A signed number with no declared precision. No feed field parses to one, the fares and timetable values
  * all have a width the record gives them, but a coordinate does not and cannot be unsigned.
  */

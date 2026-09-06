@@ -18,6 +18,7 @@ export const sqliteSchemaDialect: SchemaDialect = {
       case "int": return sql.raw("integer");
       case "foreignKey": return sql.raw("integer");
       case "double": return sql.raw("numeric");
+      case "decimal": return sql.raw("numeric");
       case "float": return sql.raw("real");
     }
   },
