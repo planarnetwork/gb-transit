@@ -2546,7 +2546,7 @@ __metadata:
     "@types/pg": "npm:8.15.6"
     adm-zip: "npm:0.6.0"
     byline: "npm:5.0.0"
-    kysely: "npm:0.29.4"
+    kysely: "npm:0.29.5"
     memoized-class-decorator: "npm:1.6.1"
     mysql2: "npm:3.23.1"
     pg: "npm:8.16.3"
@@ -3221,10 +3221,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"kysely@npm:0.29.4":
-  version: 0.29.4
-  resolution: "kysely@npm:0.29.4"
-  checksum: 10c0/13843cfaec03aa5c849c35da6d6e263e83c4ba194805d68f822a094609fd3e19053ecee942b9359be10383714bd1224475cc463f94a911666990b754ac13cc34
+"kysely@npm:0.29.5":
+  version: 0.29.5
+  resolution: "kysely@npm:0.29.5"
+  checksum: 10c0/b2a64d06e568ff9cd5a738fd371c834252517625e4e844e29332654080647a824c2573f60ed1d52945205e2aa19707538c17b581347650dad2899f37455945f0
   languageName: node
   linkType: hard
 
