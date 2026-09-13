@@ -25,7 +25,7 @@ export type { ServiceCalendar } from "./Service.js";
 export { addDays, daysBetween, getDateNumber, getDayOfWeek } from "./DateUtil.js";
 
 // Coupled trips: the through trip a passenger stays on across a coupling
-export { coupledTripIds, linkTrips } from "./LinkedTrips.js";
+export { coupledTripIds, linkShapes, linkTrips } from "./LinkedTrips.js";
 
 // The feed put into the terms a journey planner plans in
 export { isCall, normalise } from "./Normalise.js";

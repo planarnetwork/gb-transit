@@ -1,5 +1,5 @@
 import { SECONDS_IN_DAY } from "@gb-transit/gtfs-schema/scalars";
-import type { StopID, StopTime, Trip, TripID, TripLink } from "./GTFS.js";
+import type { ShapeID, ShapeIndex, ShapePoint, Stop, StopID, StopIndex, StopTime, Trip, TripID, TripLink } from "./GTFS.js";
 import { LinkedService, type ServiceCalendar } from "./Service.js";
 
 /**
@@ -13,6 +13,10 @@ import { LinkedService, type ServiceCalendar } from "./Service.js";
  * A trip tells its times in its own service day, so a portion leaving after midnight departs
  * earlier in the day than the trip it continues arrived. It is moved onto the arriving trip's day,
  * forwards only, so that the through trip reads from its first call however the feed dated it.
+ *
+ * The through trip is the train the passenger boarded, so it keeps the arriving trip's route and
+ * headcode, and it goes where the departing trip goes, so it takes that one's headsign. Its shape is
+ * the two trips' shapes joined at the coupling, which `linkShapes` makes.
  */
 export function linkTrips(
   trips: Trip[],
@@ -55,11 +59,102 @@ export function linkTrips(
       tripId: `${from.tripId}_${to.tripId}`,
       serviceId: `${from.serviceId}_${to.serviceId}`,
       stopTimes: join(from.stopTimes, alights, to.stopTimes, boards, shift),
-      service: new LinkedService(from.service, shift === 0 ? to.service : earlier(dayEarlier, to.service))
+      service: new LinkedService(from.service, shift === 0 ? to.service : earlier(dayEarlier, to.service)),
+      routeId: from.routeId,
+      shortName: from.shortName,
+      headsign: to.headsign,
+      shapeId: linkedShapeId(from, to, link)
     });
   }
 
   return linked;
+}
+
+/**
+ * The shapes of the trips a coupling makes, keyed as `linkTrips` names them: the arriving trip's
+ * shape as far as the coupling, then the departing trip's from it.
+ *
+ * Shapes rarely say how far along them each call is, so the coupling is found by where it is: the
+ * last point of the arriving shape nearest the stop the link names, and the first of the departing
+ * one. A link that names no stop joins the shapes end to end. Couplings between the same two shapes
+ * at the same stops make one shape.
+ */
+export function linkShapes(trips: Trip[], links: TripLink[], shapes: ShapeIndex, stops: StopIndex): ShapeIndex {
+  const linked: ShapeIndex = {};
+
+  if (links.length === 0) {
+    return linked;
+  }
+
+  const byId = index(trips, links);
+
+  for (const link of links) {
+    const from = byId.get(link.fromTripId);
+    const to = byId.get(link.toTripId);
+
+    if (from === undefined || to === undefined) {
+      continue;
+    }
+
+    const id = linkedShapeId(from, to, link);
+    const arriving = shapes[from.shapeId ?? ""];
+    const departing = shapes[to.shapeId ?? ""];
+
+    if (id === undefined || linked[id] !== undefined || arriving === undefined || departing === undefined) {
+      continue;
+    }
+
+    const end = nearestPoint(arriving, stops[link.fromStop ?? ""], true) ?? arriving.length - 1;
+    const start = nearestPoint(departing, stops[link.toStop ?? ""], false) ?? 0;
+    const joint = arriving[end];
+    const first = departing[start];
+    const repeated = joint.latitude === first.latitude && joint.longitude === first.longitude;
+
+    linked[id] = [...arriving.slice(0, end + 1), ...departing.slice(repeated ? start + 1 : start)];
+  }
+
+  return linked;
+}
+
+/**
+ * The shape of the trip a coupling makes, named after the two shapes it joins and where. The same two
+ * trains can couple at one station on some dates and another on others, and those are different
+ * lines.
+ */
+function linkedShapeId(from: Trip, to: Trip, link: TripLink): ShapeID | undefined {
+  if (from.shapeId === undefined || to.shapeId === undefined) {
+    return undefined;
+  }
+
+  return link.fromStop === undefined || link.toStop === undefined
+    ? `${from.shapeId}_${to.shapeId}`
+    : `${from.shapeId}_${to.shapeId}_${link.fromStop}_${link.toStop}`;
+}
+
+/**
+ * The index of the point nearest the stop, the last of equally near points or the first. Nothing
+ * where there is no stop to be near.
+ */
+function nearestPoint(shape: ShapePoint[], stop: Stop | undefined, last: boolean): number | undefined {
+  if (stop === undefined) {
+    return undefined;
+  }
+
+  // near enough to flat over the distance between two points of a line, and only ever compared
+  const scale = Math.cos(stop.latitude * Math.PI / 180);
+  let nearest = 0;
+  let distance = Number.POSITIVE_INFINITY;
+
+  for (let i = 0; i < shape.length; i++) {
+    const d = (shape[i].latitude - stop.latitude) ** 2 + ((shape[i].longitude - stop.longitude) * scale) ** 2;
+
+    if (d < distance || (last && d === distance)) {
+      nearest = i;
+      distance = d;
+    }
+  }
+
+  return nearest;
 }
 
 /**

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import type { StopID, Trip, TripLink } from "./GTFS.js";
-import { linkTrips } from "./LinkedTrips.js";
+import type { ShapePoint, Stop, StopID, Trip, TripLink } from "./GTFS.js";
+import { linkShapes, linkTrips } from "./LinkedTrips.js";
 import { Service } from "./Service.js";
 import type { StopTime, Time } from "./GTFS.js";
 
@@ -158,11 +158,95 @@ describe("linkTrips", () => {
     expect(linkTrips([portion, base], [link("p", "b", "Z", "Z")], station)).to.deep.equal([]);
   });
 
+  it("keeps the route and headcode of the train boarded, and goes where the departing trip goes", () => {
+    const portion = { ...trip("p", everyDay, st("A", null, 100), st("B", 200, 200)), routeId: "R1", shortName: "1A00", headsign: "B" };
+    const base = { ...trip("b", everyDay, st("B", 250, 300), st("C", 400, null)), routeId: "R2", shortName: "1B00", headsign: "C" };
+
+    const [linked] = linkTrips([portion, base], [link("p", "b", "B", "B")], station);
+
+    expect([linked.routeId, linked.shortName, linked.headsign]).to.deep.equal(["R1", "1A00", "C"]);
+  });
+
+  it("names the shape the two trips' shapes make, and none where either has no shape", () => {
+    const portion = { ...trip("p", everyDay, st("A", null, 100), st("B", 200, 200)), shapeId: "s1" };
+    const base = { ...trip("b", everyDay, st("B", 250, 300), st("C", 400, null)), shapeId: "s2" };
+    const unshaped = trip("u", everyDay, st("B", 250, 300), st("D", 400, null));
+
+    const [linked, bare] = linkTrips([portion, base, unshaped], [link("p", "b", "B", "B"), link("p", "u", "B", "B")], station);
+
+    expect(linked.shapeId).to.equal("s1_s2_B_B");
+    expect(bare.shapeId).to.equal(undefined);
+  });
+
   it("ignores a coupling that a day's shift cannot put in order", () => {
     const base = trip("b", everyDay, st("A", null, 3600), st("B", 108000, 108000));
     const portion = trip("p", everyDay, st("B", 7200, 7200), st("C", 20000, null));
 
     expect(linkTrips([base, portion], [link("b", "p", "B", "B")], station)).to.deep.equal([]);
+  });
+
+});
+
+describe("linkShapes", () => {
+
+  const point = (latitude: number, longitude: number): ShapePoint => ({ latitude, longitude });
+  const stop = (id: StopID, latitude: number, longitude: number): Stop => ({ id, latitude, longitude, locationType: 0 });
+  const stops = { B: stop("B", 51.1, -1), BX: stop("BX", 51.1, -1.0001) };
+  const shaped = (tripId: string, shapeId: string): Trip => ({ ...trip(tripId, everyDay, st("A", null, 100)), shapeId });
+
+  it("cuts the arriving shape at the coupling and joins the departing one on from there", () => {
+    const shapes = {
+      base: [point(51.0, -1), point(51.1, -1), point(51.2, -1)],
+      portion: [point(51.1, -1), point(51.1, -0.9)]
+    };
+
+    const linked = linkShapes([shaped("b", "base"), shaped("p", "portion")], [link("b", "p", "B", "B")], shapes, stops);
+
+    expect(linked).to.deep.equal({ base_portion_B_B: [point(51.0, -1), point(51.1, -1), point(51.1, -0.9)] });
+  });
+
+  it("makes a shape for each place the same two trains couple", () => {
+    // the portion leaves the base's line after B and meets it again at C
+    const shapes = {
+      base: [point(51.0, -1), point(51.1, -1), point(51.2, -1), point(51.25, -1)],
+      portion: [point(51.1, -1), point(51.15, -0.9), point(51.2, -1), point(51.3, -1)]
+    };
+    const later = { C: stop("C", 51.2, -1) };
+
+    const linked = linkShapes(
+      [shaped("b", "base"), shaped("p", "portion"), shaped("b2", "base"), shaped("p2", "portion")],
+      [link("b", "p", "B", "B"), link("b2", "p2", "C", "C")],
+      shapes,
+      { ...stops, ...later }
+    );
+
+    expect(linked.base_portion_B_B.map(p => p.latitude)).to.deep.equal([51.0, 51.1, 51.15, 51.2, 51.3]);
+    expect(linked.base_portion_C_C.map(p => p.latitude)).to.deep.equal([51.0, 51.1, 51.2, 51.3]);
+  });
+
+  it("starts the departing shape at its point nearest the coupling when the two do not meet exactly", () => {
+    const shapes = {
+      portion: [point(51.0, -1), point(51.1, -1)],
+      base: [point(51.2, -1.5), point(51.1, -1.0001), point(51.1, -0.9)]
+    };
+
+    const linked = linkShapes([shaped("p", "portion"), shaped("b", "base")], [link("p", "b", "B", "BX")], shapes, stops);
+
+    expect(linked.portion_base_B_BX).to.deep.equal([point(51.0, -1), point(51.1, -1), point(51.1, -1.0001), point(51.1, -0.9)]);
+  });
+
+  it("joins the shapes end to end when the link names no stop", () => {
+    const shapes = { portion: [point(51.0, -1)], base: [point(51.2, -1)] };
+
+    const linked = linkShapes([shaped("p", "portion"), shaped("b", "base")], [link("p", "b")], shapes, stops);
+
+    expect(linked.portion_base).to.deep.equal([point(51.0, -1), point(51.2, -1)]);
+  });
+
+  it("makes nothing for a coupling of a trip whose shape the feed does not have", () => {
+    const shapes = { portion: [point(51.0, -1)] };
+
+    expect(linkShapes([shaped("p", "portion"), shaped("b", "missing")], [link("p", "b", "B", "B")], shapes, stops)).to.deep.equal({});
   });
 
 });

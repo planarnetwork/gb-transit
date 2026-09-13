@@ -308,6 +308,7 @@
     "getDateNumber",
     "getDayOfWeek",
     "isCall",
+    "linkShapes",
     "linkTrips",
     "loadGTFS",
     "loadGTFSFromUrl",
