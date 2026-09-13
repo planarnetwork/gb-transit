@@ -12,6 +12,11 @@ entry here does not excuse a golden feed moving, and an entry there does not exc
 
 ## The type surface
 
+**Naming and drawing the trips couplings make.** `@gb-transit/gtfs-loader` gains `linkShapes`, which
+makes the shapes of the trips `linkTrips` makes out of joins and splits. An addition only: `Trip` is
+unchanged, and the through trip now fills the optional `routeId`, `shortName`, `headsign` and
+`shapeId` it already had.
+
 **Reading the lines back.** `@gb-transit/gtfs-loader` gains `ShapeID`, `ShapeIndex` and
 `ShapePoint` — the id of a line, the lines of a feed indexed by it, and one point on one. Additions
 only. `GTFSFeed` gains a required `shapes` and `Trip` an optional `shapeId`, which the surface

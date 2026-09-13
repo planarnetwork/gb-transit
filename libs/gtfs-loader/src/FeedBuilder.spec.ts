@@ -384,6 +384,24 @@ describe("FeedBuilder", () => {
    * read as "" rather than undefined every such station would claim the same code and the
    * timetable would refuse to build, so this is worth pinning down.
    */
+  it("holds the shape of the trip a coupling makes alongside the feed's own", () => {
+    const builder = new FeedBuilder();
+
+    builder.add("trip", { trip_id: "base", service_id: "s1", shape_id: "long" });
+    builder.add("trip", { trip_id: "portion", service_id: "s1", shape_id: "branch" });
+    builder.add("stop", { stop_id: "B", stop_lat: "51.1", stop_lon: "-1" });
+    builder.add("transfer", { from_stop_id: "B", to_stop_id: "B", from_trip_id: "base", to_trip_id: "portion", transfer_type: "4" });
+
+    for (const [shape_id, sequence, lat] of [["long", "1", "51.0"], ["long", "2", "51.1"], ["long", "3", "51.2"], ["branch", "1", "51.1"], ["branch", "2", "51.3"]]) {
+      builder.add("shape", { shape_id, shape_pt_sequence: sequence, shape_pt_lat: lat, shape_pt_lon: "-1" });
+    }
+
+    const { shapes } = builder.build();
+
+    expect(Object.keys(shapes).sort()).to.deep.equal(["branch", "long", "long_branch_B_B"]);
+    expect(shapes.long_branch_B_B.map(point => point.latitude)).to.deep.equal([51.0, 51.1, 51.3]);
+  });
+
   it("names a station by its stop_id when the feed gives no stop_code", () => {
     const builder = new FeedBuilder();
 

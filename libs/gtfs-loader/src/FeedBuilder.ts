@@ -4,6 +4,7 @@ import type { Row } from "./CSVParser.js";
 import type { FeedInfo, GTFSFeed } from "./GTFSLoader.js";
 import { TimeParser } from "./TimeParser.js";
 import { Service } from "./Service.js";
+import { linkShapes } from "./LinkedTrips.js";
 
 /** Runs on no day of the week, for a service whose only dates are its exceptions */
 const NO_DAYS: Record<DayOfWeek, boolean> = {
@@ -87,6 +88,12 @@ export class FeedBuilder {
       t.service = services[t.serviceId];
     }
 
+    const shapes = this.shapes();
+
+    // the trips a coupling makes are only made when the timetable is, but their shapes are made
+    // here, so that every shape a trip names is in the feed however it is read
+    Object.assign(shapes, linkShapes(this.trips, this.links, shapes, this.stops));
+
     return {
       trips: this.trips,
       transfers: this.transfers,
@@ -96,7 +103,7 @@ export class FeedBuilder {
       routes: this.routes,
       agencies: this.agencies,
       areas: this.areas,
-      shapes: this.shapes(),
+      shapes,
       feedInfo: this.feedInfo
     };
   }

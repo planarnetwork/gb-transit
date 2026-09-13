@@ -193,7 +193,10 @@ export interface GTFSFeed {
   routes: RouteIndex;
   agencies: AgencyIndex;
   areas: AreaIndex;
-  /** The lines the trips run over, which a feed does not have to provide - empty where it does not */
+  /**
+   * The lines the trips run over, which a feed does not have to provide - empty where it does not.
+   * Holds the shapes of the trips couplings make as well, named as those trips name them.
+   */
   shapes: ShapeIndex;
   /** feed_info.txt, which a feed does not have to provide */
   feedInfo?: FeedInfo;
