@@ -17,8 +17,8 @@ const rows = feed === undefined ? [] : [
     .map(figure => ({label: `Stop times, ${each.file}`, value: figure.value})))
 ];
 
-// Trips is already on the board for the two feeds that share it; the third
-// holds its own number and is worth stating next to them.
+// Trips is already on the board for the standard feed; the National Rail only
+// feed holds its own number and is worth stating next to it.
 const only = feed?.trips_national_rail_only;
 ---
 {rows.length === 0

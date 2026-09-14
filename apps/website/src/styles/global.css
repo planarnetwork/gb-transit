@@ -410,7 +410,7 @@ code, pre, kbd, samp { font-family: var(--font-mono), ui-monospace, monospace; }
 
 .card--go p { color: var(--go-ink-deep); }
 
-/* Platform three before its build reaches master: a real platform with nothing
+/* A platform before its build reaches master: a real platform with nothing
  * announced on it yet, rather than a card claiming a download that would 404. */
 .card--waiting {
   background: var(--paper-sunken);
@@ -527,7 +527,7 @@ code, pre, kbd, samp { font-family: var(--font-mono), ui-monospace, monospace; }
 .figures dt { color: var(--ink-faint); }
 .figures dd { margin: 0; color: var(--ink-nav); }
 
-/* Platform three's blank board: the shape of an announcement, not yet made. */
+/* An unpublished platform's blank board: the shape of an announcement, not yet made. */
 .blanks {
   display: flex;
   flex-direction: column;

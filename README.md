@@ -21,16 +21,14 @@ with the coverage window, what the current feed was built from, and a page for e
 | | |
 |---|---|
 | [`gtfs.zip`](https://github.com/planarnetwork/gb-transit/releases/latest/download/gtfs.zip) | where a service calls, and the line it runs over |
-| [`gtfs-passing-points.zip`](https://github.com/planarnetwork/gb-transit/releases/latest/download/gtfs-passing-points.zip) | and the time it runs through without stopping |
 | [`gtfs-national-rail-only.zip`](https://github.com/planarnetwork/gb-transit/releases/latest/download/gtfs-national-rail-only.zip) | without the services National Rail does not run — the tube, the Metro, the ferries, the buses and TfL's replacement buses |
 | [`transfer-patterns.br`](https://github.com/planarnetwork/gb-transit/releases/latest/download/transfer-patterns.br) | the stations a journey can change at, for a transfer pattern journey planner |
 
-All three feeds are rebuilt every night by [`feed.yml`](.github/workflows/feed.yml) from the
+Both feeds are rebuilt every night by [`feed.yml`](.github/workflows/feed.yml) from the
 configuration in [`gtfs.config.yaml`](gtfs.config.yaml) and
 [`gtfs.national-rail-only.config.yaml`](gtfs.national-rail-only.config.yaml), each validated against
 a pinned baseline of its own —
-[standard](.github/validator-baseline.json),
-[passing points](.github/validator-baseline-passing-points.json),
+[standard](.github/validator-baseline.json) and
 [National Rail only](.github/validator-baseline-national-rail-only.json) — and attached to a dated
 release. A build that fails validation is not published.
 
@@ -40,8 +38,8 @@ network, found in advance so a journey planner does not have to search for them.
 [`apps/transfer-patterns`](apps/transfer-patterns) for the format and how to read it — so a release
 that is missing it is a night the patterns did not finish, not a feed that is wrong.
 
-Both of the first two carry the same `shapes.txt`: a line through every station a train touches,
-calling or passing. It is a station-to-station sketch of the route rather than the track, because
+`gtfs.zip` carries a `shapes.txt`: a line through every station a train touches, calling or
+passing. It is a station-to-station sketch of the route rather than the track, because
 the DTD gives no coordinate for the junctions in between — see
 [shapes](https://planarnetwork.github.io/gb-transit/feeds/using-this-data/#shapes).
 
