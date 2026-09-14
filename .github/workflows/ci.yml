@@ -75,8 +75,33 @@ jobs:
 
   # Nothing above unit tests could run without a database, so every claim about
   # the importer has been checked by hand. This is where that stops.
+  #
+  # Once per database. The import and the GTFS build both run against all three,
+  # and the recorded rows are the same file for each: a database needing its own
+  # expectations is a bug rather than something to record. Both service
+  # containers start for every leg, which costs a few seconds on the sqlite one
+  # and keeps the matrix to the environment rather than the services.
   database:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - dialect: mysql
+            port: 3306
+            username: root
+            password: ""
+            name: dtd2mysql_test
+          - dialect: postgres
+            port: 5432
+            username: postgres
+            password: postgres
+            name: dtd2mysql_test
+          - dialect: sqlite
+            port: 0
+            username: ""
+            password: ""
+            name: /tmp/dtd2mysql_test.sqlite
+      fail-fast: false
     services:
       mariadb:
         image: mariadb:12
@@ -88,11 +113,23 @@ jobs:
         options: >-
           --health-cmd="healthcheck.sh --connect --innodb_initialized"
           --health-interval=5s --health-timeout=5s --health-retries=20
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: dtd2mysql_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s --health-timeout=5s --health-retries=20
     env:
+      DATABASE_DIALECT: ${{ matrix.dialect }}
       DATABASE_HOSTNAME: 127.0.0.1
-      DATABASE_USERNAME: root
-      DATABASE_PASSWORD: ""
-      DATABASE_NAME: dtd2mysql_test
+      DATABASE_PORT: ${{ matrix.port }}
+      DATABASE_USERNAME: ${{ matrix.username }}
+      DATABASE_PASSWORD: ${{ matrix.password }}
+      DATABASE_NAME: ${{ matrix.name }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -105,7 +142,10 @@ jobs:
           restore-keys: yarn-${{ runner.os }}-
       - run: yarn install --immutable
       - run: yarn build
-      # The importer against a real MariaDB: the whole parse-and-insert path, the
+      # Every row of every table the four feeds write to, against the same
+      # recorded expectations whichever database answered.
+      - run: yarn vitest run --config vitest.integration.config.mts
+      # The importer against a real database: the whole parse-and-insert path, the
       # same feed from either source, and a second import landing the same rows.
       - name: The importer round trips
         run: node scripts/check-database.mjs "$RUNNER_TEMP/database"

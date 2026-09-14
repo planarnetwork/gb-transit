@@ -6,7 +6,7 @@ export class ShowHelpCommand implements CLICommand {
   public run(argv: string[]): Promise<void> {
     console.log(`
 Usage: dtd2mysql [COMMAND] [FILE]
-Import a DTD feed into a MySQL compatible database
+Import a DTD feed into a MySQL, Postgres or SQLite database
 
   --fares [FILE]             import the fares feed 
   --fares-clean              remove old and irrelevant data
@@ -15,7 +15,7 @@ Import a DTD feed into a MySQL compatible database
   --nfm64 [FILE]             import the nfm64 data
   --gtfs [DIR]               convert timetable data to GTFS and output txt files in DIR
   --gtfs-zip [FILE]          convert timetable data to GTFS and output zip
-  --gtfs-import [DIR]        import the GTFS files in the DIR to a MySQL database
+  --gtfs-import [DIR]        import the GTFS files in the DIR to the database
   --download-fares [DIR]     download latest fares refresh from DTD
   --download-timetable [DIR] download latest timetable refresh from DTD
   --download-routeing [DIR]  download latest routeing refresh from DTD
@@ -32,10 +32,27 @@ The --gtfs and --gtfs-zip commands take the following options:
 
 The following environment properties are expected to be set:
   
-  DATABASE_USERNAME          mysql username (defaults to root)
-  DATABASE_PASSWORD          mysql password (defaults to none)
-  DATABASE_NAME              mysql database name
-  DATABASE_HOSTNAME          mysql database host (defaults to localhost)
+  DATABASE_URL               a connection string, handed to the driver as it is.
+                             The dialect comes from its scheme. Anything the
+                             driver accepts works, including a unix socket:
+                             mysql://user@host/db?socketPath=/var/run/mysqld/mysqld.sock
+                             postgresql://user@/db?host=/var/run/postgresql
+  DATABASE_OPTIONS           JSON merged into the driver's options, for whatever
+                             the variables below cannot say, e.g. {"ssl":{...}}
+
+Or name the parts, which is all most installs need:
+
+  DATABASE_DIALECT           mysql, postgres or sqlite (defaults to mysql)
+  DATABASE_USERNAME          database username (defaults to root)
+  DATABASE_PASSWORD          database password (defaults to none)
+  DATABASE_NAME              database name, or the file to use for sqlite
+  DATABASE_HOSTNAME          database host (defaults to localhost)
+  DATABASE_PORT              database port (defaults to the dialect's own)
+
+Postgres needs the pg package installed, and pg-cursor for --gtfs, which
+streams. SQLite is built into node and needs neither, nor a server:
+
+  DATABASE_DIALECT=sqlite DATABASE_NAME=./feed.sqlite dtd2mysql --timetable RJTTFxxx.ZIP
   
 The --get-* and --download-* commands require SFTP environment properties:
 

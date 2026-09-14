@@ -1,11 +1,18 @@
 
-import {MultiFormatRecord} from '../record/MultiFormatRecord';
 import {Field} from "./Field";
-import {RecordWithManualIdentifier} from "../record/FixedWidthRecord";
+
+/**
+ * A record that generates its own identifiers, see RecordWithManualIdentifier and MultiFormatRecord.
+ * Only the last identifier is needed, so this is a structural type rather than the record classes, whose
+ * field maps would otherwise have to match exactly.
+ */
+export interface RecordWithLastId {
+  lastId: number;
+}
 
 export class ForeignKeyField extends Field {
 
-  constructor(private readonly foreignRecord: RecordWithManualIdentifier | MultiFormatRecord, public readonly offset = 0) {
+  constructor(private readonly foreignRecord: RecordWithLastId, public readonly offset = 0) {
     super(0, 1, false, []);
   }
 

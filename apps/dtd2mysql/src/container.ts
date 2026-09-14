@@ -3,8 +3,10 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import mysql from "mysql2";
 import mysqlPromise from "mysql2/promise";
+import {Kysely, MysqlDialect, PostgresDialect} from "kysely";
 import config, {downloadUrl} from "@gb-transit/dtd-schema";
 import {BuildFeed, buildContext, dateRange, GTFSOutput, stationCoordinates} from "@gb-transit/gtfs";
+import type {BuildContext, TimetableSource} from "@gb-transit/gtfs";
 import {FileOutput, OutputGTFSZipCommand} from "@gb-transit/gtfs-output";
 import {
   DownloadAndProcessCommand,
@@ -19,9 +21,17 @@ import {CleanFaresCommand} from "./cli/CleanFaresCommand";
 import {GTFSImportCommand} from "./cli/GTFSImportCommand";
 import {ImportFeedCommand} from "./cli/ImportFeedCommand";
 import {ShowHelpCommand} from "./cli/ShowHelpCommand";
-import {DatabaseConfiguration, DatabaseConnection} from "./database/DatabaseConnection";
+import {DatabaseConnection} from "./database/DatabaseConnection";
+import {Database} from "./database/Database";
+import {SchemaDialect} from "./database/SchemaDialect";
+import {dialectName, mysqlOptions, postgresOptions, sqliteOptions} from "./database/connection";
+import {getSchemaDialect} from "./database/dialect";
+import {nodeSqliteDialect} from "./database/NodeSqliteDatabase";
+import schema from "./database/schema";
+import gtfsSchema from "./gtfs/schema";
 import {LogTableFeedCursor} from "./source/LogTableFeedCursor";
 import {MySqlTimetableSource} from "./source/MySqlTimetableSource";
+import {KyselyTimetableSource} from "./source/KyselyTimetableSource";
 
 /**
  * Composition root for the dtd2mysql CLI: it resolves a flag to the command that
@@ -47,44 +57,88 @@ function once<A, R>(fn: (arg: A) => R): (arg: A) => R {
   };
 }
 
-export function databaseConfiguration(): DatabaseConfiguration {
-  if (!process.env.DATABASE_NAME) {
-    throw new Error("Please set the DATABASE_NAME environment variable.");
+/**
+ * Load a database driver.
+ *
+ * The drivers are optional peer dependencies so that installing this does not drag in one for every
+ * database it can talk to. SQLite needs nothing, it is built into node.
+ */
+function driver(module: string) {
+  try {
+    return require(module);
   }
-
-  return {
-    host: process.env.DATABASE_HOSTNAME || "localhost",
-    user: process.env.DATABASE_USERNAME || "root",
-    password: process.env.DATABASE_PASSWORD || null,
-    database: <string>process.env.DATABASE_NAME,
-    port: +(process.env.DATABASE_PORT || 3306),
-    connectionLimit: 20,
-    multipleStatements: true,
-    // return DATE columns as YYYY-MM-DD rather than a Date at local midnight, so that reading a
-    // date out of the database does not depend on the timezone of the machine doing the reading
-    dateStrings: true
-  };
+  catch {
+    throw new Error(`The ${module} package is needed for this database but is not installed. Run npm install ${module}.`);
+  }
 }
 
 /**
- * DatabaseConfiguration types `password` as `string | null` while mysql2 types it
- * as `string | undefined`. The driver accepts null, and null is what an unset
- * DATABASE_PASSWORD resolves to.
+ * Load a driver that is only needed for some of the work, returning nothing if it is not installed
  */
-function poolOptions(): mysql.PoolOptions {
-  return databaseConfiguration() as unknown as mysql.PoolOptions;
+function optionalDriver(module: string) {
+  try {
+    return require(module);
+  }
+  catch {
+    return undefined;
+  }
 }
+
+export function schemaDialect(): SchemaDialect {
+  return getSchemaDialect(dialectName());
+}
+
+/**
+ * Postgres hands back date and timestamp columns as Date objects built in the local timezone, which is
+ * exactly what dateStrings avoids on MySQL. The parsers leave them as the strings everything else here
+ * expects, so reading a date does not depend on the machine doing the reading.
+ */
+const getPostgresPool = once((_: null) => {
+  const pg = driver("pg");
+
+  pg.types.setTypeParser(pg.types.builtins.DATE, (value: string) => value);
+  pg.types.setTypeParser(pg.types.builtins.TIMESTAMP, (value: string) => value);
+
+  return track(new pg.Pool(postgresOptions()));
+});
+
+/**
+ * The schema layer talks to the database through Kysely so that it can target more than just MySQL.
+ *
+ * MySQL shares the streaming pool rather than opening a third one.
+ */
+const getKysely = once((_: null): Kysely<Database> => {
+  switch (dialectName()) {
+    case "mysql":
+      return new Kysely({dialect: new MysqlDialect({pool: getDatabaseStream(null)})});
+    case "sqlite": {
+      const {filename, options} = sqliteOptions();
+
+      return new Kysely({dialect: nodeSqliteDialect(filename, options)});
+    }
+    case "postgres":
+      return new Kysely({
+        dialect: new PostgresDialect({
+          pool: getPostgresPool(null),
+          // only the GTFS output streams, so this stays optional and importing works without it
+          cursor: optionalDriver("pg-cursor")
+        })
+      });
+  }
+});
+
+export const kysely = () => getKysely(null);
 
 /**
  * DatabaseConnection models a pool and a connection with one type, so it declares
  * release(), which a pool does not have. Nothing calls release() on the pool.
  */
 const getDatabaseConnection = once((_: null): DatabaseConnection =>
-  track(mysqlPromise.createPool(poolOptions()) as unknown as DatabaseConnection)
+  track(mysqlPromise.createPool(mysqlOptions()) as unknown as DatabaseConnection)
 );
 
 const getDatabaseStream = once((_: null): mysql.Pool =>
-  track(mysql.createPool(poolOptions()))
+  track(mysql.createPool(mysqlOptions()))
 );
 
 /**
@@ -124,8 +178,10 @@ const databaseStream = () => getDatabaseStream(null);
 
 const getImportFeedCommand = once((feed: "fares" | "routeing" | "timetable" | "nfm64") =>
   new ImportFeedCommand(
-    databaseConnection(),
+    kysely(),
+    schemaDialect(),
     config[feed],
+    schema[feed],
     fs.mkdtempSync(path.join(os.tmpdir(), "dtd"))
   )
 );
@@ -180,7 +236,7 @@ const getSFTP = once((_: null): Promise<PromiseSFTP> =>
  * refresh"; constructing it eagerly is what turned that into a failure instead.
  */
 export function feedCursor(): FeedCursor {
-  return process.env.DATABASE_NAME ? new LogTableFeedCursor(databaseConnection()) : NO_CURSOR;
+  return process.env.DATABASE_NAME ? new LogTableFeedCursor(kysely()) : NO_CURSOR;
 }
 
 const getDownloadCommand = once(async (directory: string) =>
@@ -194,16 +250,32 @@ const getDownloadCommand = once(async (directory: string) =>
 function buildFeed(output: GTFSOutput): BuildFeed {
   const context = buildContext(process.argv);
 
-  return new BuildFeed(
-    new MySqlTimetableSource(
+  return new BuildFeed(timetableSource(context), output, context);
+}
+
+/**
+ * Where the build reads the timetable from.
+ *
+ * MySQL keeps its own source: it streams through mysql2 directly, which is faster than going through
+ * the query builder for the millions of stop time rows a full feed has. The other two go through
+ * Kysely, which is the only way they can be read at all.
+ */
+function timetableSource(context: BuildContext): TimetableSource {
+  if (dialectName() === "mysql") {
+    return new MySqlTimetableSource(
       databaseConnection(),
       databaseStream(),
       stationCoordinates,
       dateRange(context),
       context.removePassingPoints
-    ),
-    output,
-    context
+    );
+  }
+
+  return new KyselyTimetableSource(
+    kysely(),
+    stationCoordinates,
+    dateRange(context),
+    context.removePassingPoints
   );
 }
 
@@ -231,12 +303,12 @@ async function getDownloadAndProcessCommand(
  */
 export const commands: {[flag: string]: () => CLICommand | Promise<CLICommand>} = {
   "--fares": () => getImportFeedCommand("fares"),
-  "--fares-clean": () => new CleanFaresCommand(databaseConnection()),
+  "--fares-clean": () => new CleanFaresCommand(kysely(), schemaDialect()),
   "--routeing": () => getImportFeedCommand("routeing"),
   "--timetable": () => getImportFeedCommand("timetable"),
   "--nfm64": () => getImportFeedCommand("nfm64"),
   "--gtfs": () => getBuildFeedCommand(null),
-  "--gtfs-import": () => new GTFSImportCommand(databaseConfiguration()),
+  "--gtfs-import": () => new GTFSImportCommand(kysely(), schemaDialect(), gtfsSchema),
   "--gtfs-zip": () => new OutputGTFSZipCommand(getBuildFeedCommand(null)),
   "--download-fares": () => getDownloadCommand("/fares/"),
   "--download-timetable": () => getDownloadCommand("/timetable/"),

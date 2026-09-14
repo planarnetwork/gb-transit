@@ -1,0 +1,2 @@
+id	supplement_code	end_date	start_date	quote_date	description	short_desc	suppl_type	price	cpf_ticket_type	min_group_size	max_group_size	per_leg_or_dir	class_type	capri_code	sep_tkt_ind	resvn_type	sundry_code
+1	AAA	2025-01-01	2025-01-01	2025-01-01	AAAAAAAAAAAAAAAAAAAA	AAAAAAAAAAAA	AAA	11111	AAAAA	1	1	A	A	AAA	A	AA	11111

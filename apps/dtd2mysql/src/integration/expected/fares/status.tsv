@@ -1,0 +1,2 @@
+id	status_code	end_date	start_date	atb_desc	cc_desc	uts_code	first_single_max_flat	first_return_max_flat	std_single_max_flat	std_return_max_flat	first_lower_min	first_higher_min	std_lower_min	std_higher_min	fs_mkr	fr_mkr	ss_mkr	sr_mkr
+1	AAA	2025-01-01	2025-01-01	AAAAA	AAAAA	A	11111111	11111111	11111111	11111111	11111111	11111111	11111111	11111111	1	1	1	1

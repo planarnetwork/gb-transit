@@ -3,12 +3,15 @@ import * as fs from 'fs';
 import {CLICommand} from "./CLICommand";
 import {FeedConfig} from "@gb-transit/dtd-schema";
 import {FeedFile, Record as FeedRecord} from "@gb-transit/feed-parser";
-import {MySQLSchema} from "../database/MySQLSchema";
-import {DatabaseConnection} from "../database/DatabaseConnection";
+import {Kysely, sql} from "kysely";
+import {createLogSchema, LOG_TABLE, SchemaBuilder} from "../database/SchemaBuilder";
+import {SchemaDialect} from "../database/SchemaDialect";
+import {FeedSchema, Table} from "../database/Schema";
+import {Database} from "../database/Database";
 import * as path from "path";
-import {MySQLTable} from "../database/MySQLTable";
+import {TableWriter} from "../database/TableWriter";
 import memoize from "memoized-class-decorator";
-import {MySQLStream, TableIndex} from "../database/MySQLStream";
+import {RecordStream, TableIndex} from "../database/RecordStream";
 import byline from "byline";
 import {finished} from "node:stream/promises";
 
@@ -21,8 +24,10 @@ const readFile = (filename: string) => byline.createStream(fs.createReadStream(f
 export class ImportFeedCommand implements CLICommand {
 
   constructor(
-    private readonly db: DatabaseConnection,
+    private readonly db: Kysely<Database>,
+    private readonly schemaDialect: SchemaDialect,
     private readonly files: FeedConfig,
+    private readonly schema: FeedSchema,
     private readonly tmpFolder: string
   ) { }
 
@@ -52,7 +57,7 @@ export class ImportFeedCommand implements CLICommand {
 
     // if the file is a not an incremental, reset the database schema
     if (zipName.charAt(4) !== "C") {
-      await Promise.all(this.fileArray.map(file => this.setupSchema(file)));
+      await this.setupSchema();
       await this.createLastProcessedSchema();
     }
 
@@ -73,22 +78,16 @@ export class ImportFeedCommand implements CLICommand {
   /**
    * Drop and recreate the tables
    */
-  private async setupSchema(file: FeedFile): Promise<void> {
-    await Promise.all(this.schemas(file).map(schema => schema.dropSchema()));
-    await Promise.all(this.schemas(file).map(schema => schema.createSchema()));
+  private async setupSchema(): Promise<void> {
+    await Promise.all(this.schemas().map(schema => schema.dropSchema()));
+    await Promise.all(this.schemas().map(schema => schema.createSchema()));
   }
 
   /**
    * Create the last_file table (if it doesn't already exist)
    */
   private async createLastProcessedSchema(): Promise<void> {
-    await this.db.query(`
-      CREATE TABLE IF NOT EXISTS log ( 
-        id INT(11) unsigned not null primary key auto_increment, 
-        filename VARCHAR(255), 
-        processed DATETIME 
-      )
-    `);
+    await createLogSchema(this.db, this.schemaDialect);
   }
 
   /**
@@ -118,9 +117,10 @@ export class ImportFeedCommand implements CLICommand {
 
       seen.add(record.name);
 
-      const [[row]] = await this.db.query<{id: number | null}>(
-        `SELECT MAX(id) AS id FROM \`${record.name}\``
-      );
+      const [row] = await this.db
+        .selectFrom(record.name as keyof Database)
+        .select(eb => eb.fn.max<number | null>("id").as("id"))
+        .execute();
 
       record.lastId = row?.id ?? 0;
     }));
@@ -133,18 +133,31 @@ export class ImportFeedCommand implements CLICommand {
    * deleted and the new one takes a new id - so the stop times that pointed at
    * the old id belong to nothing. The same is true of a schedule an incremental
    * withdraws.
+   *
+   * Only the timetable feed holds these tables, and only the feed being imported
+   * has had its tables created. Importing fares into a database that has never
+   * had a timetable feed used to fail here on a table that was never created -
+   * invisible where all four feeds share one database, which is why it was.
    */
-  private async removeOrphanStopTimes() {
-    return Promise.all([
-      this.db.query("DELETE FROM stop_time WHERE schedule NOT IN (SELECT id FROM schedule)"),
-      this.db.query("DELETE FROM z_stop_time WHERE z_schedule NOT IN (SELECT id FROM z_schedule)"),
-      this.db.query("DELETE FROM schedule_extra WHERE schedule NOT IN (SELECT id FROM schedule)")
-    ]);
+  private async removeOrphanStopTimes(): Promise<void> {
+    if (!this.schema["stop_time"]) {
+      return;
+    }
+
+    const schedules = this.db.selectFrom("schedule").select("id");
+    const zSchedules = this.db.selectFrom("z_schedule").select("id");
+
+    await this.db.deleteFrom("stop_time").where("schedule", "not in", schedules).execute();
+    await this.db.deleteFrom("z_stop_time").where("z_schedule", "not in", zSchedules).execute();
+    await this.db.deleteFrom("schedule_extra").where("schedule", "not in", schedules).execute();
   }
 
 
   private async updateLastFile(filename: string): Promise<void> {
-    await this.db.query("INSERT INTO log VALUES (null, ?, NOW())", [filename]);
+    await this.db
+      .insertInto(LOG_TABLE)
+      .values({ filename, processed: sql<string>`current_timestamp` })
+      .execute();
   }
 
   /**
@@ -153,7 +166,7 @@ export class ImportFeedCommand implements CLICommand {
   private async processFile(filename: string): Promise<void> {
     const file = this.getFeedFile(filename);
     const tables = await this.tables(file);
-    const tableStream = new MySQLStream(filename, file, tables);
+    const tableStream = new RecordStream(filename, file, tables);
     const stream = readFile(`${this.tmpFolder}/${filename}`).pipe(tableStream);
 
     try {
@@ -172,9 +185,43 @@ export class ImportFeedCommand implements CLICommand {
     return this.files[getExt(filename)];
   }
 
+  /**
+   * One builder per table the feed writes to.
+   *
+   * Some files share their record types, the timetable's MCA and CFA in particular, so the tables are
+   * deduplicated. Creating the same table twice at once is a race in Postgres, which does not make
+   * CREATE TABLE IF NOT EXISTS atomic against itself.
+   */
   @memoize
-  private schemas(file: FeedFile): MySQLSchema[] {
-    return file.recordTypes.map(record => new MySQLSchema(this.db, record));
+  private schemas(): SchemaBuilder[] {
+    const tables = new Map<string, SchemaBuilder>();
+
+    for (const file of this.fileArray) {
+      for (const record of file.recordTypes) {
+        if (!tables.has(record.name)) {
+          tables.set(
+            record.name,
+            new SchemaBuilder(this.db, this.schemaDialect, record.name, this.table(record.name))
+          );
+        }
+      }
+    }
+
+    return [...tables.values()];
+  }
+
+  /**
+   * The declared table a record writes to. A record without one is a feed definition that was added
+   * without declaring where it goes, which is worth failing on rather than silently skipping.
+   */
+  private table(name: string): Table {
+    const table = this.schema[name];
+
+    if (!table) {
+      throw new Error(`No table is declared for ${name} in src/database/schema.`);
+    }
+
+    return table;
   }
 
   @memoize
@@ -183,9 +230,9 @@ export class ImportFeedCommand implements CLICommand {
 
     for (const record of file.recordTypes) {
       if (!index[record.name]) {
-        const db = record.orderedInserts ? await this.db.getConnection() : this.db;
-
-        index[record.name] = new MySQLTable(db, record.name);
+        index[record.name] = new TableWriter(
+          this.db, this.schemaDialect.name, record.name, record.orderedInserts
+        );
       }
     }
 
@@ -195,8 +242,8 @@ export class ImportFeedCommand implements CLICommand {
   /**
    * Close the underling database connection
    */
-  public end(): Promise<void> {
-    return this.db.end();
+  public async end(): Promise<void> {
+    await this.db.destroy();
   }
 
 }

@@ -1,0 +1,2 @@
+id	origin_code	destination_code	route_code	status_code	usage_code	direction	end_date	start_date	toc	cross_london_ind	ns_disc_ind	publication_ind	flow_id
+1	AAAA	AAAA	11111	111	A	A	2025-01-01	2025-01-01	AAA	1	1	A	1111111
