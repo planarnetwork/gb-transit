@@ -1,6 +1,6 @@
 {
   "name": "cif2gtfs",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "Build a GTFS feed from the GB rail DTD timetable feed, with no database",
   "main": "./dist/api.js",
   "types": "./dist/api.d.ts",
