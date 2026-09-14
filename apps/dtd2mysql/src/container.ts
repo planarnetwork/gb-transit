@@ -26,7 +26,7 @@ import {Database} from "./database/Database";
 import {SchemaDialect} from "./database/SchemaDialect";
 import {dialectName, mysqlOptions, postgresOptions, sqliteOptions} from "./database/connection";
 import {getSchemaDialect} from "./database/dialect";
-import {NodeSqliteDialect} from "./database/NodeSqliteDriver";
+import {nodeSqliteDialect} from "./database/NodeSqliteDatabase";
 import schema from "./database/schema";
 import gtfsSchema from "./gtfs/schema";
 import {LogTableFeedCursor} from "./source/LogTableFeedCursor";
@@ -114,7 +114,7 @@ const getKysely = once((_: null): Kysely<Database> => {
     case "sqlite": {
       const {filename, options} = sqliteOptions();
 
-      return new Kysely({dialect: new NodeSqliteDialect(filename, options)});
+      return new Kysely({dialect: nodeSqliteDialect(filename, options)});
     }
     case "postgres":
       return new Kysely({

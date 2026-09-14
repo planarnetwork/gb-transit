@@ -3,7 +3,7 @@ import {Kysely} from "kysely";
 import {SchemaBuilder} from "./SchemaBuilder";
 import {SchemaDialect} from "./SchemaDialect";
 import {mysqlSchemaDialect, postgresSchemaDialect, sqliteSchemaDialect} from "./dialect";
-import {NodeSqliteDialect} from "./NodeSqliteDriver";
+import {nodeSqliteDialect} from "./NodeSqliteDatabase";
 import {recording} from "./testing/recording";
 import {Table} from "./Schema";
 import {feedTables, intTable, testTable} from "./testing/records";
@@ -87,7 +87,7 @@ describe("SchemaBuilder", () => {
   });
 
   it("creates the schema in a real sqlite database", async () => {
-    const db = new Kysely<any>({ dialect: new NodeSqliteDialect(":memory:") });
+    const db = new Kysely<any>({ dialect: nodeSqliteDialect(":memory:") });
     const schema = new SchemaBuilder(db, sqliteSchemaDialect, "test", test);
 
     await schema.createSchema();
@@ -110,7 +110,7 @@ describe("SchemaBuilder", () => {
   });
 
   it("creates the schema twice without failing on the indexes", async () => {
-    const db = new Kysely<any>({ dialect: new NodeSqliteDialect(":memory:") });
+    const db = new Kysely<any>({ dialect: nodeSqliteDialect(":memory:") });
     const schema = new SchemaBuilder(db, sqliteSchemaDialect, "test", test);
 
     await schema.createSchema();
@@ -127,7 +127,7 @@ describe("SchemaBuilder", () => {
     expect(tables.length).to.be.greaterThan(0);
 
     // sqlite is executed for real and the others are compiled, so a column with no type fails either way
-    const sqlite = new Kysely<any>({ dialect: new NodeSqliteDialect(":memory:") });
+    const sqlite = new Kysely<any>({ dialect: nodeSqliteDialect(":memory:") });
 
     for (const [name, feedTable] of tables) {
       await new SchemaBuilder(sqlite, sqliteSchemaDialect, name, feedTable).createSchema();

@@ -1,8 +1,8 @@
 import {describe, it, expect} from 'vitest';
 import {Kysely, sql} from "kysely";
-import {NodeSqliteDialect} from "./NodeSqliteDriver";
+import {nodeSqliteDialect} from "./NodeSqliteDatabase";
 
-describe("NodeSqliteDriver", () => {
+describe("node:sqlite as a Kysely database", () => {
 
   it("round trips values through an in memory database", async () => {
     const db = await stops();
@@ -96,7 +96,7 @@ describe("NodeSqliteDriver", () => {
  * An in memory database with a single table to work against
  */
 async function stops(): Promise<Kysely<any>> {
-  const db = new Kysely<any>({ dialect: new NodeSqliteDialect(":memory:") });
+  const db = new Kysely<any>({ dialect: nodeSqliteDialect(":memory:") });
 
   await db.schema
     .createTable("stops")

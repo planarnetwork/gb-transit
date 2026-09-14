@@ -2,7 +2,7 @@ import {describe, it, expect, beforeEach} from "vitest";
 import {Kysely} from "kysely";
 import {RouteType} from "@gb-transit/gtfs";
 import {KyselyTimetableSource} from "./KyselyTimetableSource";
-import {NodeSqliteDialect} from "../database/NodeSqliteDriver";
+import {nodeSqliteDialect} from "../database/NodeSqliteDatabase";
 import {SchemaBuilder, createLogSchema} from "../database/SchemaBuilder";
 import {sqliteSchemaDialect} from "../database/dialect";
 import timetable from "../database/schema/timetable";
@@ -30,7 +30,7 @@ describe("KyselyTimetableSource", () => {
   const source = () => new KyselyTimetableSource(db, {}, range);
 
   beforeEach(async () => {
-    db = new Kysely<any>({dialect: new NodeSqliteDialect(":memory:")});
+    db = new Kysely<any>({dialect: nodeSqliteDialect(":memory:")});
 
     for (const [name, table] of Object.entries(timetable)) {
       await new SchemaBuilder(db as Kysely<any>, sqliteSchemaDialect, name, table).createSchema();
