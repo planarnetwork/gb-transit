@@ -90,6 +90,14 @@ differently now, beyond `readFeedRows` with no argument returning one more key.
 
 ## The validator baselines
 
+**No passing points feed.** `.github/validator-baseline-passing-points.json` is gone, because the
+nightly no longer builds or publishes `gtfs-passing-points.zip`. Its baseline accepted 25
+`stop_time_with_arrival_before_previous_departure_time` by count — passes on the working clock
+published between calls on the public one — and two new overlays of C17075 took that to 26 and
+stopped every feed publishing on 12 and 13 September 2026. The standard and National Rail only
+baselines are unchanged. `cif2gtfs --remove-passing-points=false` still builds the feed; nothing
+publishes or validates it.
+
 **A baseline for the National Rail only feed (#176).**
 [`.github/validator-baseline-national-rail-only.json`](.github/validator-baseline-national-rail-only.json)
 is new, for the third feed the

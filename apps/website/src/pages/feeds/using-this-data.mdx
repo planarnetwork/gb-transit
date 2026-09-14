@@ -18,17 +18,15 @@ them. This page lists those decisions and the behaviour they produce.
 
 ## What you get
 
-Three feeds, from the same build:
+Two feeds, from the same build:
 
 <FeedTable />
 
-A journey planner wants the first. Anything tracing where a train actually goes — what uses which
-line, where a delay was picked up, why two services conflict — wants the second, which holds the
-same trips. See [the passing points feed](#the-passing-points-feed). Drawing a train on a map needs
-neither: both feeds carry the same [shapes](#shapes).
+A journey planner wants the first, and so does a map: every trip is drawn as a [shape](#shapes)
+through the stations it runs through as well as the ones it calls at.
 
-A feed being merged with the tube and bus timetables wants the third, which has fewer trips than the
-other two. See [the National Rail only feed](#the-national-rail-only-feed).
+A feed being merged with the tube and bus timetables wants the second, which has fewer trips than the
+first. See [the National Rail only feed](#the-national-rail-only-feed).
 
 Every link resolves to the most recent release, so they can be bookmarked or scripted against.
 
@@ -39,7 +37,7 @@ describe the feed rather than being part of it and somebody unzipping a GTFS fee
 
 | asset | what it is |
 |---|---|
-| `validation.json` | the validator's report, including every accepted error. One per feed, the others suffixed as their zip is |
+| `validation.json` | the validator's report, including every accepted error. One per feed, the second suffixed as its zip is |
 | `feed-meta.json` | what was built, from what, and when |
 | `enrichment-report.json` | what each external source matched and missed |
 | `provenance.json` | every field an external source wrote, and every write that lost |
@@ -239,9 +237,9 @@ holidays is published as running on them.
 ## Shapes
 
 Every trip carries a `shape_id`, and `shapes.txt` is the line it runs over: a polyline through the
-stations the train touches, whether it calls there or runs through. **Both** feeds carry it, and
-they carry the identical file — the line is drawn from every timing point regardless of which of
-them the feed publishes as a call, which is what the nightly checks before releasing.
+stations the train touches, whether it calls there or runs through. The places it runs through are
+not in `stop_times.txt`, but the line is drawn through them, and the nightly stops rather than
+publishing a feed whose lines have lost them.
 
 The passing points are the whole reason the line is worth drawing. Without them a King's Cross to
 Newcastle service is a single 395 km straight line; with them it is twenty-odd hops that trace the
@@ -266,35 +264,6 @@ Two consequences worth knowing:
 
 A trip whose every station the feed cannot place has an empty `shape_id` rather than a line drawn
 through Null Island.
-
-## The passing points feed
-
-Half of CIF's intermediate location records are places a service runs through without stopping.
-The standard feed drops them from `stop_times.txt` — though not from the shapes, which are drawn
-through them in both feeds. `gtfs-passing-points.zip` keeps them as calls, with `pickup_type` and
-`drop_off_type` of `1` and the pass time as both arrival and departure — the only time the record
-has.
-
-```
-trip_id,arrival_time,departure_time,stop_id,stop_sequence,stop_headsign,pickup_type,drop_off_type,...
-C82958_20260517_20261206,05:00:00,05:00:00,9100VICTRIC18,1,,0,1,...
-C82958_20260517_20261206,05:03:30,05:03:30,9100BATRSPK3,2,,1,1,...
-C82958_20260517_20261206,05:06:00,05:06:00,9100CLPHMJC15,3,,1,1,...
-```
-
-A pass names its platform like any other call, and nearly all passes land on a boarding point the
-feed already publishes because something stops there — so a consumer promoting a passing point to a
-real stop has nothing to translate. A pass whose record names no platform gets the station's
-boarding point.
-
-Everything else is identical. The two feeds hold the same trips, routes, calendars and shapes, and
-the nightly stops rather than publishing if the two disagree about how many trips there are or draw
-different lines.
-
-**One caveat.** A call publishes its public time and a passing point has only its working time, and
-the two do not agree. A small number of passes therefore read as later than the call after them.
-Correcting it would mean inventing a time for one of the two, so the feed reports the source as it
-is. `validation.json` names every occurrence, with the trip it is on.
 
 ## The National Rail only feed
 
