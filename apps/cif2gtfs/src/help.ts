@@ -23,9 +23,9 @@ Build a GTFS feed from the DTD timetable feed, with no database
                              whether to drop the locations a service runs
                              through without stopping (defaults to true).
                              Pass false to keep them, as calls with
-                             pickup_type and drop_off_type 1 and the pass time
-                             as both arrival and departure. It is roughly a
-                             third more stop times
+                             pickup_type and drop_off_type 1 and timepoint 0,
+                             timed between the published calls either side.
+                             It is roughly a third more stop times
   --duplicate-overnight-associations
                              also publish an associated schedule that runs the
                              day after its base on the base's own service day,
