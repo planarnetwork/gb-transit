@@ -73,7 +73,8 @@ GTFS_TODAY=2026-08-10 GTFS_RANGE="6 MONTH" dtd2mysql --gtfs /path/to/output/
 ```
 
 The locations a service runs through without stopping are dropped. To keep them, as calls with
-`pickup_type` and `drop_off_type` of `1` and the pass time as both the arrival and the departure:
+`pickup_type` and `drop_off_type` of `1`, `timepoint` of `0`, and a time between the published
+calls either side:
 
 ```
 dtd2mysql --gtfs /path/to/output/ --remove-passing-points=false

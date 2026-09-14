@@ -1,7 +1,7 @@
 import {Temporal} from "temporal-polyfill";
 import {IdGenerator, STP} from "../model/OverlayRecord";
 import {Schedule, tripId} from "../model/Schedule";
-import {CRS, PickupDropOffType, RouteType, StopTime} from "@gb-transit/gtfs-schema";
+import {CRS, Duration, PickupDropOffType, RouteType, StopTime, parseDuration} from "@gb-transit/gtfs-schema";
 import {NO_DAYS, ScheduleCalendar} from "../model/ScheduleCalendar";
 import {ScheduleStopTimeRow} from "../source/TimetableSource";
 
@@ -20,6 +20,11 @@ const notAdvertisedActivity = "N ";
  */
 interface Cursor {
   stops: StopTime[];
+  /**
+   * The times of each stop in `stops` on both clocks, index for index. A
+   * passing point is timed against them.
+   */
+  clocks: StopClocks[];
   /**
    * Every station the run has touched, calling or passing, in order - what
    * `Schedule.path` is built from.
@@ -44,6 +49,19 @@ interface Cursor {
    * no longer the same place.
    */
   lastStopCrs?: CRS;
+}
+
+/**
+ * When a stop arrives and departs by the times the train runs to and by the
+ * times the timetable publishes. A passing point is on the working clock only,
+ * and all four are its pass time.
+ */
+interface StopClocks {
+  passing: boolean;
+  workingArrival: Duration;
+  workingDeparture: Duration;
+  publicArrival: Duration;
+  publicDeparture: Duration;
 }
 
 /**
@@ -145,8 +163,9 @@ export class ScheduleBuilder {
     const startsSchedule = !cursor.prevRow || cursor.prevRow.id !== row.id;
 
     if (cursor.prevRow && startsSchedule) {
-      this.schedules.push(this.createSchedule(cursor.prevRow, cursor.stops, cursor.path));
+      this.schedules.push(this.createSchedule(cursor.prevRow, cursor.stops, cursor.clocks, cursor.path));
       cursor.stops = [];
+      cursor.clocks = [];
       cursor.path = [];
       cursor.lastIsPassing = false;
       cursor.lastStopCrs = undefined;
@@ -192,6 +211,7 @@ export class ScheduleBuilder {
   private addStop(cursor: Cursor, row: ScheduleStopTimeRow, passing: boolean): void {
     if (cursor.stops.length > 0 && row.crs_code === cursor.lastStopCrs) {
       const stop = this.createStop(row, cursor.stops.length, cursor.departureHour);
+      const clock = this.createClock(row, stop, cursor.departureHour);
 
       // Two timing points of one service can share a CRS - a station and the
       // junction on its approach - and only one of them belongs in the feed.
@@ -203,30 +223,39 @@ export class ScheduleBuilder {
         || stop.drop_off_type === PickupDropOffType.Scheduled
         || (cursor.lastIsPassing && !passing)) {
         cursor.stops[cursor.stops.length - 1] = stop;
+        cursor.clocks[cursor.clocks.length - 1] = clock;
         cursor.lastIsPassing = passing;
       }
 
       return;
     }
 
-    cursor.stops.push(this.createStop(row, cursor.stops.length + 1, cursor.departureHour));
+    const stop = this.createStop(row, cursor.stops.length + 1, cursor.departureHour);
+
+    cursor.stops.push(stop);
+    cursor.clocks.push(this.createClock(row, stop, cursor.departureHour));
     cursor.lastIsPassing = passing;
     cursor.lastStopCrs = row.crs_code;
   }
 
   private flush(cursor: Cursor): void {
     if (cursor.prevRow) {
-      this.schedules.push(this.createSchedule(cursor.prevRow, cursor.stops, cursor.path));
+      this.schedules.push(this.createSchedule(cursor.prevRow, cursor.stops, cursor.clocks, cursor.path));
       cursor.prevRow = undefined;
       cursor.stops = [];
+      cursor.clocks = [];
       cursor.path = [];
       cursor.lastIsPassing = false;
       cursor.lastStopCrs = undefined;
     }
   }
 
-  private createSchedule(row: ScheduleStopTimeRow, stops: StopTime[], path: CRS[]): Schedule {
+  private createSchedule(row: ScheduleStopTimeRow, stops: StopTime[], clocks: StopClocks[], path: CRS[]): Schedule {
     this.maxId = Math.max(this.maxId, row.id);
+
+    if (!this.removePassingPoints) {
+      onPublicClock(stops, clocks);
+    }
 
     const mode = routeTypeIndex.hasOwnProperty(row.train_category) ? routeTypeIndex[row.train_category] : RouteType.Rail;
 
@@ -275,8 +304,9 @@ export class ScheduleBuilder {
     let arrivalTime, departureTime;
 
     // A passing point has no arrival and no departure of any kind - the service
-    // does not stop, so the pass time is the only time it has, and it is both.
-    // Checked first because the other two branches would find nothing.
+    // does not stop, so the pass time is the only time it has, and it is both
+    // until onPublicClock moves it. Checked first because the other two
+    // branches would find nothing.
     if (row.scheduled_pass_time) {
       arrivalTime = departureTime = this.formatTime(row.scheduled_pass_time, departHour);
     }
@@ -316,7 +346,9 @@ export class ScheduleBuilder {
       pickup_type: ScheduleBuilder.getPickupDropOffType(row.activity, pickupActivities),
       drop_off_type: ScheduleBuilder.getPickupDropOffType(row.activity, dropOffActivities),
       shape_dist_traveled: null,
-      timepoint: 1,
+      // A passing point's time is placed between the published times either
+      // side of it, which makes it an estimate - see onPublicClock.
+      timepoint: row.scheduled_pass_time ? 0 : 1,
       // A passing point names its platform like any other call. 461,901 of them
       // give one, and the platform a train runs through is a real platform: 89%
       // of passing calls land on a boarding point the feed already publishes
@@ -332,6 +364,45 @@ export class ScheduleBuilder {
       platform: row.platform,
       tiploc: row.tiploc
     };
+  }
+
+  /**
+   * A call's times on both clocks. Where the source gives no working time the
+   * published one stands in for it.
+   *
+   * A call published at only one end is set down only or picked up only, and
+   * its one public time need not be when the train arrives, nor when it leaves.
+   * It is nearer one end of the working dwell than the other, and both ends are
+   * offset from their working times by as much: the Night Riviera sets down at
+   * Reading from a public and working 03:12 and stands until a working 04:18,
+   * so it leaves at 04:18 on either clock; the sleeper from Scotland reaches
+   * Preston at a working 03:51 and sets down from a public 04:20, two minutes
+   * before its working 04:22, so on the public clock it arrives at 03:49 and
+   * leaves at 04:20.
+   */
+  private createClock(row: ScheduleStopTimeRow, stop: StopTime, departHour: number): StopClocks {
+    if (row.scheduled_pass_time) {
+      const pass = parseDuration(stop.arrival_time);
+
+      return {passing: true, workingArrival: pass, workingDeparture: pass, publicArrival: pass, publicDeparture: pass};
+    }
+
+    const arrival = this.formatTime(row.scheduled_arrival_time ?? row.scheduled_departure_time, departHour);
+    const departure = this.formatTime(row.scheduled_departure_time ?? row.scheduled_arrival_time, departHour);
+    const workingArrival = parseDuration(arrival ?? stop.arrival_time);
+    const workingDeparture = parseDuration(departure ?? stop.departure_time);
+    const clocks = {passing: false, workingArrival, workingDeparture};
+
+    if (!row.public_arrival_time === !row.public_departure_time) {
+      return {...clocks, publicArrival: parseDuration(stop.arrival_time), publicDeparture: parseDuration(stop.departure_time)};
+    }
+
+    const published = parseDuration(row.public_arrival_time ? stop.arrival_time : stop.departure_time);
+    const offset = Math.abs(published - workingArrival) <= Math.abs(published - workingDeparture)
+      ? published - workingArrival
+      : published - workingDeparture;
+
+    return {...clocks, publicArrival: workingArrival + offset, publicDeparture: workingDeparture + offset};
   }
 
   private formatTime(time: string | null, originDepartureHour: number) {
@@ -379,7 +450,71 @@ const routeTypeIndex: { [trainCategory: string]: RouteType } = {
 };
 
 function newCursor(): Cursor {
-  return {stops: [], path: [], departureHour: 4, lastIsPassing: false};
+  return {stops: [], clocks: [], path: [], departureHour: 4, lastIsPassing: false};
+}
+
+/**
+ * Put each passing point on the clock the calls around it are published on.
+ *
+ * A call is published at its public time and a passing point has only its
+ * working time, and the two clocks can be a quarter of an hour apart: C02035
+ * sets down at Doncaster from a public 00:35 and a working 00:49½, so its
+ * working pass of Adwick at 00:55½ would be published after its public arrival
+ * at Wakefield Westgate, 00:52. The calls either side say how one clock maps
+ * onto the other over that stretch, so a passing point keeps its share of the
+ * working time between them: Adwick, 4 of the 15 working minutes out of
+ * Doncaster, is published at 00:41. Where the two clocks agree, nothing moves.
+ *
+ * A pass is never published before the departure of the call behind it, after
+ * the arrival of the call ahead of it, or before the pass ahead of it, so a
+ * trip never runs backwards through a location it does not stop at - including
+ * where the source times one outside the calls either side. A passing point
+ * with no call on one side of it keeps its working time.
+ */
+function onPublicClock(stops: StopTime[], clocks: StopClocks[]): void {
+  let call = -1;
+
+  for (let i = 0; i < stops.length; i++) {
+    if (clocks[i].passing) continue;
+
+    if (call >= 0 && i - call > 1) {
+      retimeBetween(stops, clocks, call, i);
+    }
+
+    call = i;
+  }
+}
+
+function retimeBetween(stops: StopTime[], clocks: StopClocks[], from: number, to: number): void {
+  const earliest = parseDuration(stops[from].departure_time);
+  const latest = Math.max(earliest, parseDuration(stops[to].arrival_time));
+  const publicStart = clamp(clocks[from].publicDeparture, earliest, latest);
+  const publicEnd = clamp(clocks[to].publicArrival, publicStart, latest);
+  const workingStart = clocks[from].workingDeparture;
+  const workingLength = clocks[to].workingArrival - workingStart;
+  let previous = publicStart;
+
+  for (let i = from + 1; i < to; i++) {
+    const share = workingLength > 0 ? clamp((clocks[i].workingArrival - workingStart) / workingLength, 0, 1) : 0;
+    const time = clamp(halfMinute(publicStart + share * (publicEnd - publicStart)), previous, publicEnd);
+
+    stops[i].arrival_time = stops[i].departure_time = clockTime(time);
+    previous = time;
+  }
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function halfMinute(time: Duration): Duration {
+  return Math.round(time / 30) * 30;
+}
+
+function clockTime(time: Duration): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+
+  return `${pad(Math.floor(time / 3600))}:${pad(Math.floor(time / 60) % 60)}:${pad(time % 60)}`;
 }
 
 function hasActivity(activity: string, code: string): boolean {

@@ -72,9 +72,18 @@ and 892,000 of them are at a station the feed publishes. They are not calls: nob
 nobody alights. By default they are dropped.
 
 `--remove-passing-points=false` keeps them, as calls with `pickup_type` and `drop_off_type` of `1`
-and the pass time as both the arrival and the departure. Over three months of the whole network
+and one time as both the arrival and the departure. Over three months of the whole network
 that is 3.43 million stop times against 2.84 million, of which 592,000 are passed rather than
 called at. The trips, routes and calendars are identical either way; `stops.txt` gains 59 stops.
+
+A pass has only a working time, the half-minute the train runs to, while a call is published at
+its public time, and the two clocks can be a quarter of an hour apart. So a pass is published at
+its share of the working time between the calls either side, laid over the public time between
+them: C02035 sets down at Doncaster from a public 00:35 and a working 00:49½, and its working pass
+of Adwick at 00:55½ is published at 00:41 rather than after its public 00:52 at Wakefield Westgate.
+Where the clocks agree, which is most of the network, a pass keeps its working time; a third of
+passes move, almost all by a minute or less. No pass is published outside the calls either side
+of it, and every pass is `timepoint` `0`, because its time is an estimate.
 
 A passing point names its platform like any other call, and falls back to the station where the
 pass record gives none. The platform a train runs through is a real platform: 89% of passing calls
