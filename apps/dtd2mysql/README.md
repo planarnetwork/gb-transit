@@ -29,12 +29,28 @@ Every command reads its database settings from the environment. For example
 
 | variable | meaning |
 | --- | --- |
-| `DATABASE_DIALECT` | `mysql`, `postgres` or `sqlite`. Defaults to `mysql` |
+| `DATABASE_URL` | a connection string, handed to the driver unchanged. The dialect comes from its scheme |
+| `DATABASE_OPTIONS` | JSON merged into the driver's options, for anything the variables below cannot say |
+| `DATABASE_DIALECT` | `mysql`, `postgres` or `sqlite`. Defaults to `mysql`, and overrides the URL's scheme |
 | `DATABASE_NAME` | the database, or the file to use for SQLite |
 | `DATABASE_HOSTNAME` | defaults to `localhost` |
 | `DATABASE_PORT` | defaults to `3306`, or `5432` for Postgres |
 | `DATABASE_USERNAME` | defaults to `root` |
 | `DATABASE_PASSWORD` | |
+
+Nothing here models a connection. `DATABASE_URL` and `DATABASE_OPTIONS` go to the driver as they
+are, so everything the driver supports is reachable without this having to know about it - a unix
+socket, for instance, is the driver's own option either way:
+
+```
+DATABASE_URL='mysql://root@localhost/feed?socketPath=/var/run/mysqld/mysqld.sock'
+DATABASE_URL='postgresql://postgres@/feed?host=/var/run/postgresql'
+DATABASE_OPTIONS='{"ssl":{"rejectUnauthorized":false},"connectionLimit":5}'
+```
+
+Two settings are not preferences and are applied over whatever is given: MySQL's `dateStrings`
+and the Postgres date and timestamp parsers. Both keep a date from depending on the timezone of
+the machine reading it, which the declared column types rely on.
 
 The drivers other than MySQL's are optional peer dependencies, so installing this does not
 drag in one for every database it can talk to:

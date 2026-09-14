@@ -21,9 +21,10 @@ import {CleanFaresCommand} from "./cli/CleanFaresCommand";
 import {GTFSImportCommand} from "./cli/GTFSImportCommand";
 import {ImportFeedCommand} from "./cli/ImportFeedCommand";
 import {ShowHelpCommand} from "./cli/ShowHelpCommand";
-import {DatabaseConfiguration, DatabaseConnection} from "./database/DatabaseConnection";
+import {DatabaseConnection} from "./database/DatabaseConnection";
 import {Database} from "./database/Database";
-import {DialectName, dialectNames, SchemaDialect} from "./database/SchemaDialect";
+import {SchemaDialect} from "./database/SchemaDialect";
+import {dialectName, mysqlOptions, postgresOptions, sqliteOptions} from "./database/connection";
 import {getSchemaDialect} from "./database/dialect";
 import {NodeSqliteDialect} from "./database/NodeSqliteDriver";
 import schema from "./database/schema";
@@ -56,57 +57,6 @@ function once<A, R>(fn: (arg: A) => R): (arg: A) => R {
   };
 }
 
-export function databaseConfiguration(): DatabaseConfiguration {
-  if (!process.env.DATABASE_NAME) {
-    throw new Error("Please set the DATABASE_NAME environment variable.");
-  }
-
-  return {
-    dialect: dialectName(),
-    host: process.env.DATABASE_HOSTNAME || "localhost",
-    user: process.env.DATABASE_USERNAME || "root",
-    password: process.env.DATABASE_PASSWORD || null,
-    database: <string>process.env.DATABASE_NAME,
-    port: +(process.env.DATABASE_PORT || defaultPort()),
-    connectionLimit: 20,
-    multipleStatements: true,
-    // return DATE columns as YYYY-MM-DD rather than a Date at local midnight, so that reading a
-    // date out of the database does not depend on the timezone of the machine doing the reading
-    dateStrings: true
-  };
-}
-
-/**
- * DatabaseConfiguration types `password` as `string | null` while mysql2 types it
- * as `string | undefined`. The driver accepts null, and null is what an unset
- * DATABASE_PASSWORD resolves to.
- */
-function poolOptions(): mysql.PoolOptions {
-  const {dialect, ...options} = databaseConfiguration();
-
-  return options as unknown as mysql.PoolOptions;
-}
-
-/**
- * The port to use when DATABASE_PORT says nothing. SQLite has no port and never reads this.
- */
-function defaultPort(): number {
-  return dialectName() === "postgres" ? 5432 : 3306;
-}
-
-/**
- * The database the CLI is pointed at, defaulting to MySQL so an existing install is unaffected
- */
-function dialectName(): DialectName {
-  const name = process.env.DATABASE_DIALECT || "mysql";
-
-  if (!dialectNames.includes(name as DialectName)) {
-    throw new Error(`Unknown DATABASE_DIALECT "${name}", expected one of ${dialectNames.join(", ")}.`);
-  }
-
-  return name as DialectName;
-}
-
 /**
  * Load a database driver.
  *
@@ -135,7 +85,7 @@ function optionalDriver(module: string) {
 }
 
 export function schemaDialect(): SchemaDialect {
-  return getSchemaDialect(databaseConfiguration().dialect);
+  return getSchemaDialect(dialectName());
 }
 
 /**
@@ -145,14 +95,11 @@ export function schemaDialect(): SchemaDialect {
  */
 const getPostgresPool = once((_: null) => {
   const pg = driver("pg");
-  const {host, user, password, database, port, connectionLimit} = databaseConfiguration();
 
   pg.types.setTypeParser(pg.types.builtins.DATE, (value: string) => value);
   pg.types.setTypeParser(pg.types.builtins.TIMESTAMP, (value: string) => value);
 
-  return track(new pg.Pool({
-    host, user, database, port, max: connectionLimit, password: password ?? undefined
-  }));
+  return track(new pg.Pool(postgresOptions()));
 });
 
 /**
@@ -161,13 +108,14 @@ const getPostgresPool = once((_: null) => {
  * MySQL shares the streaming pool rather than opening a third one.
  */
 const getKysely = once((_: null): Kysely<Database> => {
-  const configuration = databaseConfiguration();
-
-  switch (configuration.dialect) {
+  switch (dialectName()) {
     case "mysql":
       return new Kysely({dialect: new MysqlDialect({pool: getDatabaseStream(null)})});
-    case "sqlite":
-      return new Kysely({dialect: new NodeSqliteDialect(configuration.database)});
+    case "sqlite": {
+      const {filename, options} = sqliteOptions();
+
+      return new Kysely({dialect: new NodeSqliteDialect(filename, options)});
+    }
     case "postgres":
       return new Kysely({
         dialect: new PostgresDialect({
@@ -186,11 +134,11 @@ export const kysely = () => getKysely(null);
  * release(), which a pool does not have. Nothing calls release() on the pool.
  */
 const getDatabaseConnection = once((_: null): DatabaseConnection =>
-  track(mysqlPromise.createPool(poolOptions()) as unknown as DatabaseConnection)
+  track(mysqlPromise.createPool(mysqlOptions()) as unknown as DatabaseConnection)
 );
 
 const getDatabaseStream = once((_: null): mysql.Pool =>
-  track(mysql.createPool(poolOptions()))
+  track(mysql.createPool(mysqlOptions()))
 );
 
 /**
@@ -313,9 +261,7 @@ function buildFeed(output: GTFSOutput): BuildFeed {
  * Kysely, which is the only way they can be read at all.
  */
 function timetableSource(context: BuildContext): TimetableSource {
-  const configuration = databaseConfiguration();
-
-  if (configuration.dialect === "mysql") {
+  if (dialectName() === "mysql") {
     return new MySqlTimetableSource(
       databaseConnection(),
       databaseStream(),
