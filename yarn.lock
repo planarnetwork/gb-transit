@@ -847,7 +847,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@gb-transit/gtfs-loader@npm:^1.1.0, @gb-transit/gtfs-loader@npm:^1.2.0, @gb-transit/gtfs-loader@workspace:^, @gb-transit/gtfs-loader@workspace:libs/gtfs-loader":
+"@gb-transit/gtfs-loader@npm:^1.2.0, @gb-transit/gtfs-loader@npm:^1.4.0, @gb-transit/gtfs-loader@npm:^1.5.0, @gb-transit/gtfs-loader@workspace:^, @gb-transit/gtfs-loader@workspace:libs/gtfs-loader":
   version: 0.0.0-use.local
   resolution: "@gb-transit/gtfs-loader@workspace:libs/gtfs-loader"
   dependencies:
@@ -906,7 +906,7 @@ __metadata:
     "@gb-transit/gtfs-loader": "workspace:^"
     fflate: "npm:^0.8.3"
     raptor-journey-planner: "npm:^5.0.1"
-    transfer-pattern-planner: "npm:^3.2.0"
+    transfer-pattern-planner: "npm:^3.3.0"
     typescript: "npm:7.0.2"
   bin:
     transfer-patterns: bin/transfer-patterns.sh
@@ -2222,6 +2222,15 @@ __metadata:
   version: 2.0.0
   resolution: "common-ancestor-path@npm:2.0.0"
   checksum: 10c0/fa0872dc8d5ffb2c0bb006d1f9e7ba4586773df4f0cf3dfa4b4c95710cedb8a78246fbbcc1392c71c882bd5428a2d003851bdd9033f549a445ac2c5deacb45ca
+  languageName: node
+  linkType: hard
+
+"connection-scan-algorithm@npm:^3.1.0":
+  version: 3.1.0
+  resolution: "connection-scan-algorithm@npm:3.1.0"
+  dependencies:
+    "@gb-transit/gtfs-loader": "npm:^1.4.0"
+  checksum: 10c0/e73d388df0b67bdd5abf99a362a065a95b4ed4d55603b467f433361c1a66f418f582bc42bd8665291f6db7cf856c2c0cad5a16f21df87c8a1d58b6d31b18128e
   languageName: node
   linkType: hard
 
@@ -4545,13 +4554,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"transfer-pattern-planner@npm:^3.2.0":
-  version: 3.2.0
-  resolution: "transfer-pattern-planner@npm:3.2.0"
+"transfer-pattern-planner@npm:^3.3.0":
+  version: 3.3.0
+  resolution: "transfer-pattern-planner@npm:3.3.0"
   dependencies:
-    "@gb-transit/gtfs-loader": "npm:^1.1.0"
+    "@gb-transit/gtfs-loader": "npm:^1.5.0"
+    connection-scan-algorithm: "npm:^3.1.0"
     raptor-journey-planner: "npm:^5.0.1"
-  checksum: 10c0/1e44de6307d538e5397aed473219aacf10d8048351308c28136cef8b9f16b7d900866852b3b2fb9f7a129e1df349f9d1aafa19b811d300b94ffac5de9694d2df
+  checksum: 10c0/918ce4d79f9a44136f2ed2d9fcd18346e6a3c69abc5df2a9450d9ed83287904ac236dddc318cb35935003654218ea3a07da5b3464c6bbdfe516e947103d2247f
   languageName: node
   linkType: hard
 
