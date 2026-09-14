@@ -46,26 +46,24 @@ describe("the feeds", () => {
 
   it("has one platform per zip the nightly build publishes", () => {
     expect(FEEDS.map(f => f.file)).to.deep.equal([
-      "gtfs.zip", "gtfs-passing-points.zip", "gtfs-national-rail-only.zip"
+      "gtfs.zip", "gtfs-national-rail-only.zip"
     ]);
   });
 
   // The whole reason the catalogue asks the release rather than being told. A
   // download link to an asset the release does not carry is a 404 with a button
-  // on it, and platform three is in exactly that state until the build that
+  // on it, and platform two is in exactly that state until the build that
   // produces it reaches master.
   it("does not offer a feed the latest release does not carry", () => {
     const release = feed({stop_times: 2840000});
 
     expect(platform(1).published(release)).to.equal(true);
     expect(platform(2).published(release)).to.equal(false);
-    expect(platform(3).published(release)).to.equal(false);
   });
 
   it("offers each feed as soon as the release describes it", () => {
     const release = feed({
       stop_times: 2840000,
-      stop_times_with_passing_points: 3430000,
       trips_national_rail_only: 240000,
       stop_times_national_rail_only: 2400000
     });
@@ -83,20 +81,13 @@ describe("the feeds", () => {
     expect(platform(1).figures(feed()).map(f => f.label)).to.deep.equal(["Trips"]);
     expect(platform(1).figures(feed({stop_times: 10})).map(f => f.label))
       .to.deep.equal(["Trips", "Stop times"]);
-    expect(platform(3).figures(feed())).to.deep.equal([]);
-  });
-
-  it("reports the two feeds that hold the same trips as holding the same trips", () => {
-    const release = feed({stop_times: 1, stop_times_with_passing_points: 2});
-    const trips = (n: number) => platform(n).figures(release).find(f => f.label === "Trips")?.value;
-
-    expect(trips(1)).to.equal(trips(2));
+    expect(platform(2).figures(feed())).to.deep.equal([]);
   });
 
   it("counts the National Rail only feed's own trips rather than the whole feed's", () => {
     const release = feed({trips_national_rail_only: 240000});
 
-    expect(platform(3).figures(release)).to.deep.equal([{label: "Trips", value: "240,000"}]);
+    expect(platform(2).figures(release)).to.deep.equal([{label: "Trips", value: "240,000"}]);
   });
 });
 

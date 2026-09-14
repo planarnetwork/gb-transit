@@ -26,10 +26,8 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # Three builds and three validator runs, one of them over a feed a third
-    # larger than the first. Scaled with the third rather than absorbed: two
-    # units had 45 minutes each and three have the same.
-    timeout-minutes: 135
+    # Two builds and two validator runs, 45 minutes each.
+    timeout-minutes: 90
     # The tag the patterns are attached to, so the jobs below add to the release
     # this run made rather than looking up the newest one and racing a rerun.
     outputs:
@@ -105,20 +103,6 @@ jobs:
           mkdir -p feed
           yarn tsx apps/cif2gtfs/src/index.ts build --config gtfs.config.yaml --out feed | tee build.log
 
-      # The same timetable with the locations a service runs through kept in it:
-      # 592,000 more stop times, at 597,000 of which nobody boards and nobody
-      # alights. A journey planner wants the feed above and anything tracing
-      # where a train actually goes wants this one, so both are published rather
-      # than one of them being chosen on everybody's behalf.
-      #
-      # A second build rather than a second output of the first, because the
-      # decision is made in the source query - see BuildContext.
-      - name: Build the feed with passing points
-        run: |
-          mkdir -p feed-passing-points
-          yarn tsx apps/cif2gtfs/src/index.ts build --config gtfs.config.yaml \
-            --out feed-passing-points --remove-passing-points=false | tee build-passing-points.log
-
       # The same timetable without the services National Rail does not hold
       # authority over - the tube, the Metro, the ferries, the buses and the
       # replacement buses TfL runs. A feed combined with other sources has
@@ -139,10 +123,9 @@ jobs:
       # A published feed that fails referential integrity must never reach a
       # release, so the validator runs before anything is attached. What counts
       # as a failure is a baseline file: an unlisted error, or more of a listed
-      # one than it accepts. One baseline each, because accepting what the
-      # passing points introduce for the feed that does not have them would not
-      # be a gate. Any of them failing stops the release: a half-published set
-      # is worse than a late one.
+      # one than it accepts. One baseline each, because accepting in one feed what
+      # only the other raises would not be a gate. Either failing stops the
+      # release: a half-published set is worse than a late one.
       - name: Validate
         run: |
           curl -sSfL -o gtfs-validator.jar \
@@ -151,12 +134,6 @@ jobs:
           java -jar gtfs-validator.jar -i feed -o report -svu
           node scripts/check-validation.mjs \
             report/report.json .github/validator-baseline.json feed/validation.json
-
-          java -jar gtfs-validator.jar -i feed-passing-points -o report-passing-points -svu
-          node scripts/check-validation.mjs \
-            report-passing-points/report.json \
-            .github/validator-baseline-passing-points.json \
-            feed-passing-points/validation.json
 
           java -jar gtfs-validator.jar -i feed-national-rail-only -o report-national-rail-only -svu
           node scripts/check-validation.mjs \
@@ -168,44 +145,10 @@ jobs:
       # with something wrong in it, and it is cheaper to stop than to withdraw.
       # There is no previous release on the first run, so there is nothing to
       # compare against and nothing to complain about.
-      #
-      # Counted on the standard feed alone. Passing points add stop times and
-      # not trips, so the two feeds hold the same number and comparing both
-      # would be comparing the same number twice.
       - name: Compare with the last release
         id: compare
         run: |
           trips=$(( $(wc -l < feed/trips.txt) - 1 ))
-
-          if [ "$trips" -ne "$(( $(wc -l < feed-passing-points/trips.txt) - 1 ))" ]; then
-            echo "The two feeds disagree about how many trips there are, so one of them is wrong."
-            exit 1
-          fi
-
-          # The passing points feed has to actually have them. This is the gate
-          # the other three cannot be: they all compare the two feeds against
-          # each other, and a regression that stopped the passing points
-          # reaching either one - the source clause this feed's shapes depend on
-          # - leaves the two agreeing perfectly about a timetable that has lost
-          # them. Only the count against the standard feed can tell.
-          standard=$(wc -l < feed/stop_times.txt)
-          with_passing=$(wc -l < feed-passing-points/stop_times.txt)
-          echo "Stop times: $standard standard, $with_passing with passing points"
-
-          if [ "$with_passing" -le "$standard" ]; then
-            echo "The passing points feed has no more calls than the standard one, so the passing"
-            echo "points are not reaching it and its shapes are drawn through the calls."
-            exit 1
-          fi
-
-          # A shape is drawn through every timing point, which is the same list
-          # in both feeds - so the files have to be identical byte for byte. If
-          # they are not, the shapes are being taken from the calls in one of
-          # them, which is the bug this whole thing exists to avoid.
-          if ! cmp -s feed/shapes.txt feed-passing-points/shapes.txt; then
-            echo "The two feeds draw different lines, so one of them is drawing through the calls."
-            exit 1
-          fi
 
           # A feed whose trips point at no shape is a feed that built shapes.txt
           # and then failed to reference it - valid GTFS, and useless.
@@ -217,12 +160,36 @@ jobs:
             exit 1
           fi
 
+          # A shape is drawn through every station the train touches, the ones it
+          # runs through as well as the ones it calls at. A source that stopped
+          # handing over the passing rows would still build a valid feed, with
+          # every line drawn from call to call, and the checks above would pass
+          # it: the trips and the calls are the same either way. A line through
+          # the calls alone never has more points than the trip has calls, and
+          # one through the passes as well does for 41% of trips, so fewer than a
+          # tenth is the passing rows missing rather than a timetable changing.
+          # Not a count against the last release: the lines through the calls
+          # alone come to only 15% fewer points, because they share less.
+          through=$(awk -F, '
+            FILENAME == "feed/shapes.txt" && FNR > 1 { points[$1]++ }
+            FILENAME == "feed/trips.txt" && FNR > 1 { shape[$3] = $NF }
+            FILENAME == "feed/stop_times.txt" && FNR > 1 { calls[$1]++ }
+            END { for (trip in calls) if (shape[trip] != "" && points[shape[trip]] > calls[trip]) n++; print n + 0 }
+          ' feed/shapes.txt feed/trips.txt feed/stop_times.txt)
+          echo "Trips drawn through somewhere they do not call: $through"
+
+          if [ "$through" -lt "$(( trips / 10 ))" ]; then
+            echo "Fewer than a tenth of trips are drawn through anywhere they do not call, so the"
+            echo "passing points are not reaching the shapes."
+            exit 1
+          fi
+
           echo "trips=$trips" >> "$GITHUB_OUTPUT"
           echo "This build: $trips trips"
 
           # Meant to have fewer, so it is not held to the same count - but it has
           # to have fewer. A rename, a parse regression or a changed ATOC code
-          # would make the exclusions a no-op, and a third zip identical to the
+          # would make the exclusions a no-op, and a second zip identical to the
           # first would otherwise pass every gate here.
           national_rail_only=$(( $(wc -l < feed-national-rail-only/trips.txt) - 1 ))
           echo "national_rail_only_trips=$national_rail_only" >> "$GITHUB_OUTPUT"
@@ -255,7 +222,7 @@ jobs:
             }
           "
 
-          # The same check on the third feed, which catches the opposite failure
+          # The same check on the National Rail only feed, which catches the opposite failure
           # to the one above: a rule that suddenly matches far more than it did
           # yesterday. Skipped against a release published before the field
           # existed, which carries no count to compare with.
@@ -289,8 +256,8 @@ jobs:
             const report = fs.existsSync('feed/enrichment-report.json')
               ? JSON.parse(fs.readFileSync('feed/enrichment-report.json', 'utf8'))
               : {sources: [], enrichers: [], extensions: []};
-            // Counted rather than described, so the release says what the two
-            // zips actually differ by rather than what they were meant to.
+            // Counted rather than described, so the release says what the
+            // zips actually hold rather than what they were meant to.
             const rows = file => fs.readFileSync(file, 'utf8').trimEnd().split('\n').length - 1;
             fs.writeFileSync('feed/feed-meta.json', JSON.stringify({
               built: new Date().toISOString(),
@@ -298,7 +265,6 @@ jobs:
               trips: ${{ steps.compare.outputs.trips }},
               trips_national_rail_only: ${{ steps.compare.outputs.national_rail_only_trips }},
               stop_times: rows('feed/stop_times.txt'),
-              stop_times_with_passing_points: rows('feed-passing-points/stop_times.txt'),
               stop_times_national_rail_only: rows('feed-national-rail-only/stop_times.txt'),
               shape_points: rows('feed/shapes.txt'),
               shapes: new Set(
@@ -318,15 +284,12 @@ jobs:
       - name: Package
         run: |
           cd feed && zip -q -r ../gtfs.zip . -x validation.json feed-meta.json enrichment-report.json provenance.json && cd ..
-          cd feed-passing-points && zip -q -r ../gtfs-passing-points.zip . \
-            -x validation.json feed-meta.json enrichment-report.json provenance.json && cd ..
           cd feed-national-rail-only && zip -q -r ../gtfs-national-rail-only.zip . \
             -x validation.json feed-meta.json enrichment-report.json provenance.json && cd ..
-          # A release asset is named by its basename, so the other feeds'
-          # reports cannot go up as validation.json alongside the first's.
-          cp feed-passing-points/validation.json validation-passing-points.json
+          # A release asset is named by its basename, so the second feed's report
+          # cannot go up as validation.json alongside the first's.
           cp feed-national-rail-only/validation.json validation-national-rail-only.json
-          ls -la gtfs.zip gtfs-passing-points.zip gtfs-national-rail-only.zip
+          ls -la gtfs.zip gtfs-national-rail-only.zip
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -334,16 +297,13 @@ jobs:
           name: feed
           path: |
             gtfs.zip
-            gtfs-passing-points.zip
             gtfs-national-rail-only.zip
             feed/validation.json
             feed/feed-meta.json
             feed/enrichment-report.json
             feed/provenance.json
-            feed-passing-points/validation.json
             feed-national-rail-only/validation.json
             build.log
-            build-passing-points.log
             build-national-rail-only.log
           retention-days: 14
 
@@ -367,19 +327,15 @@ jobs:
                 '| Source | ' + m.feed_version + ' |',
                 '| Built from | ' + m.commit.slice(0, 7) + ' |',
                 '',
-                'Three feeds. The first two hold the same trips, and the same shapes: a ' +
-                  'shape is drawn through every timing point whether or not the passing ones ' +
-                  'are published as calls. The line between two stations is straight, because ' +
-                  'the DTD gives no coordinate for the junctions between them.',
+                'Two feeds. A shape is drawn through every timing point a train touches, ' +
+                  'including the ones it runs through without stopping. The line between two ' +
+                  'stations is straight, because the DTD gives no coordinate for the junctions ' +
+                  'between them.',
                 '',
                 '- \`gtfs.zip\` - where a service calls, and the line it runs over. ' +
                   m.trips.toLocaleString() + ' trips, ' +
                   m.stop_times.toLocaleString() + ' stop times, ' +
                   m.shapes.toLocaleString() + ' shapes.',
-                '- \`gtfs-passing-points.zip\` - and where it runs through without stopping, ' +
-                  'as calls with \`pickup_type\` and \`drop_off_type\` 1. ' +
-                  m.trips.toLocaleString() + ' trips, ' +
-                  m.stop_times_with_passing_points.toLocaleString() + ' stop times.',
                 '- \`gtfs-national-rail-only.zip\` - the first feed without the services National ' +
                   'Rail does not hold authority over: the tube, the Metro, the ferries, the ' +
                   'buses and the replacement buses TfL runs. ' +
@@ -393,9 +349,8 @@ jobs:
                   'journey planner reads, and belongs with \`gtfs.zip\` above.'
               ].join('\n')
             ")" \
-            gtfs.zip gtfs-passing-points.zip gtfs-national-rail-only.zip \
-            feed/validation.json validation-passing-points.json \
-            validation-national-rail-only.json \
+            gtfs.zip gtfs-national-rail-only.zip \
+            feed/validation.json validation-national-rail-only.json \
             feed/feed-meta.json feed/enrichment-report.json \
             $([ -f feed/provenance.json ] && echo feed/provenance.json)
         env:
@@ -419,7 +374,7 @@ jobs:
   # Deliberately after the release rather than before it. Scanning the whole
   # network is the longest thing this repository does, and a feed nobody can
   # download because the patterns were slow is a worse outcome than a release
-  # that is missing one file until tomorrow. Nothing here can reach the three
+  # that is missing one file until tomorrow. Nothing here can reach the
   # zips: they are published by the time this starts.
   #
   # Sharded because a runner has four cores and the scan has a few hundred

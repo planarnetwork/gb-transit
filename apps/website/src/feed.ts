@@ -15,15 +15,13 @@ export interface FeedMeta {
   feed_version: string;
   feed_start_date: string;
   feed_end_date: string;
-  /** The standard feed and the passing points feed differ by these two. */
   stop_times?: number;
-  stop_times_with_passing_points?: number;
-  /** The lines the trips run over, which both of those feeds carry identically. */
+  /** The lines the standard feed's trips run over. */
   shapes?: number;
   shape_points?: number;
   /**
    * The National Rail only feed. Absent until the build that produces it
-   * reaches master, which is the whole reason platform three renders as a
+   * reaches master, which is the whole reason platform two renders as a
    * placeholder rather than as a download link that would 404.
    */
   trips_national_rail_only?: number;
@@ -109,31 +107,13 @@ export const FEEDS: Feed[] = [
   },
   {
     platform: 2,
-    file: "gtfs-passing-points.zip",
-    summary: "The same trips, plus every location a train runs through without stopping — " +
-      "junctions, loops and timing points included.",
-    points: [
-      "Trace a route across the network",
-      "Path and capacity work",
-      "Not for passenger journey planning"
-    ],
-    figures: feed => rows([
-      ["Trips", feed && number(feed.trips)],
-      ["Stop times", feed?.stop_times_with_passing_points !== undefined
-        && number(feed.stop_times_with_passing_points)],
-      ["Shapes", feed?.shapes !== undefined && number(feed.shapes)]
-    ]),
-    published: feed => feed?.stop_times_with_passing_points !== undefined
-  },
-  {
-    platform: 3,
     file: "gtfs-national-rail-only.zip",
     summary: "The standard feed without the services National Rail does not hold authority over — " +
       "no tube, no Metro, no ferries, no scheduled buses, and no replacement buses TfL runs.",
     points: [
       "For a feed merged with other sources",
       "Where those sources describe the metro better",
-      "Same identifiers as the other two"
+      "Same identifiers as the standard feed"
     ],
     figures: feed => rows([
       ["Trips", feed?.trips_national_rail_only !== undefined && number(feed.trips_national_rail_only)],

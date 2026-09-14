@@ -90,17 +90,13 @@ differently now, beyond `readFeedRows` with no argument returning one more key.
 
 ## The validator baselines
 
-**Passing points on the public clock.**
-[`.github/validator-baseline-passing-points.json`](.github/validator-baseline-passing-points.json)
-accepts 1 `stop_time_with_arrival_before_previous_departure_time` rather than 25, the same Z03536
-the standard feed accepts. The other 24 were passes on the working clock published between calls
-on the public one: C02035 sets down at Doncaster from a public 00:35 and a working 00:49½, so its
-working pass of Adwick at 00:55½ read as later than its public 00:52 at Wakefield Westgate. A pass
-is now published at its share of the working time between the calls either side, laid over their
-public times, and never outside them. Built from `RJTTF918` the passing points feed raises 1 where
-it raised 27, and `fast_travel_between_consecutive_stops` and `fast_travel_between_far_stops` fall
-from 206 and 180 to 56 and 53. The count of 25 had stopped the nightly on 12 and 13 September
-2026, when two new overlays of C17075 took it to 26.
+**No passing points feed.** `.github/validator-baseline-passing-points.json` is gone, because the
+nightly no longer builds or publishes `gtfs-passing-points.zip`. Its baseline accepted 25
+`stop_time_with_arrival_before_previous_departure_time` by count — passes on the working clock
+published between calls on the public one — and two new overlays of C17075 took that to 26 and
+stopped every feed publishing on 12 and 13 September 2026. The standard and National Rail only
+baselines are unchanged. `cif2gtfs --remove-passing-points=false` still builds the feed; nothing
+publishes or validates it.
 
 **A baseline for the National Rail only feed (#176).**
 [`.github/validator-baseline-national-rail-only.json`](.github/validator-baseline-national-rail-only.json)
