@@ -34,7 +34,7 @@
     "@gb-transit/gtfs": "workspace:^",
     "@gb-transit/gtfs-loader": "workspace:^",
     "raptor-journey-planner": "^5.0.1",
-    "transfer-pattern-planner": "^3.2.0"
+    "transfer-pattern-planner": "^3.3.0"
   },
   "devDependencies": {
     "fflate": "^0.8.3",
