@@ -465,23 +465,55 @@ function newCursor(): Cursor {
  * working time between them: Adwick, 4 of the 15 working minutes out of
  * Doncaster, is published at 00:41. Where the two clocks agree, nothing moves.
  *
+ * A trip whose first or last stop the source gives as a pass - its origin has
+ * no CRS, or is a station that is not a place - has passes with a call on one
+ * side only. They move by that call's own difference between the clocks.
+ *
  * A pass is never published before the departure of the call behind it, after
  * the arrival of the call ahead of it, or before the pass ahead of it, so a
  * trip never runs backwards through a location it does not stop at - including
- * where the source times one outside the calls either side. A passing point
- * with no call on one side of it keeps its working time.
+ * where the source times one outside the calls either side. A trip with no
+ * call at all keeps its working times.
  */
 function onPublicClock(stops: StopTime[], clocks: StopClocks[]): void {
-  let call = -1;
+  const calls = clocks.flatMap((clock, i) => clock.passing ? [] : [i]);
 
-  for (let i = 0; i < stops.length; i++) {
-    if (clocks[i].passing) continue;
+  if (calls.length === 0) return;
 
-    if (call >= 0 && i - call > 1) {
-      retimeBetween(stops, clocks, call, i);
+  retimeBefore(stops, clocks, calls[0]);
+
+  for (let i = 1; i < calls.length; i++) {
+    if (calls[i] - calls[i - 1] > 1) {
+      retimeBetween(stops, clocks, calls[i - 1], calls[i]);
     }
+  }
 
-    call = i;
+  retimeAfter(stops, clocks, calls[calls.length - 1]);
+}
+
+function retimeBefore(stops: StopTime[], clocks: StopClocks[], to: number): void {
+  const latest = parseDuration(stops[to].arrival_time);
+  const offset = Math.min(clocks[to].publicArrival, latest) - clocks[to].workingArrival;
+  let next = latest;
+
+  for (let i = to - 1; i >= 0; i--) {
+    const time = Math.min(halfMinute(clocks[i].workingArrival + offset), next);
+
+    stops[i].arrival_time = stops[i].departure_time = clockTime(time);
+    next = time;
+  }
+}
+
+function retimeAfter(stops: StopTime[], clocks: StopClocks[], from: number): void {
+  const earliest = parseDuration(stops[from].departure_time);
+  const offset = Math.max(clocks[from].publicDeparture, earliest) - clocks[from].workingDeparture;
+  let previous = earliest;
+
+  for (let i = from + 1; i < stops.length; i++) {
+    const time = Math.max(halfMinute(clocks[i].workingDeparture + offset), previous);
+
+    stops[i].arrival_time = stops[i].departure_time = clockTime(time);
+    previous = time;
   }
 }
 

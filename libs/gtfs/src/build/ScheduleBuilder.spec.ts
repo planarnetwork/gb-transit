@@ -321,7 +321,8 @@ describe("a passing point", () => {
     const builder = keeping();
 
     builder.load([
-      row({stop_id: 10, crs_code: "TBW", public_arrival_time: "23:00:00", public_departure_time: "23:01:00"}),
+      row({stop_id: 10, crs_code: "TBW", public_arrival_time: "23:00:00", public_departure_time: "23:01:00",
+           scheduled_arrival_time: "23:00:00", scheduled_departure_time: "23:01:00"}),
       passing({stop_id: 11, crs_code: "TON", scheduled_pass_time: "00:05:00"})
     ]);
 
@@ -584,6 +585,72 @@ describe("a passing point between two calls", () => {
     ]);
 
     expect(times(builder)[1]).to.deep.equal(["TON", "10:01:00", "10:01:00"]);
+  });
+
+  /**
+   * A schedule whose origin has no CRS reaches the builder starting with a
+   * pass. Left on the working clock it would be published after the call it
+   * runs towards.
+   */
+  it("moves with the first call when there is no call behind it", () => {
+    const builder = keeping();
+
+    builder.load([
+      passing({stop_id: 10, crs_code: "BBB", scheduled_pass_time: "00:55:30"}),
+      call({stop_id: 11, crs_code: "CCC", activity: "D ", public_arrival_time: "00:52:00", public_departure_time: null,
+            scheduled_arrival_time: "01:06:30", scheduled_departure_time: "01:08:30"})
+    ]);
+
+    expect(times(builder)).to.deep.equal([
+      ["BBB", "24:41:00", "24:41:00"],
+      ["CCC", "24:52:00", "24:52:00"]
+    ]);
+  });
+
+  it("is held to the first call when the source has it passing after that call", () => {
+    const builder = keeping();
+
+    builder.load([
+      passing({stop_id: 10, crs_code: "AAA", scheduled_pass_time: "10:04:00"}),
+      passing({stop_id: 11, crs_code: "BBB", scheduled_pass_time: "10:12:00"}),
+      call({stop_id: 12, crs_code: "CCC", public_arrival_time: "10:10:00", public_departure_time: "10:11:00",
+            scheduled_arrival_time: "10:10:00", scheduled_departure_time: "10:11:00"})
+    ]);
+
+    expect(times(builder).slice(0, 2)).to.deep.equal([
+      ["AAA", "10:04:00", "10:04:00"],
+      ["BBB", "10:10:00", "10:10:00"]
+    ]);
+  });
+
+  it("moves with the last call when there is no call ahead of it", () => {
+    const builder = keeping();
+
+    builder.load([
+      call({stop_id: 10, crs_code: "AAA", public_arrival_time: "10:00:00", public_departure_time: "10:01:00",
+            scheduled_arrival_time: "10:03:00", scheduled_departure_time: "10:05:00"}),
+      passing({stop_id: 11, crs_code: "BBB", scheduled_pass_time: "10:08:00"}),
+      passing({stop_id: 12, crs_code: "CCC", scheduled_pass_time: "10:03:00"})
+    ]);
+
+    expect(times(builder).slice(1)).to.deep.equal([
+      ["BBB", "10:04:00", "10:04:00"],
+      ["CCC", "10:04:00", "10:04:00"]
+    ]);
+  });
+
+  it("keeps its working time on a trip with no call at all", () => {
+    const builder = keeping();
+
+    builder.load([
+      passing({stop_id: 10, crs_code: "AAA", scheduled_pass_time: "10:04:00"}),
+      passing({stop_id: 11, crs_code: "BBB", scheduled_pass_time: "10:08:30"})
+    ]);
+
+    expect(times(builder)).to.deep.equal([
+      ["AAA", "10:04:00", "10:04:00"],
+      ["BBB", "10:08:30", "10:08:30"]
+    ]);
   });
 
   it("is placed across midnight on the same clock as the calls", () => {
