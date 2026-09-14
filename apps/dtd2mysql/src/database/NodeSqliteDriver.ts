@@ -1,4 +1,4 @@
-import {DatabaseSync, SQLInputValue} from "node:sqlite";
+import {DatabaseSync, DatabaseSyncOptions, SQLInputValue} from "node:sqlite";
 import {
   CompiledQuery,
   DatabaseConnection,
@@ -21,14 +21,17 @@ import {
  */
 export class NodeSqliteDialect implements Dialect {
 
-  constructor(private readonly filename: string) {}
+  constructor(
+    private readonly filename: string,
+    private readonly options: DatabaseSyncOptions = {}
+  ) {}
 
   public createAdapter(): SqliteAdapter {
     return new SqliteAdapter();
   }
 
   public createDriver(): Driver {
-    return new NodeSqliteDriver(this.filename);
+    return new NodeSqliteDriver(this.filename, this.options);
   }
 
   public createIntrospector(db: Kysely<any>): DatabaseIntrospector {
@@ -48,10 +51,13 @@ export class NodeSqliteDriver implements Driver {
   // node:sqlite is synchronous and holds a single handle, so connections are handed out one at a time
   private readonly mutex = new Mutex();
 
-  constructor(private readonly filename: string) {}
+  constructor(
+    private readonly filename: string,
+    private readonly options: DatabaseSyncOptions = {}
+  ) {}
 
   public async init(): Promise<void> {
-    this.database = new DatabaseSync(this.filename);
+    this.database = new DatabaseSync(this.filename, this.options);
     this.connection = new NodeSqliteConnection(this.database);
   }
 

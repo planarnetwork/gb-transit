@@ -32,6 +32,16 @@ The --gtfs and --gtfs-zip commands take the following options:
 
 The following environment properties are expected to be set:
   
+  DATABASE_URL               a connection string, handed to the driver as it is.
+                             The dialect comes from its scheme. Anything the
+                             driver accepts works, including a unix socket:
+                             mysql://user@host/db?socketPath=/var/run/mysqld/mysqld.sock
+                             postgresql://user@/db?host=/var/run/postgresql
+  DATABASE_OPTIONS           JSON merged into the driver's options, for whatever
+                             the variables below cannot say, e.g. {"ssl":{...}}
+
+Or name the parts, which is all most installs need:
+
   DATABASE_DIALECT           mysql, postgres or sqlite (defaults to mysql)
   DATABASE_USERNAME          database username (defaults to root)
   DATABASE_PASSWORD          database password (defaults to none)
