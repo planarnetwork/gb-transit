@@ -2,7 +2,7 @@ import {describe, it, expect, beforeEach, afterEach} from "vitest";
 import * as path from "node:path";
 import {Kysely} from "kysely";
 import {GTFSImportCommand} from "./GTFSImportCommand";
-import {NodeSqliteDialect} from "../database/NodeSqliteDriver";
+import {nodeSqliteDialect} from "../database/NodeSqliteDatabase";
 import {sqliteSchemaDialect} from "../database/dialect";
 import gtfsSchema from "../gtfs/schema";
 
@@ -19,7 +19,7 @@ describe("GTFSImportCommand", () => {
   let db: Kysely<any>;
 
   beforeEach(async () => {
-    db = new Kysely<any>({dialect: new NodeSqliteDialect(":memory:")});
+    db = new Kysely<any>({dialect: nodeSqliteDialect(":memory:")});
 
     await new GTFSImportCommand(db, sqliteSchemaDialect, gtfsSchema).doImport(golden);
   });

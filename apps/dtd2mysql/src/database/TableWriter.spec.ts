@@ -1,7 +1,7 @@
 import {describe, expect, it} from 'vitest';
 import {Kysely} from "kysely";
 import {TableWriter} from "./TableWriter";
-import {NodeSqliteDialect} from "./NodeSqliteDriver";
+import {nodeSqliteDialect} from "./NodeSqliteDatabase";
 import {DialectName} from "./SchemaDialect";
 import {ParsedRecord, RecordAction} from "@gb-transit/feed-parser";
 import {recording} from "./testing/recording";
@@ -98,7 +98,7 @@ describe("TableWriter", () => {
   });
 
   it("writes and replaces rows in a real database", async () => {
-    const db = new Kysely<any>({ dialect: new NodeSqliteDialect(":memory:") });
+    const db = new Kysely<any>({ dialect: nodeSqliteDialect(":memory:") });
 
     await db.schema.createTable("t")
       .addColumn("id", "integer", column => column.primaryKey())
