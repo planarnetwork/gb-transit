@@ -143,6 +143,11 @@ jobs:
 
       # A feed that suddenly has a fifth fewer trips than yesterday is a feed
       # with something wrong in it, and it is cheaper to stop than to withdraw.
+      # The limit is a sixth rather than something tighter because a timetable
+      # change moves the count on its own. The window reaches three months
+      # ahead, so it ends past the last day the current timetable covers, and
+      # the day the new one loads those days go from empty to a full service in
+      # a single build.
       # There is no previous release on the first run, so there is nothing to
       # compare against and nothing to complain about.
       - name: Compare with the last release
@@ -212,12 +217,14 @@ jobs:
           was=$(node -p "require('./previous.json').trips")
           echo "Previous ($previous): $was trips"
 
+          limit=15
+
           node -e "
             const was = $was, now = $trips;
             const swing = Math.abs(now - was) / was * 100;
             console.log('Swing: ' + swing.toFixed(1) + '%');
-            if (swing > 5) {
-              console.error('More than 5% different from the last release. Releasing this needs a human.');
+            if (swing > $limit) {
+              console.error('More than $limit% different from the last release. Releasing this needs a human.');
               process.exit(1);
             }
           "
@@ -235,8 +242,8 @@ jobs:
             }
             const swing = Math.abs(now - previous) / previous * 100;
             console.log('National Rail only: ' + previous + ' -> ' + now + ', swing ' + swing.toFixed(1) + '%');
-            if (swing > 5) {
-              console.error('The National Rail only feed moved more than 5%. Releasing this needs a human.');
+            if (swing > $limit) {
+              console.error('The National Rail only feed moved more than $limit%. Releasing this needs a human.');
               process.exit(1);
             }
           "
