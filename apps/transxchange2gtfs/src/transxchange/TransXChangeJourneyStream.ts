@@ -15,17 +15,49 @@ import {
 import {Transform, TransformCallback} from "node:stream";
 import {LocalDate, LocalTime, Duration, DateTimeFormatter} from "@js-joda/core";
 import {ATCOCode} from "../reference/NaPTAN";
+import {Skipped} from "../converter/Skipped";
+
+/**
+ * The span of days a feed is built for.
+ */
+export interface DateWindow {
+  readonly from: LocalDate;
+  readonly to: LocalDate;
+}
+
+/** A calendar before it is known to be a new one and given a service id. */
+type UnnumberedCalendar = Omit<JourneyCalendar, "id">;
+
+function maxDate(a: LocalDate, b: LocalDate): LocalDate {
+  return a.isAfter(b) ? a : b;
+}
+
+function minDate(a: LocalDate, b: LocalDate): LocalDate {
+  return a.isBefore(b) ? a : b;
+}
+
+function sortedDates(of: LocalDate[]): string {
+  return of.map(date => date.toString()).sort().join();
+}
 
 /**
  * Transforms TransXChange objects into TransXChangeJourneys that are closer to GTFS calendars, calendar dates, trips
  * and stop times.
  */
-export class TransXChangeJourneyStream extends Transform {
-  private calendars: Record<string, JourneyCalendar> = {};
+export class TransXChangeJourneyStream extends Transform implements Skipped {
+  private calendars: Record<string, JourneyCalendar | null> = {};
   private serviceId: number = 1;
   private tripId: number = 1;
 
-  constructor(private readonly holidays: BankHolidays) {
+  /** Journeys dropped for running on no day inside the window. */
+  public skipped = 0;
+
+  public readonly skippedDescription = "Journeys that run on no day the feed covers";
+
+  constructor(
+    private readonly holidays: BankHolidays,
+    private readonly window?: DateWindow
+  ) {
     super({ objectMode: true });
   }
 
@@ -100,6 +132,12 @@ export class TransXChangeJourneyStream extends Transform {
 
     if (sections.length > 0 && vehicle.OperatingProfile) {
       const calendar = this.getCalendar(vehicle.OperatingProfile, schedule.Services[vehicle.ServiceRef]);
+
+      if (calendar === undefined) {
+        this.skipped++;
+        return;
+      }
+
       const stops = this.getStopTimes(schedule.RouteLinks, sections, vehicle.DepartureTime, headsign);
       const route = vehicle.ServiceRef + '|' + vehicle.LineRef;
       const blockId = vehicle.OperationalBlockNumber;
@@ -118,7 +156,7 @@ export class TransXChangeJourneyStream extends Transform {
     }
   }
 
-  private getCalendar(operatingProfile: OperatingProfile, service: Service): JourneyCalendar {
+  private getCalendar(operatingProfile: OperatingProfile, service: Service): JourneyCalendar | undefined {
     const days: DaysOfWeek = operatingProfile.RegularDayType === "HolidaysOnly"
       ? [0, 0, 0, 0, 0, 0, 0]
       : this.mergeDays(operatingProfile.RegularDayType);
@@ -153,14 +191,76 @@ export class TransXChangeJourneyStream extends Transform {
       includes.push(...this.getHoliday(holiday, startDate, endDate));
     }
 
-    const hash = this.getCalendarHash(days, startDate, endDate, includes, excludes);
+    // Clamped before it is compared, because clamping is what makes two
+    // registrations coincide: one running from 2018 and one from 2020 describe
+    // the same calendar inside a window that starts after both.
+    const clamped = this.clamp({days, startDate, endDate, includes, excludes});
+    const hash = this.getCalendarHash(
+      clamped.days, clamped.startDate, clamped.endDate, clamped.includes, clamped.excludes
+    );
 
-    if (!this.calendars[hash]) {
-      const id = this.serviceId++;
-      this.calendars[hash] = { id, startDate, endDate, days, includes, excludes };
+    if (this.calendars[hash] === undefined) {
+      // A journey is dropped for running on no day the feed covers, so with no
+      // window there is nothing to fall outside of.
+      const keep = this.window === undefined || this.runs(clamped);
+
+      this.calendars[hash] = keep ? {...clamped, id: this.serviceId++} : null;
     }
 
-    return this.calendars[hash];
+    return this.calendars[hash] ?? undefined;
+  }
+
+  /**
+   * The calendar as it applies inside the window.
+   *
+   * A registration says when it began and when it ends, and neither is a
+   * statement about the feed: they run from as far back as 2001 to as far out as
+   * 2099.
+   */
+  private clamp(calendar: UnnumberedCalendar): UnnumberedCalendar {
+    if (this.window === undefined) {
+      return calendar;
+    }
+
+    const startDate = maxDate(calendar.startDate, this.window.from);
+    const endDate = minDate(calendar.endDate, this.window.to);
+    const inWindow = (date: LocalDate) =>
+      !date.isBefore(this.window!.from) && !date.isAfter(this.window!.to);
+
+    return {
+      ...calendar,
+      startDate,
+      endDate,
+      includes: calendar.includes.filter(inWindow),
+      excludes: calendar.excludes.filter(inWindow)
+    };
+  }
+
+  /**
+   * Whether a calendar has a day at all.
+   *
+   * Walks the days, so it is asked once per distinct calendar rather than once
+   * per journey - a national dataset is a million journeys behind a few thousand
+   * calendars.
+   */
+  private runs(calendar: UnnumberedCalendar): boolean {
+    if (calendar.includes.length > 0) {
+      return true;
+    }
+
+    if (calendar.days.every(day => !day) || calendar.startDate.isAfter(calendar.endDate)) {
+      return false;
+    }
+
+    const excluded = new Set(calendar.excludes.map(date => date.toString()));
+
+    for (let date = calendar.startDate; !date.isAfter(calendar.endDate); date = date.plusDays(1)) {
+      if (calendar.days[date.dayOfWeek().value() - 1] && !excluded.has(date.toString())) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   private mergeDays(daysOfOperation: DaysOfWeek[]): DaysOfWeek {
@@ -191,12 +291,16 @@ export class TransXChangeJourneyStream extends Transform {
                           endDate: LocalDate,
                           includes: LocalDate[],
                           excludes: LocalDate[]): string {
+    // Sorted, because the dates are collected in the order the operating profile
+    // happens to list its holidays and special days, and two calendars that run
+    // on the same days are the same calendar whatever order they were written
+    // down in.
     return [
       days.toString(),
       startDate.toString(),
       endDate.toString(),
-      includes.map(d => d.toString()).join(),
-      excludes.map(d => d.toString()).join()
+      sortedDates(includes),
+      sortedDates(excludes)
     ].join("_");
   }
 

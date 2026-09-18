@@ -1,6 +1,6 @@
 import {
-  AgencyRow, CalendarDateRow, CalendarRow, GTFS_COLUMNS, RouteRow, ShapeRow, StopRow, StopTimeRow,
-  TransferRow, TripRow, fileSchema
+  AgencyRow, CalendarDateRow, CalendarRow, FeedInfoRow, GTFS_COLUMNS, RouteRow, ShapeRow, StopRow,
+  StopTimeRow, TransferRow, TripRow, fileSchema
 } from "@gb-transit/gtfs-schema";
 
 /**
@@ -10,13 +10,16 @@ import {
  * rather than respelled. What is spelled out below is what this producer
  * decided.
  *
- * There is no feed_info.txt at all. TransXChange carries nothing to build one
- * from, and inventing a publisher and a version would be worse than the
- * validator warning about its absence.
+ * feed_info.txt says what the conversion was asked for rather than what
+ * TransXChange said, because TransXChange says nothing about it: the dates are
+ * the window the feed was built for, which is the only honest answer to what it
+ * describes completely.
  */
 export const AGENCY = fileSchema<AgencyRow>("agency.txt", GTFS_COLUMNS["agency.txt"]);
 
 export const CALENDAR = fileSchema<CalendarRow>("calendar.txt", GTFS_COLUMNS["calendar.txt"]);
+
+export const FEED_INFO = fileSchema<FeedInfoRow>("feed_info.txt", GTFS_COLUMNS["feed_info.txt"]);
 
 export const CALENDAR_DATES =
   fileSchema<CalendarDateRow>("calendar_dates.txt", GTFS_COLUMNS["calendar_dates.txt"]);
@@ -32,7 +35,7 @@ export const STOP_TIMES =
 // platform_code - a TransXChange stop has no platform to name.
 export const STOPS = fileSchema<StopRow>("stops.txt", [
   "stop_id", "stop_code", "stop_name", "stop_desc", "stop_lat", "stop_lon", "zone_id", "stop_url",
-  "location_type", "parent_station", "stop_timezone", "wheelchair_boarding"
+  "location_type", "parent_station", "platform_code", "stop_timezone", "wheelchair_boarding"
 ]);
 
 // Its own: four columns, because there is no DTD fixed link to describe and no

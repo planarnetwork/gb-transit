@@ -60,6 +60,9 @@ await buildBus({
   inputs: [path.join(busFixtures, "mini.xml")],
   output: bus,
   naptanFile: path.join(busFixtures, "naptan.csv"),
+  // The same day the feeds are judged against, so the window the bus feed
+  // describes does not move with the clock.
+  from: TODAY,
   tmp: path.join(work, "buswork")
 });
 

@@ -49,6 +49,7 @@
     "@js-joda/core": "^6.0.1",
     "adm-zip": "0.6.0",
     "date-holidays": "^3.27.0",
+    "proj4": "2.20.9",
     "xml2js": "^0.6.2"
   },
   "devDependencies": {

@@ -1,3 +1,3 @@
 route_id,agency_id,route_short_name,route_long_name,route_type,route_text_color,route_color,route_url,route_desc
-PB0000815:1|L1,OP1,8,Amersham Station to Old Amersham,3,,,,Amersham Station to Old Amersham
-PB0000815:1|L2,OP1,8A,"Amersham Station to Old Amersham, via Hill Avenue",3,,,,Amersham Station to Old Amersham
+PB0000815:1|L1,CHIL,8,Amersham Station to Old Amersham,3,,,,Amersham Station to Old Amersham
+PB0000815:1|L2,CHIL,8A,"Amersham Station to Old Amersham, via Hill Avenue",3,,,,Amersham Station to Old Amersham

@@ -30,11 +30,25 @@ let rows: Awaited<ReturnType<typeof loadGTFS<FeedFileName>>>;
 
 const columns = <F extends FeedFileName>(file: F) => rows[file] ?? [];
 
-async function build(input: string, into: string): Promise<void> {
+/**
+ * The days the fixture's own services run for, and a fixed version.
+ *
+ * Passed rather than left to default, because the defaults are today and a year
+ * from today, and a golden feed that changes with the date is not a golden feed.
+ */
+const FEED = {from: "2026-01-05", to: "2026-12-31", version: "mini"};
+
+async function build(
+  input: string,
+  into: string,
+  overrides: Partial<typeof FEED> = {}
+): Promise<void> {
   await convert({
     inputs: [input],
     output: into,
     naptanFile: path.join(fixtures, "naptan.csv"),
+    ...FEED,
+    ...overrides,
     tmp: fs.mkdtempSync(path.join(os.tmpdir(), "txcwork"))
   });
 }
@@ -65,8 +79,8 @@ beforeAll(async () => {
 describe("the mini fixture", () => {
 
   const files = [
-    "agency.txt", "calendar.txt", "calendar_dates.txt", "routes.txt", "shapes.txt", "stops.txt",
-    "stop_times.txt", "transfers.txt", "trips.txt"
+    "agency.txt", "calendar.txt", "calendar_dates.txt", "feed_info.txt", "routes.txt", "shapes.txt",
+    "stops.txt", "stop_times.txt", "transfers.txt", "trips.txt"
   ];
 
   it.each(files)("produces the golden %s", file => {
@@ -250,8 +264,28 @@ describe("the feed the mini fixture produces", () => {
     }
   });
 
-  it("writes no feed_info.txt, because TransXChange has nothing to build one from", () => {
-    expect(fs.existsSync(path.join(built, "feed_info.txt"))).to.equal(false);
+  it("refuses a window that ends before it starts", async () => {
+    // Every stage downstream reads a backwards window as "nothing runs", so
+    // without this the conversion succeeds and writes a feed of headers with no
+    // rows and a feed_info.txt whose dates are the wrong way round.
+    await expect(build(path.join(fixtures, "mini.xml"), path.join(built, "..", "backwards"), {
+      from: "2026-12-31",
+      to: "2026-01-01"
+    })).rejects.toThrow("--to (2026-01-01) is before --from (2026-12-31)");
+  });
+
+  it("says which argument a date it cannot read came from", async () => {
+    await expect(build(path.join(fixtures, "mini.xml"), path.join(built, "..", "unparseable"), {
+      from: "2026-1-5"
+    })).rejects.toThrow('--from must be a date as YYYY-MM-DD. Got "2026-1-5".');
+  });
+
+  it("says in feed_info.txt what it was asked to cover", () => {
+    const [info] = columns("feed_info.txt");
+
+    expect(info.feed_start_date).to.equal("20260105");
+    expect(info.feed_end_date).to.equal("20261231");
+    expect(info.feed_version).to.equal("mini");
   });
 
 });

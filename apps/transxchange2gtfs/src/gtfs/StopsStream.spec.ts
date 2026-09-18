@@ -9,6 +9,7 @@ describe("StopsStream", () => {
     locality: string, parentLocality: string
   ) => ({
     atcoCode, naptanCode, name, street, indicator, locality, parentLocality,
+    localityCode: "E001", bearing: "N", stopType: "BCT",
     longitude: "1.00", latitude: "1.00"
   });
 
@@ -130,6 +131,107 @@ describe("StopsStream", () => {
       expect(stop_id).to.equal("d");
       expect(stop_code).to.equal("naptanD");
       expect(stop_name).to.equal("nameD (SW), streetD, cityD");
+    });
+  });
+
+  it("writes a stand as a platform code and a relative position as none", async () => {
+    const stands = {
+      "s1": stop("s1", "n1", "Bus Station", "", "Stand C", "townA", ""),
+      "s2": stop("s2", "n2", "Bus Station", "", "Bay 4", "townA", ""),
+      "s3": stop("s3", "n3", "Bus Station", "", "A", "townA", ""),
+      "s4": stop("s4", "n4", "Market Square", "", "adj", "townA", ""),
+      "s5": stop("s5", "n5", "Market Square", "", "NE", "townA", "")
+    };
+    const stops = new StopsStream(stands);
+
+    stops.write({
+      StopPoints: Object.keys(stands).map(StopPointRef => ({
+        StopPointRef, CommonName: "", LocalityName: "", LocalityQualifier: ""
+      }))
+    });
+    stops.end();
+
+    return awaitStream(stops, (rows: any[]) => {
+      expect(rows.map(r => r.platform_code)).to.deep.equal(["C", "4", "A", null, null]);
+    });
+  });
+
+  it("does not read a bearing as a stand", async () => {
+    const facing = {
+      "s1": {...stop("s1", "n1", "Fishers Lane", "", "N", "townA", ""), bearing: "N"},
+      "s2": {...stop("s2", "n2", "Fishers Lane", "", "s", "townA", ""), bearing: "S"},
+      "s3": {...stop("s3", "n3", "Bus Station", "", "N", "townA", ""), bearing: "E"},
+      "s4": {...stop("s4", "n4", "Bus Station", "", "Stand N", "townA", ""), bearing: "N"}
+    };
+    const stops = new StopsStream(facing);
+
+    stops.write({
+      StopPoints: Object.keys(facing).map(StopPointRef => ({
+        StopPointRef, CommonName: "", LocalityName: "", LocalityQualifier: ""
+      }))
+    });
+    stops.end();
+
+    return awaitStream(stops, (rows: any[]) => {
+      // The first two are told apart from their pair by which way they face; the
+      // third is a stand that happens to be called N; the fourth says so.
+      expect(rows.map(r => r.platform_code)).to.deep.equal([null, null, "N", "N"]);
+    });
+  });
+
+  it("leaves a stop the feed gives no location without coordinates", async () => {
+    const stops = new StopsStream({});
+
+    stops.write({
+      StopPoints: [{
+        StopPointRef: "NotInNaPTAN",
+        CommonName: "name",
+        LocalityName: "locality",
+        LocalityQualifier: "qualifier",
+        Location: {Latitude: 0, Longitude: 0}
+      }]
+    });
+    stops.end();
+
+    return awaitStream(stops, (rows: any[]) => {
+      // 0,0 is in the Atlantic, and a planner will route around it rather than
+      // notice it is missing.
+      expect(rows[0].stop_lat).to.equal("");
+      expect(rows[0].stop_lon).to.equal("");
+    });
+  });
+
+  it("puts a pair of stops under the station they stand in", async () => {
+    const area = {id: "gp:a", name: "Market Square, cityA", longitude: "1.05", latitude: "1.05"};
+    const stops = new StopsStream(naptan, {a: area, b: area});
+
+    stops.write({
+      StopPoints: ["a", "b"].map(StopPointRef => ({
+        StopPointRef, CommonName: "", LocalityName: "", LocalityQualifier: ""
+      }))
+    });
+    stops.end();
+
+    return awaitStream(stops, (rows: any[]) => {
+      // The station first, then its stops, each pointing at it.
+      expect(rows.map(r => r.stop_id)).to.deep.equal(["gp:a", "a", "b"]);
+      expect(rows[0].location_type).to.equal(1);
+      expect(rows[0].stop_name).to.equal("Market Square, cityA");
+      expect(rows[1].parent_station).to.equal("gp:a");
+      expect(rows[2].parent_station).to.equal("gp:a");
+    });
+  });
+
+  it("emits the station once, however many of its stops are used", async () => {
+    const area = {id: "gp:a", name: "Market Square, cityA", longitude: "1.05", latitude: "1.05"};
+    const stops = new StopsStream(naptan, {a: area, b: area});
+
+    stops.write({StopPoints: [{StopPointRef: "a", CommonName: "", LocalityName: "", LocalityQualifier: ""}]});
+    stops.write({StopPoints: [{StopPointRef: "b", CommonName: "", LocalityName: "", LocalityQualifier: ""}]});
+    stops.end();
+
+    return awaitStream(stops, (rows: any[]) => {
+      expect(rows.filter(r => r.stop_id === "gp:a").length).to.equal(1);
     });
   });
 

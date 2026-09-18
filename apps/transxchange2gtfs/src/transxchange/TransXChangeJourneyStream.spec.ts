@@ -236,6 +236,115 @@ describe("TransXChangeJourneyStream", () => {
     });
   });
 
+  it("clips a calendar to the window the feed is built for", async () => {
+    const stream = new TransXChangeJourneyStream({} as BankHolidays, {
+      from: LocalDate.parse("2026-01-01"),
+      to: LocalDate.parse("2026-12-31")
+    });
+
+    stream.write(transxchange);
+    stream.end();
+
+    return awaitStream(stream, (rows: TransXChangeJourney[]) => {
+      // The service says 2018 to 2099, and neither is a statement about what
+      // the feed describes.
+      expect(rows[0].calendar.startDate.toString()).to.equal("2026-01-01");
+      expect(rows[0].calendar.endDate.toString()).to.equal("2026-12-31");
+    });
+  });
+
+  it("gives two registrations that differ only outside the window one service", async () => {
+    const stream = new TransXChangeJourneyStream({} as BankHolidays, {
+      from: LocalDate.parse("2026-01-01"),
+      to: LocalDate.parse("2026-12-31")
+    });
+
+    // The same timetable, registered from a different day. Inside the window the
+    // two describe exactly the same calendar, and only clamping before the
+    // calendars are compared can see that.
+    const later = {
+      ...transxchange,
+      Services: {
+        "M6_MEGA": {
+          ...transxchange.Services["M6_MEGA"],
+          OperatingPeriod: {
+            StartDate: LocalDate.parse("2020-05-01"),
+            EndDate: LocalDate.parse("2099-12-31")
+          }
+        }
+      }
+    };
+
+    stream.write(transxchange);
+    stream.write(later);
+    stream.end();
+
+    return awaitStream(stream, (rows: TransXChangeJourney[]) => {
+      const everyDay = rows.filter(r => r.calendar.days.toString() === "1,1,1,1,1,1,1");
+
+      expect(everyDay.length).to.be.greaterThan(1);
+      expect(new Set(everyDay.map(r => r.calendar.id)).size).to.equal(1);
+    });
+  });
+
+  it("gives two profiles that list the same dates in a different order one service", async () => {
+    const holidays = {
+      GoodFriday: [LocalDate.parse("2026-04-03")],
+      EasterMonday: [LocalDate.parse("2026-04-06")]
+    } as unknown as BankHolidays;
+
+    const profile = (order: string[]) => ({
+      ...transxchange,
+      VehicleJourneys: [{
+        ...transxchange.VehicleJourneys[0],
+        OperatingProfile: {
+          ...transxchange.VehicleJourneys[0].OperatingProfile,
+          BankHolidayOperation: {DaysOfNonOperation: [], DaysOfOperation: order},
+          SpecialDaysOperation: {DaysOfNonOperation: [], DaysOfOperation: []}
+        }
+      }]
+    });
+
+    const stream = new TransXChangeJourneyStream(holidays);
+
+    stream.write(profile(["GoodFriday", "EasterMonday"]));
+    stream.write(profile(["EasterMonday", "GoodFriday"]));
+    stream.end();
+
+    return awaitStream(stream, (rows: TransXChangeJourney[]) => {
+      expect(rows.length).to.equal(2);
+      expect(rows[0].calendar.includes.length).to.equal(2);
+      expect(rows[0].calendar.id).to.equal(rows[1].calendar.id);
+    });
+  });
+
+  it("drops a journey that runs on no day inside the window", async () => {
+    const stream = new TransXChangeJourneyStream({} as BankHolidays, {
+      from: LocalDate.parse("2000-01-01"),
+      to: LocalDate.parse("2000-12-31")
+    });
+
+    stream.write(transxchange);
+    stream.end();
+
+    return awaitStream(stream, (rows: TransXChangeJourney[]) => {
+      expect(rows.length).to.equal(0);
+      expect(stream.skipped).to.be.greaterThan(0);
+    });
+  });
+
+  it("keeps every journey when there is no window", async () => {
+    const stream = new TransXChangeJourneyStream({} as BankHolidays);
+
+    stream.write(transxchange);
+    stream.end();
+
+    return awaitStream(stream, (rows: TransXChangeJourney[]) => {
+      expect(rows.length).to.be.greaterThan(0);
+      expect(stream.skipped).to.equal(0);
+    });
+  });
+
   it("merges days of the week", async () => {
     const stream = new TransXChangeJourneyStream({} as BankHolidays);
 
