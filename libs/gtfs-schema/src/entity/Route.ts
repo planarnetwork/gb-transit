@@ -28,9 +28,9 @@ export enum RouteType {
    * registered as an air service, and a coach is a bus that does not stop where
    * buses stop.
    */
-  Air = 1100,
   Coach = 200,
-  ReplacementBus = 714
+  ReplacementBus = 714,
+  Air = 1100
 }
 
 export type RouteID = string;

@@ -26,6 +26,23 @@ import {Converter} from "./converter/Converter";
 import {LocalDate} from "@js-joda/core";
 
 /**
+ * One end of the window, named after the flag it came from so that a date the
+ * parser will not take says which argument to fix.
+ */
+function day(value: string | undefined, flag: string): LocalDate | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  try {
+    return LocalDate.parse(value);
+  }
+  catch {
+    throw new Error(`${flag} must be a date as YYYY-MM-DD. Got "${value}".`);
+  }
+}
+
+/**
  * Where NaPTAN is cached between runs.
  */
 const CACHE = path.join(os.tmpdir(), "gb-transit-naptan");
@@ -108,10 +125,19 @@ export class Container {
    * today is long enough for a planner and short enough that the timetables in
    * it are ones an operator has actually registered.
    */
-  public getWindow(options: ConverterOptions): DateWindow {
-    const from = options.from ? LocalDate.parse(options.from) : LocalDate.now();
+  private getWindow(options: ConverterOptions): DateWindow {
+    const from = day(options.from, "--from") ?? LocalDate.now();
+    const to = day(options.to, "--to") ?? from.plusYears(1);
 
-    return {from, to: options.to ? LocalDate.parse(options.to) : from.plusYears(1)};
+    // Every stage downstream reads a backwards window as "nothing runs" rather
+    // than as bad input, so the conversion would finish successfully with a feed
+    // of headers and no rows, a feed_info.txt whose dates are the wrong way
+    // round, and a skip count indistinguishable from the legitimate one.
+    if (to.isBefore(from)) {
+      throw new Error(`--to (${to}) is before --from (${from}).`);
+    }
+
+    return {from, to};
   }
 
   public async getNaPTANIndexes(

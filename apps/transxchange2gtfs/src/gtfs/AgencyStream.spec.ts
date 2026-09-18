@@ -82,6 +82,26 @@ describe("AgencyStream", () => {
     return awaitStream(stream, (rows: any[]) => expect(rows[0].agency_id).to.equal("CHIL"));
   });
 
+  it("writes an agency for an operator a service names and the document does not declare", async () => {
+    const stream = new AgencyStream();
+
+    stream.write({
+      Operators: {},
+      Services: {
+        S1: {RegisteredOperatorRef: "regACKC"}
+      }
+    });
+
+    stream.end();
+
+    // Without this the route written for the service points at an agency that is
+    // not in the feed, which GTFS calls an error.
+    return awaitStream(stream, (rows: any[]) => {
+      expect(rows.map(r => r.agency_id)).to.deep.equal(["regACKC"]);
+      expect(rows[0].agency_name).to.equal("regACKC");
+    });
+  });
+
   it("names an operator the feed describes no further after its code", async () => {
     const stream = new AgencyStream();
 

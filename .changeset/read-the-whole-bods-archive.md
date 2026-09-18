@@ -43,6 +43,13 @@ began to as far out as 2099 and neither is a statement about the feed — 117,98
 national archive, 10.5% of it, do not run on any day in the next fifteen months. `feed_info.txt` is
 written for the first time, with the window as its dates.
 
+**Two registrations that differ only outside the window are one service.** The calendars are clipped
+to the window before they are compared, not after, because clipping is precisely the operation that
+makes distinct registrations coincide: a service registered from 2018 and one registered from 2020
+describe the same calendar inside the next fifteen months. Compared first, the national feed carried
+4,733 calendars where 1,250 say everything they say, one Monday-to-Friday calendar written 552 times
+with its 154,091 trips split across 552 service ids.
+
 **The two sides of a street are one place.** NaPTAN records this as a GPBS stop area and does not
 publish the areas in the CSV, so `StopAreas` works the grouping out from what the CSV does say:
 stops of the same name, in the same NPTG locality, within 150m of each other and facing different
@@ -54,5 +61,19 @@ every stop of one place got its own footpath to every stop of the next. `--skip-
 off.
 
 **`platform_code` is written**, where NaPTAN's indicator names a stand rather than a relative
-position, and **a coach is `route_type` 200** rather than 3, which is the extended type the schema
-gains for it.
+position. A bare `N` is the awkward case - a stand at a bus station and a bearing on a street - so a
+stop whose indicator is its own bearing is left without one. **A coach is `route_type` 200** rather
+than 3, which is the extended type the schema gains for it.
+
+**A service naming an operator its document never declares still gets an agency**, rather than
+leaving the route pointing at one that is not in the feed. GTFS calls a dangling `agency_id` an
+error and the national archive has 24 such routes across four operators.
+
+**A stop the feed gives no location is written without coordinates**, rather than at 0,0 - which is
+in the Atlantic, and which a planner routes around rather than reports. There are 400 of them
+nationally. A grid reference outside the National Grid is refused for the same reason, though no row
+in the national NaPTAN file is.
+
+**A window that ends before it starts is refused.** Every stage downstream reads one as "nothing
+runs", so the conversion used to succeed and write a feed of headers with no rows, a `feed_info.txt`
+whose dates were the wrong way round, and a skip count indistinguishable from the honest one.

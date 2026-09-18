@@ -3,6 +3,7 @@ import {DateTimeFormatter, LocalDate} from "@js-joda/core";
 import {RowStream} from "./RowStream";
 import {FEED_INFO} from "./TxcFeed";
 import {DateWindow, TransXChangeJourney} from "../transxchange/TransXChangeJourneyStream";
+import {agencyLang} from "./AgencyStream";
 import {TransformCallback} from "node:stream";
 
 const PUBLISHER = "Planar Network";
@@ -48,7 +49,7 @@ export class FeedInfoStream extends RowStream<TransXChangeJourney, FeedInfoRow> 
     this.pushRow({
       feed_publisher_name: PUBLISHER,
       feed_publisher_url: PUBLISHER_URL,
-      feed_lang: process.env.AGENCY_LANG || "en",
+      feed_lang: agencyLang(),
       feed_start_date: this.window.from.format(this.formatter),
       feed_end_date: covered.format(this.formatter),
       feed_version: this.version

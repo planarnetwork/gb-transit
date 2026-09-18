@@ -124,12 +124,16 @@ function describe(stops: NaptanStopPoint[]): NaptanStopArea {
   const mean = (of: (stop: NaptanStopPoint) => number) =>
     stops.reduce((total, stop) => total + of(stop), 0) / stops.length;
 
+  // The same stop names the area and lends it its id, so the two cannot describe
+  // different members of the group. Sorted rather than first seen, so the area
+  // does not change with the order NaPTAN was read in.
+  const [first] = [...stops].sort((a, b) => a.atcoCode < b.atcoCode ? -1 : 1);
+
   return {
-    // Named after the first of its stops, and prefixed: this is our grouping
-    // rather than NaPTAN's, and every other id in stops.txt is an ATCO code that
-    // means something.
-    id: "gp:" + stops.map(stop => stop.atcoCode).sort()[0],
-    name: stops[0].name + ", " + (stops[0].parentLocality || stops[0].locality),
+    // Prefixed: this is our grouping rather than NaPTAN's, and every other id in
+    // stops.txt is an ATCO code that means something.
+    id: "gp:" + first.atcoCode,
+    name: first.name + ", " + (first.parentLocality || first.locality),
     longitude: String(mean(stop => Number(stop.longitude))),
     latitude: String(mean(stop => Number(stop.latitude)))
   };

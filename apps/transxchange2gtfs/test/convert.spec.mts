@@ -38,12 +38,17 @@ const columns = <F extends FeedFileName>(file: F) => rows[file] ?? [];
  */
 const FEED = {from: "2026-01-05", to: "2026-12-31", version: "mini"};
 
-async function build(input: string, into: string): Promise<void> {
+async function build(
+  input: string,
+  into: string,
+  overrides: Partial<typeof FEED> = {}
+): Promise<void> {
   await convert({
     inputs: [input],
     output: into,
     naptanFile: path.join(fixtures, "naptan.csv"),
     ...FEED,
+    ...overrides,
     tmp: fs.mkdtempSync(path.join(os.tmpdir(), "txcwork"))
   });
 }
@@ -257,6 +262,22 @@ describe("the feed the mini fixture produces", () => {
     for (const transfer of self) {
       expect(transfer.transfer_type).to.equal(TransferType.MinTime);
     }
+  });
+
+  it("refuses a window that ends before it starts", async () => {
+    // Every stage downstream reads a backwards window as "nothing runs", so
+    // without this the conversion succeeds and writes a feed of headers with no
+    // rows and a feed_info.txt whose dates are the wrong way round.
+    await expect(build(path.join(fixtures, "mini.xml"), path.join(built, "..", "backwards"), {
+      from: "2026-12-31",
+      to: "2026-01-01"
+    })).rejects.toThrow("--to (2026-01-01) is before --from (2026-12-31)");
+  });
+
+  it("says which argument a date it cannot read came from", async () => {
+    await expect(build(path.join(fixtures, "mini.xml"), path.join(built, "..", "unparseable"), {
+      from: "2026-1-5"
+    })).rejects.toThrow('--from must be a date as YYYY-MM-DD. Got "2026-1-5".');
   });
 
   it("says in feed_info.txt what it was asked to cover", () => {

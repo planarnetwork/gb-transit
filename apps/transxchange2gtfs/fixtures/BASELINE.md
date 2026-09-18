@@ -73,4 +73,14 @@ own operating period, so nothing moves.
 
 **A pair of stops either side of a street stands under a station of its own, and
 transfers are generated between stations rather than between stops.** The
-fixture's four stops are four different places.
+fixture's four stops are four different places, and the walk between two places
+is measured between the places rather than between whichever two of their stops
+were compared first.
+
+**Two registrations that differ only outside the window are one service.** The
+fixture has no two services that coincide once clipped.
+
+**A stop whose indicator is its own bearing gets no platform_code, and a stop the
+feed gives no location gets no coordinates.** Every stop in the fixture has a
+location, and its indicators are `->NE`, `->SW`, `C1` and `T2`, none of which was
+producing a platform code before.

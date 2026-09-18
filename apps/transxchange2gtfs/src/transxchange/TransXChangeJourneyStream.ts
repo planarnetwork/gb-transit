@@ -25,6 +25,13 @@ export interface DateWindow {
   readonly to: LocalDate;
 }
 
+/**
+ * A calendar before it has been given a service id, which is what the dedup key
+ * is taken from: the id is a consequence of the calendar being new, so it cannot
+ * be part of what decides that.
+ */
+type UnnumberedCalendar = Omit<JourneyCalendar, "id">;
+
 function maxDate(a: LocalDate, b: LocalDate): LocalDate {
   return a.isAfter(b) ? a : b;
 }
@@ -184,23 +191,33 @@ export class TransXChangeJourneyStream extends Transform implements Skipped {
       includes.push(...this.getHoliday(holiday, startDate, endDate));
     }
 
-    const hash = this.getCalendarHash(days, startDate, endDate, includes, excludes);
+    // Clamped before it is hashed, so that two registrations that differ only
+    // outside the window are one service rather than two. They are the common
+    // case, not the corner: clamping is precisely the operation that makes
+    // distinct registrations coincide, and hashing first left the national feed
+    // with 4,733 calendars where 1,250 say everything they say - one Monday to
+    // Friday calendar written 552 times, its 154,091 trips split across 552
+    // service ids.
+    const clamped = this.clamp({days, startDate, endDate, includes, excludes});
+    const hash = this.getCalendarHash(
+      clamped.days, clamped.startDate, clamped.endDate, clamped.includes, clamped.excludes
+    );
 
     if (this.calendars[hash] === undefined) {
-      this.calendars[hash] = this.clamp({
-        id: this.serviceId, startDate, endDate, days, includes, excludes
-      });
+      // Only on a miss, because this walks the days and there are a million
+      // journeys behind a few thousand distinct calendars. Asked only of a
+      // clamped calendar: a journey is dropped for running on no day the feed
+      // covers, and with no window there is no such day to fall outside of.
+      const keep = this.window === undefined || this.runs(clamped);
 
-      if (this.calendars[hash] !== null) {
-        this.serviceId++;
-      }
+      this.calendars[hash] = keep ? {...clamped, id: this.serviceId++} : null;
     }
 
     return this.calendars[hash] ?? undefined;
   }
 
   /**
-   * The calendar as it applies inside the window, or nothing if it never does.
+   * The calendar as it applies inside the window.
    *
    * A registration says when it began and when it ends, and neither is a
    * statement about the feed: the national dataset has services that started in
@@ -208,7 +225,7 @@ export class TransXChangeJourneyStream extends Transform implements Skipped {
    * run on any day in the next fifteen months. Left alone they are trips a
    * planner loads, indexes and never returns.
    */
-  private clamp(calendar: JourneyCalendar): JourneyCalendar | null {
+  private clamp(calendar: UnnumberedCalendar): UnnumberedCalendar {
     if (this.window === undefined) {
       return calendar;
     }
@@ -217,11 +234,14 @@ export class TransXChangeJourneyStream extends Transform implements Skipped {
     const endDate = minDate(calendar.endDate, this.window.to);
     const inWindow = (date: LocalDate) =>
       !date.isBefore(this.window!.from) && !date.isAfter(this.window!.to);
-    const includes = calendar.includes.filter(inWindow);
-    const excludes = calendar.excludes.filter(inWindow);
-    const clamped = {...calendar, startDate, endDate, includes, excludes};
 
-    return this.runs(clamped) ? clamped : null;
+    return {
+      ...calendar,
+      startDate,
+      endDate,
+      includes: calendar.includes.filter(inWindow),
+      excludes: calendar.excludes.filter(inWindow)
+    };
   }
 
   /**
@@ -229,9 +249,9 @@ export class TransXChangeJourneyStream extends Transform implements Skipped {
    *
    * Asked once per distinct calendar rather than once per journey, which is what
    * makes walking the days affordable: the national dataset is 1.1m journeys and
-   * 5,612 calendars.
+   * a few thousand calendars.
    */
-  private runs(calendar: JourneyCalendar): boolean {
+  private runs(calendar: UnnumberedCalendar): boolean {
     if (calendar.includes.length > 0) {
       return true;
     }

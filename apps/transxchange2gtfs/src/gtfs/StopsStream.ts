@@ -14,15 +14,25 @@ import {NaptanStopArea, StopAreaIndex} from "../reference/StopAreas";
  * first of those is a platform, and the DfT's own feed reads it the same way,
  * giving 2,975 of its 311,949 stops a platform_code and every one of them a
  * letter or a number.
+ *
+ * A bare `N` is the awkward one: it is a stand at a bus station and a bearing on
+ * a street, and nothing in the indicator itself separates them. The stop's own
+ * bearing does - a stop whose indicator is its bearing is being told apart from
+ * its pair by which way it faces, not by a stand. 10 of the 4,082 single-letter
+ * indicators in NaPTAN are that.
  */
-function platformCode(indicator: string): string | null {
-  const named = indicator.match(/^(?:stop|stand|bay|gate|platform)\s+([A-Za-z0-9]{1,3})$/i);
+function platformCode(stop: NaptanStopPoint): string | null {
+  const named = stop.indicator.match(/^(?:stop|stand|bay|gate|platform)\s+([A-Za-z0-9]{1,3})$/i);
 
   if (named) {
     return named[1].toUpperCase();
   }
 
-  return /^(?:\d{1,3}|[A-Za-z])$/.test(indicator) ? indicator.toUpperCase() : null;
+  if (stop.indicator.toUpperCase() === stop.bearing.toUpperCase()) {
+    return null;
+  }
+
+  return /^(?:\d{1,3}|[A-Za-z])$/.test(stop.indicator) ? stop.indicator.toUpperCase() : null;
 }
 
 export class StopsStream extends RowStream<TransXChange, StopRow> {
@@ -79,7 +89,7 @@ export class StopsStream extends RowStream<TransXChange, StopRow> {
       stop_url: "",
       location_type: null,
       parent_station: area?.id ?? "",
-      platform_code: platformCode(stop.indicator),
+      platform_code: platformCode(stop),
       stop_timezone: "",
       wheelchair_boarding: 0
     };
@@ -106,14 +116,26 @@ export class StopsStream extends RowStream<TransXChange, StopRow> {
     };
   }
 
+  /**
+   * A stop the document describes and NaPTAN does not.
+   *
+   * A TransXChange `AnnotatedStopPointRef` need not carry a location, and the
+   * parser reads an absent one as 0.0. Written out that puts the stop in the
+   * Atlantic, several hundred miles from anything, which a planner will happily
+   * route around; an empty coordinate says what is actually true, which is that
+   * the feed does not know where this stop is. The national conversion has 400
+   * of them.
+   */
   private getFeedStop(stop: StopPoint): StopRow {
+    const located = stop.Location.Latitude !== 0 || stop.Location.Longitude !== 0;
+
     return {
       stop_id: stop.StopPointRef,
       stop_code: "",
       stop_name: stop.CommonName + ", " + stop.LocalityQualifier,
       stop_desc: "",
-      stop_lat: stop.Location.Latitude,
-      stop_lon: stop.Location.Longitude,
+      stop_lat: located ? stop.Location.Latitude : "",
+      stop_lon: located ? stop.Location.Longitude : "",
       zone_id: "",
       stop_url: "",
       location_type: null,

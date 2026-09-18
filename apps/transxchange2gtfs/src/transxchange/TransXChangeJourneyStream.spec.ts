@@ -253,6 +253,40 @@ describe("TransXChangeJourneyStream", () => {
     });
   });
 
+  it("gives two registrations that differ only outside the window one service", async () => {
+    const stream = new TransXChangeJourneyStream({} as BankHolidays, {
+      from: LocalDate.parse("2026-01-01"),
+      to: LocalDate.parse("2026-12-31")
+    });
+
+    // The same timetable, registered from a different day. Inside the window the
+    // two describe exactly the same calendar, and only clamping before the
+    // calendars are compared can see that.
+    const later = {
+      ...transxchange,
+      Services: {
+        "M6_MEGA": {
+          ...transxchange.Services["M6_MEGA"],
+          OperatingPeriod: {
+            StartDate: LocalDate.parse("2020-05-01"),
+            EndDate: LocalDate.parse("2099-12-31")
+          }
+        }
+      }
+    };
+
+    stream.write(transxchange);
+    stream.write(later);
+    stream.end();
+
+    return awaitStream(stream, (rows: TransXChangeJourney[]) => {
+      const everyDay = rows.filter(r => r.calendar.days.toString() === "1,1,1,1,1,1,1");
+
+      expect(everyDay.length).to.be.greaterThan(1);
+      expect(new Set(everyDay.map(r => r.calendar.id)).size).to.equal(1);
+    });
+  });
+
   it("drops a journey that runs on no day inside the window", async () => {
     const stream = new TransXChangeJourneyStream({} as BankHolidays, {
       from: LocalDate.parse("2000-01-01"),

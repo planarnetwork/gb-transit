@@ -156,6 +156,51 @@ describe("StopsStream", () => {
     });
   });
 
+  it("does not read a bearing as a stand", async () => {
+    const facing = {
+      "s1": {...stop("s1", "n1", "Fishers Lane", "", "N", "townA", ""), bearing: "N"},
+      "s2": {...stop("s2", "n2", "Fishers Lane", "", "s", "townA", ""), bearing: "S"},
+      "s3": {...stop("s3", "n3", "Bus Station", "", "N", "townA", ""), bearing: "E"},
+      "s4": {...stop("s4", "n4", "Bus Station", "", "Stand N", "townA", ""), bearing: "N"}
+    };
+    const stops = new StopsStream(facing);
+
+    stops.write({
+      StopPoints: Object.keys(facing).map(StopPointRef => ({
+        StopPointRef, CommonName: "", LocalityName: "", LocalityQualifier: ""
+      }))
+    });
+    stops.end();
+
+    return awaitStream(stops, (rows: any[]) => {
+      // The first two are told apart from their pair by which way they face; the
+      // third is a stand that happens to be called N; the fourth says so.
+      expect(rows.map(r => r.platform_code)).to.deep.equal([null, null, "N", "N"]);
+    });
+  });
+
+  it("leaves a stop the feed gives no location without coordinates", async () => {
+    const stops = new StopsStream({});
+
+    stops.write({
+      StopPoints: [{
+        StopPointRef: "NotInNaPTAN",
+        CommonName: "name",
+        LocalityName: "locality",
+        LocalityQualifier: "qualifier",
+        Location: {Latitude: 0, Longitude: 0}
+      }]
+    });
+    stops.end();
+
+    return awaitStream(stops, (rows: any[]) => {
+      // 0,0 is in the Atlantic, and a planner will route around it rather than
+      // notice it is missing.
+      expect(rows[0].stop_lat).to.equal("");
+      expect(rows[0].stop_lon).to.equal("");
+    });
+  });
+
   it("puts a pair of stops under the station they stand in", async () => {
     const area = {id: "gp:a", name: "Market Square, cityA", longitude: "1.05", latitude: "1.05"};
     const stops = new StopsStream(naptan, {a: area, b: area});
