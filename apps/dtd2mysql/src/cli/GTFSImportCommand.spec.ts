@@ -40,6 +40,21 @@ describe("GTFSImportCommand", () => {
   });
 
   /**
+   * A GTFS time counts from the start of the service day rather than the clock, so a call after
+   * midnight is written as 24:01:00 and a late one as 26:15:00. Postgres refuses either as a time,
+   * and they are 430 of this feed's 1326 calls.
+   */
+  it("loads the calls after midnight", async () => {
+    const calls = await db
+      .selectFrom("stop_times")
+      .select("arrival_time")
+      .where("arrival_time", ">=", "24:00:00")
+      .execute();
+
+    expect(calls.length).to.be.greaterThan(0);
+  });
+
+  /**
    * stops.txt writes its coordinates last while the table declares them in the middle. A positional
    * column list loaded the longitude into zone_id and reported nothing.
    */
