@@ -1,5 +1,6 @@
 
 import {Field, ParseError} from "./Field";
+import {TextField} from "./TextField";
 
 export class IntField extends Field {
 
@@ -25,13 +26,16 @@ export class IntField extends Field {
 
 }
 
-export class ZeroFillIntField extends Field {
+/**
+ * A zero filled int is stored as padded text, so it is a text field that pads rather than an int.
+ *
+ * Extending Field instead left it as the one text value in the feed that keeps the blanks a short
+ * line pads it with, where every sibling column has them removed.
+ */
+export class ZeroFillIntField extends TextField {
 
-  /**
-   * Zero filled ints are stored as padded chars
-   */
   protected parse(value: string): string {
-    return value.padStart(this.length, "0");
+    return super.parse(value).padStart(this.length, "0");
   }
 
 }

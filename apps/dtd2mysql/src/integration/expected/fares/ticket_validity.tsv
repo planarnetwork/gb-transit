@@ -1,0 +1,2 @@
+id	validity_code	end_date	start_date	description	out_days	out_months	ret_days	ret_months	ret_after_days	ret_after_months	ret_after_day	break_out	break_in	out_description	rtn_description
+1	AA	2025-01-01	2025-01-01	AAAAAAAAAAAAAAAAAAAA	11	11	11	11	11	11	AA	1	1	AAAAAAAAAAAAAA	AAAAAAAAAAAAAA

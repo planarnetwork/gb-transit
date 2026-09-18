@@ -1,0 +1,2 @@
+id	ticket_code	end_date	start_date	quote_date	description	tkt_class	tkt_type	tkt_group	last_valid_day	max_passengers	min_passengers	max_adults	min_adults	max_children	min_children	restricted_by_date	restricted_by_train	restricted_by_area	validity_code	atb_description	lul_xlondon_issue	reservation_required	capri_code	lul_93	uts_code	time_restriction	free_pass_lul	package_mkr	fare_multiplier	discount_category
+1	AAA	2025-01-01	2025-01-01	2025-01-01	AAAAAAAAAAAAAAA	1	A	A	2025-01-01	111	111	111	111	111	111	1	1	1	AA	AAAAAAAAAAAAAAAAAAAA	1	A	AAA	1	AA	1	1	A	111	11

@@ -1,0 +1,2 @@
+id	cf_mkr	restriction_code	sequence_no	out_ret	time_from	time_to	arr_dep_via	location	rstr_type	train_type	min_fare_flag
+1	A	AA	AAAA	A	10:00:00	10:00:00	A	AAA	A	A	1

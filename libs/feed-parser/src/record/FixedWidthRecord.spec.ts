@@ -26,7 +26,7 @@ describe("FixedWidthRecord", () => {
       values: {
         id: null,
         field: 1012,
-        field2: "Hi ",
+        field2: "Hi",
         field3: "2999-12-31"
       }
     });
@@ -49,7 +49,7 @@ describe("FixedWidthRecord", () => {
       values: {
         id: null,
         field: 1012,
-        field2: "Hi "
+        field2: "Hi"
       }
     });
   });
@@ -80,12 +80,12 @@ describe("FixedWidthRecord", () => {
       action: RecordAction.Delete,
       keysValues: {
         field: 1012,
-        field2: "Hi "
+        field2: "Hi"
       },
       values: {
         id: null,
         field: 1012,
-        field2: "Hi ",
+        field2: "Hi",
         field3: "2999-12-31"
       }
     });
@@ -94,12 +94,12 @@ describe("FixedWidthRecord", () => {
       action: RecordAction.Update,
       keysValues: {
         field: 1012,
-        field2: "Hi "
+        field2: "Hi"
       },
       values: {
         id: null,
         field: 1012,
-        field2: "Hi ",
+        field2: "Hi",
         field3: "2999-12-31"
       }
     });
@@ -127,7 +127,7 @@ describe("RecordWithManualIdentifier", () => {
       values: {
         id: 1,
         field: 1012,
-        field2: "Hi ",
+        field2: "Hi",
         field3: "2999-12-31"
       }
     });
@@ -150,7 +150,7 @@ describe("RecordWithManualIdentifier", () => {
       values: {
         id: 1,
         field: 1012,
-        field2: "Hi "
+        field2: "Hi"
       }
     });
 
@@ -160,7 +160,7 @@ describe("RecordWithManualIdentifier", () => {
       values: {
         id: 2,
         field: 1012,
-        field2: "Hi "
+        field2: "Hi"
       }
     });
 
@@ -170,7 +170,7 @@ describe("RecordWithManualIdentifier", () => {
       values: {
         id: 3,
         field: 1012,
-        field2: "Hi "
+        field2: "Hi"
       }
     });
   });
