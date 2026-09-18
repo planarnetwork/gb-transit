@@ -20,9 +20,10 @@ export async function* readCSV(filename: string): AsyncGenerator<CSVRow> {
 
   let header: string[] | undefined;
   let pending = "";
+  let row = 0;
 
-  for await (const line of input) {
-    pending = pending.length === 0 ? line : `${pending}\n${line}`;
+  for await (const text of input) {
+    pending = pending.length === 0 ? withoutByteOrderMark(text) : `${pending}\n${text}`;
 
     const values = splitCSVRecord(pending);
 
@@ -37,9 +38,25 @@ export async function* readCSV(filename: string): AsyncGenerator<CSVRow> {
     }
     // a file ending in a newline reads as one empty value, which is not a row
     else if (values.length > 1 || values[0] !== "") {
-      yield Object.fromEntries(header.map((column, i) => [column, values[i] ?? ""]));
+      if (values.length !== header.length) {
+        throw new Error(
+          `${filename} row ${row} has ${values.length} values where the header has ${header.length} columns.`
+        );
+      }
+
+      yield Object.fromEntries(header.map((column, i) => [column, values[i]]));
     }
+
+    row++;
   }
+}
+
+/**
+ * The specification permits a GTFS file to start with a byte order mark, and nothing in the stream
+ * strips it. Left on, it is part of the first column's name, so the column is one no table has.
+ */
+function withoutByteOrderMark(line: string): string {
+  return line.charCodeAt(0) === 0xfeff ? line.slice(1) : line;
 }
 
 /**

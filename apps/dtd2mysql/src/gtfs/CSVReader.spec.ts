@@ -60,7 +60,45 @@ describe("reading a CSV file", () => {
     expect(await roundTrip([])).to.deep.equal([]);
   });
 
+  /**
+   * The specification permits one, and left on it is part of the first column's name - so the column
+   * belongs to no table, and the import fails after it has already dropped and recreated that table.
+   */
+  it("reads a file that starts with a byte order mark", async () => {
+    const rows = await read("﻿stop_id,stop_name\nBTN,Brighton\n");
+
+    expect(rows).to.deep.equal([{ stop_id: "BTN", stop_name: "Brighton" }]);
+  });
+
+  /**
+   * A row with fewer values than the header was padded with empty strings, which a nullable column
+   * then stored as null, and a row with more had the extra values dropped. Either is a file that is
+   * not what it says it is.
+   */
+  it("refuses a row that does not have the header's columns", async () => {
+    await expect(read("stop_id,stop_name,zone_id\nBTN\n")).rejects.toThrow(/1 values where the header has 3/);
+    await expect(read("stop_id,stop_name\nBTN,Brighton,EXTRA\n")).rejects.toThrow(/3 values where the header has 2/);
+  });
+
 });
+
+/**
+ * Read a file written out as it is given here, rather than through the GTFS writer, so that it can be
+ * malformed
+ */
+async function read(text: string): Promise<CSVRow[]> {
+  const filename = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "dtd-csv")), "stops.txt");
+
+  fs.writeFileSync(filename, text);
+
+  const rows: CSVRow[] = [];
+
+  for await (const row of readCSV(filename)) {
+    rows.push(row);
+  }
+
+  return rows;
+}
 
 type StopRow = { stop_id: string, stop_name: string, stop_desc: string | null };
 
