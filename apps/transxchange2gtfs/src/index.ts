@@ -19,6 +19,10 @@ async function main(argv: string[]): Promise<void> {
     naptanFile: option(argv, "naptan"),
     refreshStops: argv.includes("--update-stops"),
     skipStops: argv.includes("--skip-stops"),
+    skipStopAreas: argv.includes("--skip-stop-areas"),
+    from: option(argv, "from"),
+    to: option(argv, "to"),
+    version: option(argv, "feed-version"),
     tmp: option(argv, "tmp")
   });
 
@@ -34,7 +38,7 @@ async function main(argv: string[]): Promise<void> {
  * The arguments that are not flags, and not a flag's value.
  */
 function positionalArgs(argv: string[]): string[] {
-  const takesValue = new Set(["--naptan", "--tmp"]);
+  const takesValue = new Set(["--naptan", "--tmp", "--from", "--to", "--feed-version"]);
   const found: string[] = [];
 
   for (let i = 2; i < argv.length; i++) {

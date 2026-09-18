@@ -23,7 +23,8 @@ FileStream → XMLStream → TransXChangeStream → TransXChangeJourneyStream
                                   │                      ├─► CalendarDatesStream → calendar_dates.txt
                                   │                      ├─► TripsStream         → trips.txt
                                   │                      ├─► StopTimesStream     → stop_times.txt
-                                  │                      └─► ShapesStream        → shapes.txt
+                                  │                      ├─► ShapesStream        → shapes.txt
+                                  │                      └─► FeedInfoStream      → feed_info.txt
                                   ├─► AgencyStream    → agency.txt
                                   ├─► RoutesStream    → routes.txt
                                   ├─► TransfersStream → transfers.txt
@@ -37,7 +38,11 @@ to match it with nothing checking that it did, and `resource/schema.sql` said th
 time and had already drifted. Adding a column now means adding it to the row type and to the
 declared columns, and the compiler holds you to both.
 
-There is no `feed_info.txt`: TransXChange carries nothing to build one from.
+`feed_info.txt` says what the conversion was asked for rather than what TransXChange said, because
+TransXChange says nothing about it. `--from` and `--to` are the window the feed describes; journeys
+that run on no day inside it are dropped and the calendars of the rest are clipped to it, because a
+registration's own dates run from whenever it began to as far out as 2099 and neither is a statement
+about the feed.
 
 ## NaPTAN
 
@@ -51,6 +56,15 @@ column added by the DfT would have put a street name in the latitude.
 end-to-end test possible. `--skip-stops` writes no `stops.txt` or `transfers.txt` and downloads
 nothing.
 
+**A stop's position comes from its grid reference where NaPTAN gives no longitude and latitude**,
+which is 37,210 of the 435,546 stops in the national file. `reference/OSGridReference.ts` projects
+it, and agrees with the DfT's own feed to within a metre.
+
+**`reference/StopAreas.ts` groups the two sides of a street into one place**, which NaPTAN records
+as a GPBS stop area and does not publish in the CSV. The stops of a group get a `parent_station`, the
+group gets a row of its own, and `TransfersStream` walks between groups rather than between their
+stops. The rule and what it was measured against are in that file; `--skip-stop-areas` turns it off.
+
 ## Bank holidays
 
 `src/reference/BankHolidays.ts` maps each TransXChange `Holiday` to a rule and
@@ -61,6 +75,8 @@ manual list to extend.
 
 - **All times are local.** No timezone conversion anywhere.
 - **Two stops with the same ATCO code are the same stop**, across documents.
+- **An operator id means nothing outside its own document.** Agencies are keyed on the National
+  Operator Code; see `gtfs/AgencyId.ts`.
 - The output is byte-sensitive and `fixtures/mini/golden` is the record of it. When changing
   anything in the journey, calendar or time logic, read the golden diff rather than trusting the
   unit tests. `UPDATE_GOLDEN=1 yarn vitest run` regenerates it; every movement gets an entry in

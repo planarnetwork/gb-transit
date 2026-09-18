@@ -2,6 +2,7 @@ import {AgencyRow} from "@gb-transit/gtfs-schema";
 import {RowStream} from "./RowStream";
 import {AGENCY} from "./TxcFeed";
 import {TransXChange} from "../transxchange/TransXChange";
+import {agencyId} from "./AgencyId";
 
 /**
  * Extract the agencies from the TransXChange objects
@@ -16,13 +17,20 @@ export class AgencyStream extends RowStream<TransXChange, AgencyRow> {
 
   protected transform(data: TransXChange): void {
     for (const operatorId of Object.keys(data.Operators)) {
-      if (!this.agenciesSeen[operatorId]) {
+      const id = agencyId(data.Operators, operatorId);
+
+      if (!this.agenciesSeen[id]) {
         const operator = data.Operators[operatorId];
-        const agencyName = operator.TradingName || operator.OperatorNameOnLicence || operator.OperatorShortName;
 
         this.pushRow({
-          agency_id: operatorId,
-          agency_name: agencyName,
+          agency_id: id,
+          // A document that names an operator and describes it no further still
+          // gets a name, because a route points here and a blank one reads as a
+          // feed with an anonymous operator in it.
+          agency_name: operator.TradingName
+            || operator.OperatorNameOnLicence
+            || operator.OperatorShortName
+            || id,
           agency_url: this.agencyUrl,
           agency_timezone: this.agencyTimezone,
           agency_lang: this.agencyLang,
@@ -30,7 +38,7 @@ export class AgencyStream extends RowStream<TransXChange, AgencyRow> {
           agency_fare_url: ""
         });
 
-        this.agenciesSeen[operatorId] = true;
+        this.agenciesSeen[id] = true;
       }
     }
   }

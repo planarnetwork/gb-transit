@@ -236,6 +236,50 @@ describe("TransXChangeJourneyStream", () => {
     });
   });
 
+  it("clips a calendar to the window the feed is built for", async () => {
+    const stream = new TransXChangeJourneyStream({} as BankHolidays, {
+      from: LocalDate.parse("2026-01-01"),
+      to: LocalDate.parse("2026-12-31")
+    });
+
+    stream.write(transxchange);
+    stream.end();
+
+    return awaitStream(stream, (rows: TransXChangeJourney[]) => {
+      // The service says 2018 to 2099, and neither is a statement about what
+      // the feed describes.
+      expect(rows[0].calendar.startDate.toString()).to.equal("2026-01-01");
+      expect(rows[0].calendar.endDate.toString()).to.equal("2026-12-31");
+    });
+  });
+
+  it("drops a journey that runs on no day inside the window", async () => {
+    const stream = new TransXChangeJourneyStream({} as BankHolidays, {
+      from: LocalDate.parse("2000-01-01"),
+      to: LocalDate.parse("2000-12-31")
+    });
+
+    stream.write(transxchange);
+    stream.end();
+
+    return awaitStream(stream, (rows: TransXChangeJourney[]) => {
+      expect(rows.length).to.equal(0);
+      expect(stream.skipped).to.be.greaterThan(0);
+    });
+  });
+
+  it("keeps every journey when there is no window", async () => {
+    const stream = new TransXChangeJourneyStream({} as BankHolidays);
+
+    stream.write(transxchange);
+    stream.end();
+
+    return awaitStream(stream, (rows: TransXChangeJourney[]) => {
+      expect(rows.length).to.be.greaterThan(0);
+      expect(stream.skipped).to.equal(0);
+    });
+  });
+
   it("merges days of the week", async () => {
     const stream = new TransXChangeJourneyStream({} as BankHolidays);
 

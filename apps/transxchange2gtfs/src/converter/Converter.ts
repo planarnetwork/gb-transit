@@ -1,6 +1,7 @@
 import {FeedRow, RowWriter} from "@gb-transit/gtfs-schema";
 import {FileOutput, deliverFeed} from "@gb-transit/gtfs-output";
 import {FileStream} from "../xml/FileStream";
+import {Skipped} from "./Skipped";
 import {RowStream} from "../gtfs/RowStream";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -19,7 +20,8 @@ export class Converter {
   constructor(
     private readonly inputStream: FileStream,
     private readonly gtfsFiles: readonly RowStream<any, any>[],
-    private readonly directory: string
+    private readonly directory: string,
+    private readonly skipping: readonly Skipped[] = []
   ) {}
 
   public async process(input: string[], output: string | undefined): Promise<void> {
@@ -49,7 +51,25 @@ export class Converter {
     await Promise.all(written);
     await target.end();
 
+    this.reportSkipped();
+
     await deliverFeed(this.directory, output);
+  }
+
+  /**
+   * What did not make it into the feed.
+   *
+   * Every one of these is already survivable by design - a corrupt document does
+   * not take the rest of the dataset with it - which is exactly why they have to
+   * be said out loud: a run that quietly skipped half its input looks the same
+   * as one that skipped none of it.
+   */
+  private reportSkipped(): void {
+    for (const stage of this.skipping) {
+      if (stage.skipped > 0) {
+        console.warn(`${stage.skippedDescription}: ${stage.skipped}`);
+      }
+    }
   }
 
 }

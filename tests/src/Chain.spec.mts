@@ -73,6 +73,9 @@ beforeAll(async () => {
     inputs: [path.join(bus, "mini.xml")],
     output: busFeed,
     naptanFile: path.join(bus, "naptan.csv"),
+    // The same day the rail feed is built for, so the two describe the same
+    // window and neither depends on when the suite runs.
+    from: TODAY,
     tmp: path.join(work, "buswork")
   });
 
@@ -106,8 +109,9 @@ describe("a rail feed and a bus feed merged", () => {
   it("keeps both operators", () => {
     const agencies = columns("agency.txt").map(a => a.agency_id);
 
-    // The bus operator from TransXChange, and the train operators from the DTD.
-    expect(agencies).to.include("OP1");
+    // The bus operator from TransXChange, by its National Operator Code, and
+    // the train operators from the DTD.
+    expect(agencies).to.include("CHIL");
     expect(agencies.length).to.be.greaterThan(1);
   });
 

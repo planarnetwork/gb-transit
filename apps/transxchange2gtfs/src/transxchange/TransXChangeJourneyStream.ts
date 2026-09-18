@@ -15,17 +15,42 @@ import {
 import {Transform, TransformCallback} from "node:stream";
 import {LocalDate, LocalTime, Duration, DateTimeFormatter} from "@js-joda/core";
 import {ATCOCode} from "../reference/NaPTAN";
+import {Skipped} from "../converter/Skipped";
+
+/**
+ * The span of days a feed is built for.
+ */
+export interface DateWindow {
+  readonly from: LocalDate;
+  readonly to: LocalDate;
+}
+
+function maxDate(a: LocalDate, b: LocalDate): LocalDate {
+  return a.isAfter(b) ? a : b;
+}
+
+function minDate(a: LocalDate, b: LocalDate): LocalDate {
+  return a.isBefore(b) ? a : b;
+}
 
 /**
  * Transforms TransXChange objects into TransXChangeJourneys that are closer to GTFS calendars, calendar dates, trips
  * and stop times.
  */
-export class TransXChangeJourneyStream extends Transform {
-  private calendars: Record<string, JourneyCalendar> = {};
+export class TransXChangeJourneyStream extends Transform implements Skipped {
+  private calendars: Record<string, JourneyCalendar | null> = {};
   private serviceId: number = 1;
   private tripId: number = 1;
 
-  constructor(private readonly holidays: BankHolidays) {
+  /** Journeys dropped for running on no day inside the window. */
+  public skipped = 0;
+
+  public readonly skippedDescription = "Journeys that run on no day the feed covers";
+
+  constructor(
+    private readonly holidays: BankHolidays,
+    private readonly window?: DateWindow
+  ) {
     super({ objectMode: true });
   }
 
@@ -100,6 +125,12 @@ export class TransXChangeJourneyStream extends Transform {
 
     if (sections.length > 0 && vehicle.OperatingProfile) {
       const calendar = this.getCalendar(vehicle.OperatingProfile, schedule.Services[vehicle.ServiceRef]);
+
+      if (calendar === undefined) {
+        this.skipped++;
+        return;
+      }
+
       const stops = this.getStopTimes(schedule.RouteLinks, sections, vehicle.DepartureTime, headsign);
       const route = vehicle.ServiceRef + '|' + vehicle.LineRef;
       const blockId = vehicle.OperationalBlockNumber;
@@ -118,7 +149,7 @@ export class TransXChangeJourneyStream extends Transform {
     }
   }
 
-  private getCalendar(operatingProfile: OperatingProfile, service: Service): JourneyCalendar {
+  private getCalendar(operatingProfile: OperatingProfile, service: Service): JourneyCalendar | undefined {
     const days: DaysOfWeek = operatingProfile.RegularDayType === "HolidaysOnly"
       ? [0, 0, 0, 0, 0, 0, 0]
       : this.mergeDays(operatingProfile.RegularDayType);
@@ -155,12 +186,69 @@ export class TransXChangeJourneyStream extends Transform {
 
     const hash = this.getCalendarHash(days, startDate, endDate, includes, excludes);
 
-    if (!this.calendars[hash]) {
-      const id = this.serviceId++;
-      this.calendars[hash] = { id, startDate, endDate, days, includes, excludes };
+    if (this.calendars[hash] === undefined) {
+      this.calendars[hash] = this.clamp({
+        id: this.serviceId, startDate, endDate, days, includes, excludes
+      });
+
+      if (this.calendars[hash] !== null) {
+        this.serviceId++;
+      }
     }
 
-    return this.calendars[hash];
+    return this.calendars[hash] ?? undefined;
+  }
+
+  /**
+   * The calendar as it applies inside the window, or nothing if it never does.
+   *
+   * A registration says when it began and when it ends, and neither is a
+   * statement about the feed: the national dataset has services that started in
+   * 2001 and services that end in 2099, and 10.5% of the journeys in it do not
+   * run on any day in the next fifteen months. Left alone they are trips a
+   * planner loads, indexes and never returns.
+   */
+  private clamp(calendar: JourneyCalendar): JourneyCalendar | null {
+    if (this.window === undefined) {
+      return calendar;
+    }
+
+    const startDate = maxDate(calendar.startDate, this.window.from);
+    const endDate = minDate(calendar.endDate, this.window.to);
+    const inWindow = (date: LocalDate) =>
+      !date.isBefore(this.window!.from) && !date.isAfter(this.window!.to);
+    const includes = calendar.includes.filter(inWindow);
+    const excludes = calendar.excludes.filter(inWindow);
+    const clamped = {...calendar, startDate, endDate, includes, excludes};
+
+    return this.runs(clamped) ? clamped : null;
+  }
+
+  /**
+   * Whether a calendar has a day at all.
+   *
+   * Asked once per distinct calendar rather than once per journey, which is what
+   * makes walking the days affordable: the national dataset is 1.1m journeys and
+   * 5,612 calendars.
+   */
+  private runs(calendar: JourneyCalendar): boolean {
+    if (calendar.includes.length > 0) {
+      return true;
+    }
+
+    if (calendar.days.every(day => !day) || calendar.startDate.isAfter(calendar.endDate)) {
+      return false;
+    }
+
+    const excluded = new Set(calendar.excludes.map(date => date.toString()));
+
+    for (let date = calendar.startDate; !date.isAfter(calendar.endDate); date = date.plusDays(1)) {
+      if (calendar.days[date.dayOfWeek().value() - 1] && !excluded.has(date.toString())) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   private mergeDays(daysOfOperation: DaysOfWeek[]): DaysOfWeek {

@@ -4580,6 +4580,7 @@ __metadata:
     adm-zip: "npm:0.6.0"
     date-holidays: "npm:^3.27.0"
     fflate: "npm:^0.8.3"
+    proj4: "npm:2.20.9"
     typescript: "npm:7.0.2"
     xml2js: "npm:^0.6.2"
   bin:

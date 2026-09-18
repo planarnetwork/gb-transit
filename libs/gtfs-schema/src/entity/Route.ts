@@ -25,9 +25,11 @@ export enum RouteType {
   /**
    * Extended route types, from the hierarchy the spec points consumers at for
    * finer detail than the seven basic modes. A TransXChange service may be
-   * registered as an air service.
+   * registered as an air service, and a coach is a bus that does not stop where
+   * buses stop.
    */
   Air = 1100,
+  Coach = 200,
   ReplacementBus = 714
 }
 

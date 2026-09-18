@@ -2,6 +2,16 @@ import AdmZip from "adm-zip";
 import {Transform, TransformCallback} from "node:stream";
 import * as fs from "node:fs";
 import {parse} from "node:path";
+import {Skipped} from "../converter/Skipped";
+
+/**
+ * A document's bytes as text, without a byte order mark.
+ *
+ * Two thirds of the documents in a national Bus Open Data Service archive begin
+ * with one. `toString("utf8")` keeps it, and an XML parser reads it as content
+ * before the first tag and rejects the document. A `TextDecoder` drops it.
+ */
+const decoder = new TextDecoder("utf-8");
 
 /**
  * Reads a set of XML or zip files and emits the contents downstream.
@@ -15,7 +25,7 @@ import {parse} from "node:path";
  * because the parser downstream is slower than the loop. Each push waits for the
  * reader to take it, which is what keeps a national dataset inside a gigabyte.
  */
-export class FileStream extends Transform {
+export class FileStream extends Transform implements Skipped {
 
   private drained: (() => void) | undefined;
 
@@ -23,7 +33,9 @@ export class FileStream extends Transform {
    * Entries that could not be read. Counted rather than only logged, so a run
    * that quietly skipped half its input can say so.
    */
-  public failures = 0;
+  public skipped = 0;
+
+  public readonly skippedDescription = "Entries of the input that could not be read";
 
   constructor() {
     super({objectMode: true});
@@ -50,7 +62,7 @@ export class FileStream extends Transform {
     try {
       if (extension === ".xml") {
         console.log("Processing " + file);
-        await this.pushDocument(fs.readFileSync(file, "utf8"));
+        await this.pushDocument(decoder.decode(fs.readFileSync(file)));
       }
       else if (extension === ".zip") {
         console.log("Processing zip " + file);
@@ -86,7 +98,7 @@ export class FileStream extends Transform {
       try {
         if (name.endsWith(".xml")) {
           console.log("Processing " + entry.entryName);
-          await this.pushDocument(entry.getData().toString("utf8"));
+          await this.pushDocument(decoder.decode(entry.getData()));
         }
         else if (name.endsWith(".zip")) {
           console.log("Processing " + entry.entryName);
@@ -97,7 +109,7 @@ export class FileStream extends Transform {
         }
       }
       catch (err) {
-        this.failures++;
+        this.skipped++;
         console.error(`Skipping ${entry.entryName}: ${err instanceof Error ? err.message : err}`);
       }
     }
