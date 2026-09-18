@@ -9,16 +9,12 @@ proj4.defs(
 /**
  * A National Grid easting and northing as a longitude and latitude.
  *
- * NaPTAN gives every stop a grid reference and only most of them a longitude
- * and latitude: 37,210 of the 435,546 stops in the national file have the
- * easting and northing filled in and the other two columns empty. Read as they
- * come, 13,392 of the stops a national conversion uses arrive with no position
- * at all, and 1.26m calls are made at a stop nothing can place.
+ * NaPTAN gives every stop a grid reference and only most of them a longitude and
+ * latitude, so without this around 37,000 of its 435,000 stops have no position.
  *
- * The projection is the same one the rail feed uses on the eastings and
- * northings in the MSN, written out again here rather than shared: this is six
- * lines, and the alternative is a bus conversion reaching into the library that
- * builds the rail feed.
+ * The projection is the one the rail feed applies to the MSN's eastings and
+ * northings, written out again rather than shared: six lines, against a bus
+ * conversion reaching into the library that builds the rail feed.
  */
 export function fromGrid(easting: string, northing: string): {longitude: string, latitude: string} {
   const east = Number(easting);
@@ -37,11 +33,8 @@ export function fromGrid(easting: string, northing: string): {longitude: string,
  * Inside the National Grid.
  *
  * The projection has an answer for every pair of numbers, so a zero or a typo
- * comes back as a coordinate somewhere rather than as an error: 0,0 is the grid
- * origin, in the sea off the Scillies. No row in the national NaPTAN file is
- * outside these bounds, so this is a guard against a bad file rather than a case
- * seen in the wild - the point of it is that a stop nothing can place stays
- * visibly unplaced instead of being quietly moved to the Atlantic.
+ * lands somewhere plausible rather than failing: 0,0 is the grid origin, in the
+ * sea off the Scillies. A stop nothing can place is better left unplaced.
  */
 function inGrid(east: number, north: number): boolean {
   return Number.isFinite(east) && Number.isFinite(north)

@@ -38,49 +38,27 @@ resolves when the file exists.
 
 ## Operator identity, coordinates and the shape of a place
 
-Measured against the DfT's own national GTFS, built from the same Bus Open Data
-Service archive.
-
 **`agency_id` is the National Operator Code.** It was the `Operator` element's
-`id`, which means something only inside the document it is written in: `tkt_oid`
-is the id 167 different operators give themselves, and keyed on it all 167 became
-one agency — 4,035 routes and 323,538 trips of the national feed, 29% of it,
-filed under "London United". All but one of the 20,502 operators in that dataset
-carry a National Operator Code. The fixture's operator is `CHIL` rather than
-`OP1`.
+`id`, which means something only inside the document it is written in. The
+fixture's operator is `CHIL` rather than `OP1`.
 
 **A coach is `route_type` 200.** It was 3, the same as a bus.
 
 **stops.txt has a `platform_code` column.** It is written where NaPTAN's
 indicator names a stand — `Stand C`, `Bay 4`, `A` — and left empty where the
-indicator is a relative position such as `adj` or a compass bearing, which is how
-the DfT's feed reads it. Every stop in the fixture is the second kind, so the
-column is empty in all four rows.
+indicator is a relative position such as `adj` or a compass bearing. The
+fixture's indicators are `->NE`, `->SW`, `C1` and `T2`, so the column is empty in
+all four rows.
 
-**There is a feed_info.txt.** The dates are the window the conversion was asked
-for, which TransXChange has nothing to say about and which is the only honest
-answer to what the feed describes completely. The test passes a fixed window and
-version, because a golden that changes with the date is not a golden.
+**There is a feed_info.txt**, with the window the conversion was asked for as its
+dates. The test passes a fixed window and version, because a golden that changes
+with the date is not a golden.
 
-Two further changes leave the fixture untouched and are visible only on a real
-dataset:
-
-**A journey that runs on no day inside the window is dropped, and the calendars
-of the rest are clipped to it.** The national dataset holds registrations that
-started in 2001 and registrations that end in 2099, and 10.5% of its journeys do
-not run on any day in the following fifteen months. The fixture's window is its
-own operating period, so nothing moves.
-
-**A pair of stops either side of a street stands under a station of its own, and
-transfers are generated between stations rather than between stops.** The
-fixture's four stops are four different places, and the walk between two places
-is measured between the places rather than between whichever two of their stops
-were compared first.
-
-**Two registrations that differ only outside the window are one service.** The
-fixture has no two services that coincide once clipped.
-
-**A stop whose indicator is its own bearing gets no platform_code, and a stop the
-feed gives no location gets no coordinates.** Every stop in the fixture has a
-location, and its indicators are `->NE`, `->SW`, `C1` and `T2`, none of which was
-producing a platform code before.
+The rest of the change leaves the fixture untouched and is visible only on a real
+dataset: a journey that runs on no day inside the window is dropped and the
+calendars of the rest are clamped to it, two registrations that differ only
+outside the window become one service, a pair of stops either side of a street
+stands under a station of its own, and a stop that NaPTAN gives only a grid
+reference is placed from it. The fixture's window is its own operating period,
+its four stops are four separate places, and every one of them has a longitude
+and latitude.

@@ -5,6 +5,15 @@ import {Mode, Operators, Service, TransXChange} from "../transxchange/TransXChan
 import {agencyId} from "./AgencyId";
 
 /**
+ * The extended GTFS route type for a coach service.
+ *
+ * Only TransXChange registers a service as a coach, so it is named here rather
+ * than in the shared RouteType, which carries the types more than one producer
+ * writes.
+ */
+const COACH = 200 as RouteType;
+
+/**
  * Extract the routes from the TransXChange objects
  */
 export class RoutesStream extends RowStream<TransXChange, RouteRow> {
@@ -14,7 +23,7 @@ export class RoutesStream extends RowStream<TransXChange, RouteRow> {
   private routeType: Record<Mode, RouteType> = {
     [Mode.Air]: RouteType.Air,
     [Mode.Bus]: RouteType.Bus,
-    [Mode.Coach]: RouteType.Coach,
+    [Mode.Coach]: COACH,
     [Mode.Ferry]: RouteType.Ferry,
     [Mode.Rail]: RouteType.Rail,
     [Mode.Train]: RouteType.Rail,

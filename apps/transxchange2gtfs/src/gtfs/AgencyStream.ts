@@ -5,13 +5,10 @@ import {TransXChange} from "../transxchange/TransXChange";
 import {agencyId} from "./AgencyId";
 
 /**
- * The language of the feed.
- *
- * Declared here and used by feed_info.txt as well, because a feed whose
- * feed_lang and agency_lang disagree is a warning in the validator, and two
- * places to change is how they come to disagree. A function rather than a
- * constant so the environment is still read when the feed is built rather than
- * when the module is loaded.
+ * The language of the feed, shared with feed_info.txt: a feed whose feed_lang
+ * and agency_lang disagree is a warning in the validator. A function rather than
+ * a constant so the environment is read when the feed is built, not when the
+ * module is loaded.
  */
 export function agencyLang(): string {
   return process.env.AGENCY_LANG || "en";
@@ -32,19 +29,16 @@ export class AgencyStream extends RowStream<TransXChange, AgencyRow> {
     for (const operatorId of Object.keys(data.Operators)) {
       const operator = data.Operators[operatorId];
 
-      // A document that names an operator and describes it no further still gets
-      // a name, because a route points here and a blank one reads as a feed with
-      // an anonymous operator in it.
+      // An operator the document describes no further still gets a name: a route
+      // points here, and a blank one reads as an anonymous operator.
       this.addAgency(agencyId(data.Operators, operatorId), operator.TradingName
         || operator.OperatorNameOnLicence
         || operator.OperatorShortName);
     }
 
-    // A service may name an operator the document never declares, and a route
-    // written for it then points at an agency that is not in the feed. The
-    // national conversion has 24 such routes across four operators; GTFS calls a
-    // dangling agency_id an error, so the agency is written from what is known
-    // of it, which is its reference.
+    // A service may name an operator the document never declares, leaving the
+    // route pointing at an agency that is not in the feed. GTFS calls that an
+    // error, so the agency is written from the only thing known of it.
     for (const service of Object.values(data.Services ?? {})) {
       this.addAgency(agencyId(data.Operators, service.RegisteredOperatorRef));
     }

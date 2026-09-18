@@ -12,13 +12,11 @@ const PUBLISHER_URL = "https://github.com/planarnetwork/dtd2mysql";
 /**
  * What the feed can be trusted for.
  *
- * TransXChange has nothing to build this from, which is why the file was not
- * written at all; the window the conversion was asked for is the missing half.
  * GTFS defines these as the first and last day the feed describes *completely*,
- * and the calendars answer neither on their own - a registration that began in
- * 2001 and still runs is emitted with its real start date, and one with no end
- * in sight is emitted with 2099. So it is the window, with the end pulled in
- * where the timetables run out first.
+ * and the calendars answer neither on their own: a registration that began in
+ * 2001 and still runs carries its real start date, and one with no end in sight
+ * carries 2099. So it is the window the conversion was asked for, with the end
+ * pulled in where the timetables run out first.
  */
 export class FeedInfoStream extends RowStream<TransXChangeJourney, FeedInfoRow> {
   public readonly file = FEED_INFO;

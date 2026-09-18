@@ -20,12 +20,11 @@ export class XMLStream extends Transform implements Skipped {
   /**
    * Transform the XML using the parseXML method
    *
-   * **A document that will not parse is skipped rather than fatal.** A dataset
-   * is hundreds of documents from hundreds of registrations, and one of them
-   * being malformed is not a reason to convert none of the rest - which is what
-   * `FileStream` guards against when it reads an entry, only for the parse to
-   * happen here, downstream of that guard, where the error reached the pipeline
-   * and ended the run.
+   * A document that will not parse is skipped rather than fatal: a dataset is
+   * hundreds of documents from hundreds of registrations, and one being
+   * malformed is not a reason to convert none of the rest. `FileStream` makes
+   * the same allowance when it reads an entry, and the parse happens here rather
+   * than there.
    */
   public async _transform(xml: string, encoding: string, callback: TransformCallback): Promise<void> {
     let json;

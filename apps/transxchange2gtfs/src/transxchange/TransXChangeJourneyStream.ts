@@ -25,11 +25,7 @@ export interface DateWindow {
   readonly to: LocalDate;
 }
 
-/**
- * A calendar before it has been given a service id, which is what the dedup key
- * is taken from: the id is a consequence of the calendar being new, so it cannot
- * be part of what decides that.
- */
+/** A calendar before it is known to be a new one and given a service id. */
 type UnnumberedCalendar = Omit<JourneyCalendar, "id">;
 
 function maxDate(a: LocalDate, b: LocalDate): LocalDate {
@@ -191,23 +187,17 @@ export class TransXChangeJourneyStream extends Transform implements Skipped {
       includes.push(...this.getHoliday(holiday, startDate, endDate));
     }
 
-    // Clamped before it is hashed, so that two registrations that differ only
-    // outside the window are one service rather than two. They are the common
-    // case, not the corner: clamping is precisely the operation that makes
-    // distinct registrations coincide, and hashing first left the national feed
-    // with 4,733 calendars where 1,250 say everything they say - one Monday to
-    // Friday calendar written 552 times, its 154,091 trips split across 552
-    // service ids.
+    // Clamped before it is compared, because clamping is what makes two
+    // registrations coincide: one running from 2018 and one from 2020 describe
+    // the same calendar inside a window that starts after both.
     const clamped = this.clamp({days, startDate, endDate, includes, excludes});
     const hash = this.getCalendarHash(
       clamped.days, clamped.startDate, clamped.endDate, clamped.includes, clamped.excludes
     );
 
     if (this.calendars[hash] === undefined) {
-      // Only on a miss, because this walks the days and there are a million
-      // journeys behind a few thousand distinct calendars. Asked only of a
-      // clamped calendar: a journey is dropped for running on no day the feed
-      // covers, and with no window there is no such day to fall outside of.
+      // A journey is dropped for running on no day the feed covers, so with no
+      // window there is nothing to fall outside of.
       const keep = this.window === undefined || this.runs(clamped);
 
       this.calendars[hash] = keep ? {...clamped, id: this.serviceId++} : null;
@@ -220,10 +210,8 @@ export class TransXChangeJourneyStream extends Transform implements Skipped {
    * The calendar as it applies inside the window.
    *
    * A registration says when it began and when it ends, and neither is a
-   * statement about the feed: the national dataset has services that started in
-   * 2001 and services that end in 2099, and 10.5% of the journeys in it do not
-   * run on any day in the next fifteen months. Left alone they are trips a
-   * planner loads, indexes and never returns.
+   * statement about the feed: they run from as far back as 2001 to as far out as
+   * 2099.
    */
   private clamp(calendar: UnnumberedCalendar): UnnumberedCalendar {
     if (this.window === undefined) {
@@ -247,9 +235,9 @@ export class TransXChangeJourneyStream extends Transform implements Skipped {
   /**
    * Whether a calendar has a day at all.
    *
-   * Asked once per distinct calendar rather than once per journey, which is what
-   * makes walking the days affordable: the national dataset is 1.1m journeys and
-   * a few thousand calendars.
+   * Walks the days, so it is asked once per distinct calendar rather than once
+   * per journey - a national dataset is a million journeys behind a few thousand
+   * calendars.
    */
   private runs(calendar: UnnumberedCalendar): boolean {
     if (calendar.includes.length > 0) {

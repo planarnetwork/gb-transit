@@ -25,10 +25,7 @@ import {TripsStream} from "./gtfs/TripsStream";
 import {Converter} from "./converter/Converter";
 import {LocalDate} from "@js-joda/core";
 
-/**
- * One end of the window, named after the flag it came from so that a date the
- * parser will not take says which argument to fix.
- */
+/** One end of the window, named after the flag so a bad date says what to fix. */
 function day(value: string | undefined, flag: string): LocalDate | undefined {
   if (value === undefined) {
     return undefined;
@@ -120,19 +117,16 @@ export class Container {
   /**
    * The days the feed is built for.
    *
-   * A registration says when it began and when it ends and neither is a
-   * statement about the feed, so the conversion is told instead. A year from
-   * today is long enough for a planner and short enough that the timetables in
-   * it are ones an operator has actually registered.
+   * A registration's own dates say nothing about what the feed can be trusted
+   * for, so the conversion is told instead. A year is long enough for a planner
+   * and short enough that the timetables in it have been registered.
    */
   private getWindow(options: ConverterOptions): DateWindow {
     const from = day(options.from, "--from") ?? LocalDate.now();
     const to = day(options.to, "--to") ?? from.plusYears(1);
 
     // Every stage downstream reads a backwards window as "nothing runs" rather
-    // than as bad input, so the conversion would finish successfully with a feed
-    // of headers and no rows, a feed_info.txt whose dates are the wrong way
-    // round, and a skip count indistinguishable from the legitimate one.
+    // than as bad input, and would build an empty feed and report success.
     if (to.isBefore(from)) {
       throw new Error(`--to (${to}) is before --from (${from}).`);
     }

@@ -59,10 +59,9 @@ export class Converter {
   /**
    * What did not make it into the feed.
    *
-   * Every one of these is already survivable by design - a corrupt document does
-   * not take the rest of the dataset with it - which is exactly why they have to
-   * be said out loud: a run that quietly skipped half its input looks the same
-   * as one that skipped none of it.
+   * Each of these is survivable by design, which is why it has to be said out
+   * loud: a run that skipped half its input otherwise looks like one that
+   * skipped none of it.
    */
   private reportSkipped(): void {
     for (const stage of this.skipping) {

@@ -8,8 +8,8 @@ import {Skipped} from "../converter/Skipped";
  * A document's bytes as text, without a byte order mark.
  *
  * Two thirds of the documents in a national Bus Open Data Service archive begin
- * with one. `toString("utf8")` keeps it, and an XML parser reads it as content
- * before the first tag and rejects the document. A `TextDecoder` drops it.
+ * with one, and an XML parser reads it as content before the first tag and
+ * rejects the document. `toString("utf8")` keeps it; a `TextDecoder` drops it.
  */
 const decoder = new TextDecoder("utf-8");
 

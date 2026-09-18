@@ -9,17 +9,13 @@ import {NaptanStopArea, StopAreaIndex} from "../reference/StopAreas";
  * A stand, where the indicator names one.
  *
  * NaPTAN's indicator is whatever distinguishes a stop from the others of its
- * name, which is a stand at a bus station - "Stand C", "Bay 4" - but far more
- * often a relative position: `adj`, `opp`, `o/s`, or a compass bearing. Only the
- * first of those is a platform, and the DfT's own feed reads it the same way,
- * giving 2,975 of its 311,949 stops a platform_code and every one of them a
- * letter or a number.
+ * name: a stand at a bus station - "Stand C", "Bay 4" - but far more often a
+ * relative position, `adj`, `opp`, `o/s`, or a compass bearing. Only the first
+ * of those is a platform.
  *
- * A bare `N` is the awkward one: it is a stand at a bus station and a bearing on
- * a street, and nothing in the indicator itself separates them. The stop's own
- * bearing does - a stop whose indicator is its bearing is being told apart from
- * its pair by which way it faces, not by a stand. 10 of the 4,082 single-letter
- * indicators in NaPTAN are that.
+ * A bare `N` is the awkward one, being a stand at a bus station and a bearing on
+ * a street. The stop's own bearing separates them: an indicator that repeats it
+ * is telling the stop apart from its pair by which way it faces.
  */
 function platformCode(stop: NaptanStopPoint): string | null {
   const named = stop.indicator.match(/^(?:stop|stand|bay|gate|platform)\s+([A-Za-z0-9]{1,3})$/i);
@@ -54,8 +50,8 @@ export class StopsStream extends RowStream<TransXChange, StopRow> {
       if (!this.seenStops[stop.StopPointRef]) {
         const area = this.areas[stop.StopPointRef];
 
-        // Before its stops, so that a reader taking the file in order has the
-        // station in hand by the time something points at it.
+        // Before its stops, so a reader taking the file in order has the station
+        // in hand by the time something points at it.
         if (area !== undefined && !this.seenAreas[area.id]) {
           this.pushRow(this.getAreaStop(area));
           this.seenAreas[area.id] = true;
@@ -119,12 +115,10 @@ export class StopsStream extends RowStream<TransXChange, StopRow> {
   /**
    * A stop the document describes and NaPTAN does not.
    *
-   * A TransXChange `AnnotatedStopPointRef` need not carry a location, and the
-   * parser reads an absent one as 0.0. Written out that puts the stop in the
-   * Atlantic, several hundred miles from anything, which a planner will happily
-   * route around; an empty coordinate says what is actually true, which is that
-   * the feed does not know where this stop is. The national conversion has 400
-   * of them.
+   * A TransXChange `AnnotatedStopPointRef` need not carry a location and the
+   * parser reads an absent one as 0.0, which is a real place in the Atlantic. An
+   * empty coordinate says the truth instead: the feed does not know where this
+   * stop is.
    */
   private getFeedStop(stop: StopPoint): StopRow {
     const located = stop.Location.Latitude !== 0 || stop.Location.Longitude !== 0;
