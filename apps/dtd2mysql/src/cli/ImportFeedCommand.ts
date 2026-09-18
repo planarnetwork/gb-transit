@@ -63,11 +63,13 @@ export class ImportFeedCommand implements CLICommand {
 
     await this.restoreIdCounters();
 
-    await Promise.all(
+    const results = await Promise.allSettled(
       fs.readdirSync(this.tmpFolder)
         .filter(filename => this.getFeedFile(filename))
         .map(filename => this.processFile(filename))
     );
+
+    this.reportFailures(zipName, results);
 
     await this.removeOrphanStopTimes();
 
@@ -169,15 +171,31 @@ export class ImportFeedCommand implements CLICommand {
     const tableStream = new RecordStream(filename, file, tables);
     const stream = readFile(`${this.tmpFolder}/${filename}`).pipe(tableStream);
 
-    try {
-      await finished(stream);
+    await finished(stream);
 
-      console.log(`Finished processing ${filename}`);
+    console.log(`Finished processing ${filename}`);
+  }
+
+  /**
+   * Every file is waited on before anything is raised, so one failure does not hide the rest, and
+   * nothing after this runs.
+   *
+   * The log table is what says an archive has been imported, and the next run starts from what it
+   * says. Recording an archive that raised part way through would step the cursor over every changes
+   * file between it and the next one, leaving rows that nothing will come back for.
+   */
+  private reportFailures(zipName: string, results: PromiseSettledResult<void>[]): void {
+    const failures = results.flatMap(result => result.status === "rejected" ? [result.reason] : []);
+
+    if (failures.length === 0) {
+      return;
     }
-    catch (err) {
-      console.error(`Error processing ${filename}`);
-      console.error(err);
+
+    for (const failure of failures) {
+      console.error(failure);
     }
+
+    throw new Error(`${zipName} was not imported: ${failures.length} of ${results.length} files failed.`);
   }
 
   @memoize
