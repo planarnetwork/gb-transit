@@ -5,6 +5,9 @@ import {nodeSqliteDialect} from "./NodeSqliteDatabase";
 import {DialectName} from "./SchemaDialect";
 import {ParsedRecord, RecordAction} from "@gb-transit/feed-parser";
 import {recording} from "./testing/recording";
+import {SchemaBuilder} from "./SchemaBuilder";
+import {sqliteSchemaDialect} from "./dialect";
+import {table, varchar} from "./Schema";
 
 const row = (action: RecordAction, values: object, keysValues: object = {}): ParsedRecord =>
   ({ action, values, keysValues }) as ParsedRecord;
@@ -49,15 +52,15 @@ describe("TableWriter", () => {
 
     expect(statements).to.deep.equal([
       "begin",
-      "insert ignore into `my_table` (`some`) values (?), (?)",
+      "insert into `my_table` (`some`) values (?), (?) on duplicate key update `some` = `some`",
       "commit"
     ]);
   });
 
   // each database spells "insert unless it is already there" differently
   it.each([
-    ["mysql" as DialectName, "insert ignore into `my_table` (`some`) values (?)"],
-    ["sqlite" as DialectName, 'insert or ignore into "my_table" ("some") values (?)'],
+    ["mysql" as DialectName, "insert into `my_table` (`some`) values (?) on duplicate key update `some` = `some`"],
+    ["sqlite" as DialectName, 'insert into "my_table" ("some") values (?) on conflict do nothing'],
     ["postgres" as DialectName, 'insert into "my_table" ("some") values ($1) on conflict do nothing']
   ])("leaves an existing row alone on %s", async (name, sql) => {
     const { db, statements } = recording(name);
@@ -171,6 +174,33 @@ describe("TableWriter", () => {
     const rows = await db.selectFrom("t").selectAll().orderBy("id").execute();
 
     expect(rows).to.deep.equal([{ id: 2, name: "second" }, { id: 3, name: "first" }]);
+
+    await db.destroy();
+  });
+
+  /**
+   * A duplicate is the one thing the insert is meant to absorb. OR IGNORE absorbed a value that did
+   * not fit as well - it skipped the row and said nothing - where MySQL's INSERT IGNORE stored it
+   * truncated. A feed whose values have outgrown the columns is worth hearing about.
+   */
+  it("absorbs a duplicate but not a value that does not fit", async () => {
+    const db = new Kysely<any>({ dialect: nodeSqliteDialect(":memory:") });
+    const declared = table({ code: varchar(4) }, { key: ["code"] });
+
+    await new SchemaBuilder(db, sqliteSchemaDialect, "t", declared).createSchema();
+
+    const writer = new TableWriter(db, "sqlite", "t", true, 100);
+
+    await writer.apply(row(RecordAction.Insert, { id: null, code: "ABCD" }));
+    await writer.apply(row(RecordAction.Insert, { id: null, code: "ABCD" }));
+    await writer.close();
+
+    const tooLong = new TableWriter(db, "sqlite", "t", true, 1);
+
+    await expect(tooLong.apply(row(RecordAction.Insert, { id: null, code: "ABCDE" })))
+      .rejects.toThrow(/constraint/i);
+
+    expect(await db.selectFrom("t").select("code").execute()).to.deep.equal([{ code: "ABCD" }]);
 
     await db.destroy();
   });

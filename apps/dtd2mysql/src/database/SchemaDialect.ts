@@ -1,4 +1,4 @@
-import {CreateTableBuilder, Expression} from "kysely";
+import {ColumnDefinitionBuilder, CreateTableBuilder, Expression} from "kysely";
 import {
   BooleanField,
   DateField,
@@ -70,6 +70,11 @@ export interface SchemaDialect {
    * Whatever the database needs said about the table rather than its columns
    */
   tableOptions<TB extends string, C extends string>(table: CreateTableBuilder<TB, C>): CreateTableBuilder<TB, C>;
+
+  /**
+   * Whatever the database has to be told to enforce that its column types do not say on their own
+   */
+  columnConstraints(builder: ColumnDefinitionBuilder, name: string, column: ColumnType): ColumnDefinitionBuilder;
 
   /**
    * Add the auto incrementing surrogate primary key to the table

@@ -1,4 +1,4 @@
-import {CreateTableBuilder, Expression, sql} from "kysely";
+import {ColumnDefinitionBuilder, CreateTableBuilder, Expression, sql} from "kysely";
 import {ColumnType, FieldType, getErrorNumber, SchemaDialect} from "../SchemaDialect";
 
 const ER_DUP_KEYNAME = 1061;
@@ -20,6 +20,11 @@ export const mysqlSchemaDialect: SchemaDialect = {
    */
   tableOptions<TB extends string, C extends string>(table: CreateTableBuilder<TB, C>): CreateTableBuilder<TB, C> {
     return table.modifyEnd(sql.raw("engine=InnoDB default charset=utf8mb4"));
+  },
+
+  // the declared width is the column's, and the server holds values to it
+  columnConstraints(builder: ColumnDefinitionBuilder): ColumnDefinitionBuilder {
+    return builder;
   },
 
   addIdColumn<TB extends string, C extends string>(table: CreateTableBuilder<TB, C>): CreateTableBuilder<TB, C | "id"> {

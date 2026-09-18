@@ -65,9 +65,9 @@ describe("SchemaBuilder", () => {
       'create table if not exists "test" (' +
       '"id" integer primary key autoincrement, ' +
       '"field" integer not null, ' +
-      '"field2" char(3) not null, ' +
-      '"field3" char(5) not null, ' +
-      '"field4" varchar(5) not null, ' +
+      '"field2" char(3) not null check (length("field2") <= 3), ' +
+      '"field3" char(5) not null check (length("field3") <= 5), ' +
+      '"field4" varchar(5) not null check (length("field4") <= 5), ' +
       '"field5" text not null, ' +
       '"field6" text, ' +
       '"field7" integer not null, ' +
@@ -91,7 +91,7 @@ describe("SchemaBuilder", () => {
     expect(mysql).to.contain("`code` varchar(32) character set ascii collate ascii_bin not null");
     expect(mysql).to.contain("`name` varchar(32) not null");
     expect(postgres).to.contain('"code" varchar(32) not null');
-    expect(sqlite).to.contain('"code" varchar(32) not null');
+    expect(sqlite).to.contain('"code" varchar(32) not null check (length("code") <= 32)');
   });
 
   // a column the feed leaves out has to land as the empty string, which is what keeps it in a key

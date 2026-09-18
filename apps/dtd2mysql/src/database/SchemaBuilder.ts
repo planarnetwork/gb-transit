@@ -6,12 +6,19 @@ import {Column, Table} from "./Schema";
 export const LOG_TABLE = "log";
 
 /**
- * Everything the declaration says about a column beyond the type it is stored as
+ * Everything the declaration says about a column beyond the type it is stored as, plus whatever the
+ * database has to be told to hold it to
  */
-export function definition(builder: ColumnDefinitionBuilder, column: Column): ColumnDefinitionBuilder {
+export function definition(
+  dialect: SchemaDialect,
+  builder: ColumnDefinitionBuilder,
+  name: string,
+  column: Column
+): ColumnDefinitionBuilder {
   const nulls = column.nullable ? builder : builder.notNull();
+  const defaulted = column.default === undefined ? nulls : nulls.defaultTo(column.default);
 
-  return column.default === undefined ? nulls : nulls.defaultTo(column.default);
+  return dialect.columnConstraints(defaulted, name, column);
 }
 
 /**
@@ -37,7 +44,9 @@ export class SchemaBuilder {
       this.table.generatedId ? this.dialect.addIdColumn(created) : created;
 
     for (const [name, column] of Object.entries(this.table.columns)) {
-      table = table.addColumn(name, this.dialect.columnType(column), builder => definition(builder, column));
+      table = table.addColumn(
+        name, this.dialect.columnType(column), builder => definition(this.dialect, builder, name, column)
+      );
     }
 
     if (this.table.key.length > 0) {

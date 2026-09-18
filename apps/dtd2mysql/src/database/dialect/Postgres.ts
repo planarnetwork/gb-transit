@@ -1,4 +1,4 @@
-import {CreateTableBuilder, Expression, sql} from "kysely";
+import {ColumnDefinitionBuilder, CreateTableBuilder, Expression, sql} from "kysely";
 import {ColumnType, FieldType, getErrorCode, SchemaDialect} from "../SchemaDialect";
 
 const DUPLICATE_TABLE = "42P07";
@@ -38,6 +38,11 @@ export const postgresSchemaDialect: SchemaDialect = {
   // there is one engine and one encoding, both the database's
   tableOptions<TB extends string, C extends string>(table: CreateTableBuilder<TB, C>): CreateTableBuilder<TB, C> {
     return table;
+  },
+
+  // varchar(n) is enforced, so there is nothing left to say
+  columnConstraints(builder: ColumnDefinitionBuilder): ColumnDefinitionBuilder {
+    return builder;
   },
 
   addIdColumn<TB extends string, C extends string>(table: CreateTableBuilder<TB, C>): CreateTableBuilder<TB, C | "id"> {

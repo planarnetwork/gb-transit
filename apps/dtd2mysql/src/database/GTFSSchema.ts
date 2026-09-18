@@ -59,7 +59,9 @@ export class GTFSSchemaBuilder {
     let table: CreateTableBuilder<string, string> = this.db.schema.createTable(this.name);
 
     for (const [name, column] of Object.entries(this.table.columns)) {
-      table = table.addColumn(name, this.dialect.columnType(column), builder => definition(builder, column));
+      table = table.addColumn(
+        name, this.dialect.columnType(column), builder => definition(this.dialect, builder, name, column)
+      );
     }
 
     if (this.table.primaryKey.length > 0) {

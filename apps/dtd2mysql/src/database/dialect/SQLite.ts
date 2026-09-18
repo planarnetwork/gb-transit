@@ -1,4 +1,4 @@
-import {CreateTableBuilder, Expression, sql} from "kysely";
+import {ColumnDefinitionBuilder, CreateTableBuilder, Expression, sql} from "kysely";
 import {ColumnType, FieldType, SchemaDialect} from "../SchemaDialect";
 
 export const sqliteSchemaDialect: SchemaDialect = {
@@ -32,6 +32,22 @@ export const sqliteSchemaDialect: SchemaDialect = {
   // no engines, and text is whatever encoding the database was created with
   tableOptions<TB extends string, C extends string>(table: CreateTableBuilder<TB, C>): CreateTableBuilder<TB, C> {
     return table;
+  },
+
+  /**
+   * SQLite stores a value of any length in a column of any width, so a row the other two databases
+   * refuse is stored here in full and the three disagree about what was imported. The width is the
+   * declaration's, and a value that does not fit it is worth the same error everywhere, so it is
+   * asked for as a constraint - the one thing SQLite does enforce.
+   */
+  columnConstraints(builder: ColumnDefinitionBuilder, name: string, column: ColumnType): ColumnDefinitionBuilder {
+    if (column.type.type !== "text") {
+      return builder;
+    }
+
+    const width = column.type.length;
+
+    return builder.check(sql`length(${sql.ref(name)}) <= ${sql.lit(width)}`);
   },
 
   addIdColumn<TB extends string, C extends string>(table: CreateTableBuilder<TB, C>): CreateTableBuilder<TB, C | "id"> {

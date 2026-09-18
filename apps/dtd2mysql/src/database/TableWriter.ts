@@ -1,4 +1,4 @@
-import {ExpressionBuilder, Kysely} from "kysely";
+import {Expression, ExpressionBuilder, Kysely, sql} from "kysely";
 import {DialectName, isLockError} from "./SchemaDialect";
 import {chunks, MAX_OR_TERMS} from "./parameters";
 import {ParsedRecord, RecordAction} from "@gb-transit/feed-parser";
@@ -126,15 +126,22 @@ export class TableWriter {
   }
 
   /**
-   * Insert, leaving any row that is already there alone. Each database spells that differently.
+   * Insert, leaving any row that is already there alone. Each database spells that differently, and
+   * the obvious spelling of it absorbs a great deal more than that on two of them.
+   *
+   * MySQL's INSERT IGNORE downgrades a value that does not fit - too long, out of range, null in a
+   * not null column - to a warning and stores a coerced row. SQLite's OR IGNORE skips the row and
+   * says nothing. Both would hide the thing worth knowing, so each database is asked for what was
+   * meant instead: this row is already here, leave it, and anything else is an error.
    */
   private async insert(db: Kysely<any>, rows: ParsedRecord[]): Promise<void> {
     for (const chunk of chunks(rows, width(rows[0]?.values))) {
-      const query = db.insertInto(this.table).values(chunk.map(insertable));
+      const values = chunk.map(insertable);
+      const query = db.insertInto(this.table).values(values);
 
       switch (this.dialect) {
-        case "mysql": await query.ignore().execute(); break;
-        case "sqlite": await query.orIgnore().execute(); break;
+        case "mysql": await query.onDuplicateKeyUpdate(unchanged(values[0])).execute(); break;
+        case "sqlite":
         case "postgres": await query.onConflict(conflict => conflict.doNothing()).execute(); break;
       }
     }
@@ -182,6 +189,16 @@ export class TableWriter {
     return eb.and(conditions);
   }
 
+}
+
+/**
+ * Setting a column to itself, which is how MySQL is told that a duplicate is not an error. It has no
+ * DO NOTHING, and the alternative spelling absorbs far more than it is being asked to.
+ */
+function unchanged(row: { [column: string]: unknown }): { [column: string]: Expression<unknown> } {
+  const [column] = Object.keys(row);
+
+  return { [column]: sql.ref(column) };
 }
 
 /**
