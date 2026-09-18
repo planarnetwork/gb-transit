@@ -139,6 +139,17 @@ describe("the database connection", () => {
       }
     });
 
+    // node:sqlite waits no time at all by default, so a lock another writer holds is an instant failure
+    it("waits for a lock rather than failing on it, unless the consumer says otherwise", () => {
+      process.env.DATABASE_NAME = ":memory:";
+
+      expect(sqliteOptions().options.timeout).to.equal(5000);
+
+      process.env.DATABASE_OPTIONS = '{"timeout":0}';
+
+      expect(sqliteOptions().options.timeout).to.equal(0);
+    });
+
     it("passes the driver's own options through", () => {
       process.env.DATABASE_NAME = ":memory:";
       process.env.DATABASE_OPTIONS = '{"readOnly":true,"timeout":5000}';

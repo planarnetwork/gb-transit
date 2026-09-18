@@ -1,10 +1,7 @@
 import {ExpressionBuilder, Kysely} from "kysely";
-import {DialectName, getErrorCode, getErrorNumber} from "./SchemaDialect";
-import {chunks} from "./parameters";
+import {DialectName, isLockError} from "./SchemaDialect";
+import {chunks, MAX_OR_TERMS} from "./parameters";
 import {ParsedRecord, RecordAction} from "@gb-transit/feed-parser";
-
-const MYSQL_DEADLOCK = 1213;
-const POSTGRES_DEADLOCK = "40P01";
 
 /**
  * Buffers the rows of one table and writes them out.
@@ -88,14 +85,17 @@ export class TableWriter {
   }
 
   /**
-   * Locking errors happen when two tables are written at once, and are worth another go
+   * Locking errors happen when two tables are written at once, and are worth another go.
+   *
+   * The retry sends the rows again from the start, which is only safe because the whole flush is one
+   * transaction: a failure leaves the database holding none of it.
    */
   private async writeWithRetry(type: RecordAction, rows: ParsedRecord[], retries: number = 3): Promise<void> {
     try {
       await this.write(type, rows);
     }
     catch (err) {
-      if (isDeadlock(err) && retries > 0) {
+      if (isLockError(err) && retries > 0) {
         return this.writeWithRetry(type, rows, retries - 1);
       }
 
@@ -103,15 +103,23 @@ export class TableWriter {
     }
   }
 
+  /**
+   * A flush is more than one statement whenever the rows bind more values than a statement may, so it
+   * is written inside a transaction and either all of it lands or none of it does
+   */
   private write(type: RecordAction, rows: ParsedRecord[]): Promise<void> {
+    return this.db.transaction().execute(transaction => this.writeTo(transaction, type, rows));
+  }
+
+  private writeTo(db: Kysely<any>, type: RecordAction, rows: ParsedRecord[]): Promise<void> {
     switch (type) {
       case RecordAction.Insert:
       case RecordAction.DelayedInsert:
-        return this.insert(this.db, rows);
+        return this.insert(db, rows);
       case RecordAction.Update:
-        return this.replace(rows);
+        return this.replace(db, rows);
       case RecordAction.Delete:
-        return this.remove(this.db, rows);
+        return this.remove(db, rows);
       default:
         throw new Error("Unknown record action: " + type);
     }
@@ -121,7 +129,7 @@ export class TableWriter {
    * Insert, leaving any row that is already there alone. Each database spells that differently.
    */
   private async insert(db: Kysely<any>, rows: ParsedRecord[]): Promise<void> {
-    for (const chunk of this.chunks(rows)) {
+    for (const chunk of chunks(rows, width(rows[0]?.values))) {
       const query = db.insertInto(this.table).values(chunk.map(insertable));
 
       switch (this.dialect) {
@@ -139,15 +147,15 @@ export class TableWriter {
    * gives it a new id. Postgres has no equivalent, ON CONFLICT DO UPDATE keeps the existing row and its
    * id, so the delete and the insert are spelled out here and every database ends up with the same rows.
    */
-  private async replace(rows: ParsedRecord[]): Promise<void> {
-    await this.db.transaction().execute(async transaction => {
-      await this.remove(transaction, rows);
-      await this.insert(transaction, rows);
-    });
+  private async replace(db: Kysely<any>, rows: ParsedRecord[]): Promise<void> {
+    const latest = lastPerKey(rows);
+
+    await this.remove(db, latest);
+    await this.insert(db, latest);
   }
 
   private async remove(db: Kysely<any>, rows: ParsedRecord[]): Promise<void> {
-    for (const chunk of this.chunks(rows)) {
+    for (const chunk of chunks(rows, width(rows[0]?.keysValues), MAX_OR_TERMS)) {
       await db
         .deleteFrom(this.table)
         .where(eb => eb.or(chunk.map(row => this.matches(eb, row))))
@@ -156,10 +164,16 @@ export class TableWriter {
   }
 
   /**
-   * Match a row on the key the feed identifies it by
+   * Match a row on the key the feed identifies it by.
+   *
+   * A null is matched with IS NULL, as `column = null` is unknown rather than true on all three
+   * databases: the row would not be found, and the revision meant to replace it would land beside it
+   * rather than over it. 17 of the declared key columns are nullable.
    */
   private matches(eb: ExpressionBuilder<any, any>, row: ParsedRecord) {
-    const conditions = Object.entries(row.keysValues).map(([column, value]) => eb(column, "=", value));
+    const conditions = Object.entries(row.keysValues).map(([column, value]) =>
+      value === null || value === undefined ? eb(column, "is", null) : eb(column, "=", value)
+    );
 
     if (conditions.length === 0) {
       throw new Error(`${this.table} has no key, so there is nothing to match a delete on`);
@@ -168,13 +182,30 @@ export class TableWriter {
     return eb.and(conditions);
   }
 
-  /**
-   * Split the rows so that no statement binds more values than the database will take
-   */
-  private chunks(rows: ParsedRecord[]): Generator<ParsedRecord[]> {
-    return chunks(rows, Object.keys(rows[0]?.values ?? {}).length);
+}
+
+/**
+ * How many values a row of the given kind binds. An insert binds the values, a delete only the key.
+ */
+function width(values: object | undefined): number {
+  return Object.keys(values ?? {}).length;
+}
+
+/**
+ * The last row of each key.
+ *
+ * REPLACE took the last of the rows it was given, so where one flush holds two revisions of a key the
+ * second is the one that survives. Spelled out as a delete and an insert it would be the first: the
+ * delete takes out whatever was stored and the insert then leaves the row it just wrote alone.
+ */
+function lastPerKey(rows: ParsedRecord[]): ParsedRecord[] {
+  const latest = new Map<string, ParsedRecord>();
+
+  for (const row of rows) {
+    latest.set(JSON.stringify(row.keysValues), row);
   }
 
+  return [...latest.values()];
 }
 
 /**
@@ -185,8 +216,4 @@ function insertable(row: ParsedRecord): { [column: string]: unknown } {
   const { id, ...rest } = row.values;
 
   return id === null || id === undefined ? rest : { id, ...rest };
-}
-
-function isDeadlock(err: unknown): boolean {
-  return getErrorNumber(err) === MYSQL_DEADLOCK || getErrorCode(err) === POSTGRES_DEADLOCK;
 }

@@ -95,3 +95,34 @@ export function getErrorNumber(error: unknown): number | undefined {
 export function getErrorCode(error: unknown): string | undefined {
   return error instanceof Error && "code" in error && typeof error.code === "string" ? error.code : undefined;
 }
+
+/**
+ * Return SQLite's own result code, if the error has one.
+ *
+ * node:sqlite puts it in errcode and leaves errno undefined, where the two server drivers do the
+ * opposite, so an error from it is invisible to the other two readers above.
+ */
+export function getSqliteCode(error: unknown): number | undefined {
+  return error instanceof Error && "errcode" in error && typeof error.errcode === "number" ? error.errcode : undefined;
+}
+
+const MYSQL_DEADLOCK = 1213;
+const MYSQL_LOCK_WAIT_TIMEOUT = 1205;
+const POSTGRES_DEADLOCK = "40P01";
+const SQLITE_BUSY = 5;
+const SQLITE_LOCKED = 6;
+
+/**
+ * True if the error is contention rather than anything wrong with the rows: another writer holding
+ * what this one wants, which is worth waiting out. Each database says so in its own vocabulary.
+ */
+export function isLockError(error: unknown): boolean {
+  const errno = getErrorNumber(error);
+  const sqlite = getSqliteCode(error);
+
+  return errno === MYSQL_DEADLOCK
+    || errno === MYSQL_LOCK_WAIT_TIMEOUT
+    || getErrorCode(error) === POSTGRES_DEADLOCK
+    || sqlite === SQLITE_BUSY
+    || sqlite === SQLITE_LOCKED;
+}

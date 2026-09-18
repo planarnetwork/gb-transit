@@ -135,15 +135,21 @@ export function postgresOptions(): Record<string, unknown> {
  *
  * There is no server to address, so a URL only says which file. node:sqlite takes its own options -
  * readOnly, timeout, enableForeignKeyConstraints - which come through DATABASE_OPTIONS.
+ *
+ * The busy timeout defaults to none at all, which makes a lock held by anything else an immediate
+ * failure rather than a wait, so one is set here. A consumer who wants a different wait, or none,
+ * says so in DATABASE_OPTIONS.
  */
 export function sqliteOptions(): { filename: string, options: Record<string, unknown> } {
   const url = databaseUrl();
 
   return {
     filename: url ? url.replace(/^(sqlite|file):(\/\/)?/, "") : databaseName(),
-    options: consumerOptions()
+    options: { timeout: SQLITE_BUSY_TIMEOUT, ...consumerOptions() }
   };
 }
+
+const SQLITE_BUSY_TIMEOUT = 5000;
 
 /**
  * The connection fields, for an install that names them rather than giving a URL
