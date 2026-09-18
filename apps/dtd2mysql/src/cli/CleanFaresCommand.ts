@@ -21,12 +21,6 @@ const NO_FARE = 99999;
 const NO_FARE_MINIMUM = 999999;
 
 /**
- * Ids are bound one at a time, so an update that names them is split to stay inside what Postgres
- * (65535) and SQLite (32766) will take in one statement
- */
-const MAX_IDS_PER_UPDATE = 30000;
-
-/**
  * Every table holding rows that expire. They all carry the end date the feed gave them.
  */
 export const EXPIRING_TABLES = [
@@ -255,46 +249,40 @@ export class CleanFaresCommand implements CLICommand {
   }
 
   /**
-   * Rows working out to the same pair of dates are updated together, as a feed has many rows and few
-   * distinct ranges
+   * The dates a row works out to are decided by three of its columns, so the rows are updated a
+   * distinct combination at a time rather than a row at a time.
+   *
+   * A feed has many rows and few combinations - four across a hundred thousand rows - so this is
+   * four statements per table, and the ids never have to be read, held or sent back.
    */
   private async updateRestrictionDatesOnTable(
     table: typeof RESTRICTION_DATE_TABLES[number],
     current: Temporal.PlainDate,
     future: Temporal.PlainDate
   ): Promise<void> {
-    const records = await this.db
+    const combinations = await this.db
       .selectFrom(table)
-      .select(["id", "cf_mkr", "date_from", "date_to"])
+      .select(["cf_mkr", "date_from", "date_to"])
+      .distinct()
       .execute();
 
-    const ids = new Map<string, number[]>();
-
-    for (const record of records) {
-      const earliestDate = record.cf_mkr === "C" ? current : future;
-      const startDate = this.getFirstDateAfter(earliestDate, record.date_from);
-      const endDate = startDate && this.getFirstDateAfter(startDate, record.date_to);
+    for (const { cf_mkr, date_from, date_to } of combinations) {
+      const earliestDate = cf_mkr === "C" ? current : future;
+      const startDate = this.getFirstDateAfter(earliestDate, date_from);
+      const endDate = startDate && this.getFirstDateAfter(startDate, date_to);
 
       if (!startDate || !endDate || Temporal.PlainDate.compare(startDate, endDate) > 0) {
-        console.log(`Invalid dates on ${table}: ${record.date_from}, ${record.date_to} after ${earliestDate.toString()}`);
+        console.log(`Invalid dates on ${table}: ${date_from}, ${date_to} after ${earliestDate.toString()}`);
         continue;
       }
 
-      const range = `${startDate.toString()}/${endDate.toString()}`;
-
-      ids.set(range, [...(ids.get(range) ?? []), record.id]);
-    }
-
-    for (const [range, matching] of ids) {
-      const [start_date, end_date] = range.split("/");
-
-      for (let i = 0; i < matching.length; i += MAX_IDS_PER_UPDATE) {
-        await this.db
-          .updateTable(table)
-          .set({ start_date, end_date })
-          .where("id", "in", matching.slice(i, i + MAX_IDS_PER_UPDATE))
-          .execute();
-      }
+      await this.db
+        .updateTable(table)
+        .set({ start_date: startDate.toString(), end_date: endDate.toString() })
+        .where("cf_mkr", "=", cf_mkr)
+        .where("date_from", "=", date_from)
+        .where("date_to", "=", date_to)
+        .execute();
     }
   }
 
