@@ -88,9 +88,14 @@ const CHECKS = [
     help: ["transxchange2gtfs"],
     run: dir => {
       const fixtures = path.join(ROOT, "apps/transxchange2gtfs/fixtures/mini");
-      // --naptan, so the check is not held up by a 100MB download.
+      // --naptan, so the check is not held up by a 100MB download. The window
+      // and the version are pinned to the ones the golden was built for, which
+      // otherwise default to today and would differ from it every day.
       const run = attempt(dir, "./node_modules/.bin/transxchange2gtfs", [
         "--naptan", path.join(fixtures, "naptan.csv"),
+        "--from", "2026-01-05",
+        "--to", "2026-12-31",
+        "--feed-version", "mini",
         path.join(fixtures, "mini.xml"),
         "./feed"
       ]);
