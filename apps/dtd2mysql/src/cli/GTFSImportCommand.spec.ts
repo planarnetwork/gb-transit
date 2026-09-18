@@ -1,4 +1,6 @@
 import {describe, it, expect, beforeEach, afterEach} from "vitest";
+import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
 import {Kysely} from "kysely";
 import {GTFSImportCommand} from "./GTFSImportCommand";
@@ -114,6 +116,24 @@ describe("GTFSImportCommand", () => {
     expect(couplings.length).to.be.greaterThan(0);
     expect(couplings.every(row => row.min_transfer_time === null)).to.equal(true);
     expect(couplings.every(row => row.from_trip_id !== "")).to.equal(true);
+  });
+
+  /**
+   * A cell the feed leaves empty is nothing at all, whatever the column holds. An empty decimal fell
+   * through to the text default and was written as "", which MySQL stored as zero, Postgres refused
+   * on the syntax and SQLite stored as the empty string - three answers to a coordinate nobody
+   * wrote. It is a null now, and a column that cannot hold one says so.
+   */
+  it("refuses a coordinate the feed did not write, rather than storing a zero", async () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "dtd-gtfs"));
+
+    fs.writeFileSync(
+      path.join(directory, "shapes.txt"),
+      "shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence\nabcdef123456,,,1\n"
+    );
+
+    await expect(new GTFSImportCommand(db, sqliteSchemaDialect, gtfsSchema).doImport(directory))
+      .rejects.toThrow(/NOT NULL|constraint/i);
   });
 
   it("replaces what an earlier import left behind", async () => {

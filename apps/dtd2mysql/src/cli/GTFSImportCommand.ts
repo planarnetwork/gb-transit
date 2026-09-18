@@ -122,21 +122,31 @@ export class GTFSImportCommand implements CLICommand {
 /**
  * A CSV file is all text, so each value is read as whatever its column holds. An empty value is nothing
  * at all rather than a zero or a blank date.
+ *
+ * Only a text column can hold the empty string, and only where it is not nullable - everywhere else an
+ * empty cell is a null, which a column that refuses one refuses loudly. A number column given "" is
+ * the version of this that went unnoticed: MySQL stored a zero, Postgres raised on the syntax and
+ * SQLite stored the empty string, all for a coordinate the feed simply did not write.
  */
 function value(column: Column, text: string): string | number | null {
+  if (text === "") {
+    return column.type.type === "text" && !column.nullable ? "" : null;
+  }
+
   switch (column.type.type) {
     case "int":
     case "boolean":
     case "double":
     case "float":
     case "foreignKey":
-      return text === "" ? null : Number(text);
+      return Number(text);
 
     case "date":
-      return text === "" ? null : toISODate(text);
+      return toISODate(text);
 
+    // decimal and time are stored as the digits they were written as, which is the point of them
     default:
-      return text === "" && column.nullable ? null : text;
+      return text;
   }
 }
 
