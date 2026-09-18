@@ -35,16 +35,30 @@ export function nodeSqliteDatabase(filename: string, options: DatabaseSyncOption
 
 /**
  * node:sqlite binds null, numbers, bigints, strings and buffers, so the values the feed produces are
- * converted to the closest equivalent
+ * converted to the closest equivalent.
+ *
+ * Anything else is refused here rather than passed on, because the values are spread into the call as
+ * arguments and node:sqlite reads an object in the first of them as a set of named parameters. A Date
+ * bound to the first placeholder is therefore read as no named parameters at all, every later value
+ * slides one place towards it, and the row is stored wrong without an error. In any other position
+ * the same value is refused, which is what this makes it everywhere.
  */
 function bind(parameters: ReadonlyArray<unknown>): SQLInputValue[] {
-  return parameters.map(parameter => {
+  return parameters.map((parameter, position) => {
     if (parameter === undefined) return null;
     if (typeof parameter === "boolean") return parameter ? 1 : 0;
+
+    if (parameter !== null && typeof parameter === "object" && !isBuffer(parameter)) {
+      throw new TypeError(
+        `Parameter ${position + 1} is a ${parameter.constructor?.name ?? "object"}, which SQLite cannot store.`
+      );
+    }
 
     return parameter as SQLInputValue;
   });
 }
+
+const isBuffer = (value: object): boolean => ArrayBuffer.isView(value) || value instanceof ArrayBuffer;
 
 /**
  * Kysely's SQLite dialect, over the SQLite built in to Node

@@ -90,6 +90,27 @@ describe("node:sqlite as a Kysely database", () => {
     await db.destroy();
   });
 
+  /**
+   * The values are spread into node:sqlite as arguments, and it reads an object in the first of them
+   * as a set of named parameters - so a Date bound there is taken as no named parameters at all,
+   * every later value slides one place towards it, and the row is stored wrong without an error. In
+   * any other position the same value is refused, which is what it is everywhere now.
+   */
+  it("refuses a value it cannot store, wherever it is bound", async () => {
+    const db = await stops();
+    const date = new Date("2026-08-10");
+
+    await expect(db.insertInto("stops").values({ crs: date as any, name: "Brighton" }).execute())
+      .rejects.toThrow(/cannot store/);
+
+    await expect(db.insertInto("stops").values({ crs: "BTN", name: date as any }).execute())
+      .rejects.toThrow(/cannot store|cannot be bound/);
+
+    expect((await db.selectFrom("stops").selectAll().execute()).length).to.equal(0);
+
+    await db.destroy();
+  });
+
 });
 
 /**
