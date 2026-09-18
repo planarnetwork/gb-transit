@@ -1,5 +1,6 @@
 import {CreateTableBuilder, Kysely} from "kysely";
 import {Columns} from "./Schema";
+import {definition} from "./SchemaBuilder";
 import {SchemaDialect} from "./SchemaDialect";
 
 /**
@@ -58,16 +59,14 @@ export class GTFSSchemaBuilder {
     let table: CreateTableBuilder<string, string> = this.db.schema.createTable(this.name);
 
     for (const [name, column] of Object.entries(this.table.columns)) {
-      const type = this.dialect.columnType(column.type);
-
-      table = table.addColumn(name, type, builder => column.nullable ? builder : builder.notNull());
+      table = table.addColumn(name, this.dialect.columnType(column), builder => definition(builder, column));
     }
 
     if (this.table.primaryKey.length > 0) {
       table = table.addPrimaryKeyConstraint(`${this.name}_pk`, [...this.table.primaryKey]);
     }
 
-    await table.execute();
+    await this.dialect.tableOptions(table).execute();
 
     for (const index of this.table.indexes) {
       await this.createIndex(index);

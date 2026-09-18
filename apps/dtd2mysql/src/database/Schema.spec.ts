@@ -76,8 +76,16 @@ function columnProblems(table: string, name: string, field: Field, column: Colum
  * A column has to be able to hold what the feed puts in it. Bigger is fine, smaller is not.
  */
 function capacity(at: string, wanted: FieldType, declared: FieldType): string[] {
-  if (wanted.type === "text" && declared.type === "text" && declared.length < wanted.length) {
-    return [`${at} is declared ${declared.length} characters but the feed parses ${wanted.length}`];
+  if (wanted.type === "text" && declared.type === "text") {
+    // char and varchar are not interchangeable: MySQL strips the trailing blanks of a char on read,
+    // and the fixed width fields are read two characters at a time by the callers that use them
+    if (declared.variableLength !== wanted.variableLength) {
+      return [`${at} is declared ${kind(declared)} but the feed parses ${kind(wanted)}`];
+    }
+
+    if (declared.length < wanted.length) {
+      return [`${at} is declared ${declared.length} characters but the feed parses ${wanted.length}`];
+    }
   }
 
   if (wanted.type === "int" && declared.type === "int" && declared.length < wanted.length) {
@@ -92,6 +100,9 @@ function capacity(at: string, wanted: FieldType, declared: FieldType): string[] 
 
   return [];
 }
+
+const kind = (field: FieldType & { type: "text" }): string =>
+  field.variableLength ? `varchar(${field.length})` : `char(${field.length})`;
 
 /**
  * Every record of a feed, deduplicated because some files share their record definitions

@@ -35,14 +35,15 @@ function columnsBySnapshotTable(): Map<string, string[]> {
 }
 
 /**
- * Every declared table, with the generated id the schema builder adds in front of its columns
+ * Every declared table, with the generated id the schema builder puts in front of its columns where
+ * the declaration asks for one
  */
 function columnsByDeclaredTable(): Map<string, string[]> {
   const tables = new Map<string, string[]>();
 
   for (const feed of Object.values(schema) as FeedSchema[]) {
     for (const [name, table] of Object.entries(feed)) {
-      tables.set(name, ["id", ...Object.keys(table.columns)]);
+      tables.set(name, [...(table.generatedId ? ["id"] : []), ...Object.keys(table.columns)]);
     }
   }
 

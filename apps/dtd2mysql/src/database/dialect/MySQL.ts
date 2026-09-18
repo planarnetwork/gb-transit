@@ -1,5 +1,5 @@
 import {CreateTableBuilder, Expression, sql} from "kysely";
-import {FieldType, getErrorNumber, SchemaDialect} from "../SchemaDialect";
+import {ColumnType, FieldType, getErrorNumber, SchemaDialect} from "../SchemaDialect";
 
 const ER_DUP_KEYNAME = 1061;
 
@@ -7,19 +7,19 @@ export const mysqlSchemaDialect: SchemaDialect = {
 
   name: "mysql",
 
-  columnType(field: FieldType): Expression<unknown> {
-    switch (field.type) {
-      case "text": return sql.raw(field.variableLength ? `varchar(${field.length})` : `char(${field.length})`);
-      case "boolean": return sql.raw("tinyint(1) unsigned");
-      case "date": return sql.raw("date");
-      case "time": return sql.raw("time");
-      case "double": return sql.raw(`double(${field.length}, ${field.decimalDigits}) unsigned`);
-      // signed, unlike the other numbers here: a decimal holds a coordinate
-      case "decimal": return sql.raw(`decimal(${field.length}, ${field.decimalDigits})`);
-      case "float": return sql.raw("double");
-      case "int": return sql.raw(`${intType(field.length)}(${field.length}) unsigned`);
-      case "foreignKey": return sql.raw("int(11) unsigned");
-    }
+  columnType(column: ColumnType): Expression<unknown> {
+    return sql.raw(storageType(column.type) + collation(column));
+  },
+
+  /**
+   * The engine and the character set, which a server's defaults would otherwise decide.
+   *
+   * InnoDB because the writer needs its transactions: a flush is delete then insert, and on MyISAM or
+   * Aria a failed insert leaves the delete done. utf8mb4 because a station name is not ASCII and a
+   * latin1 default would store it mangled.
+   */
+  tableOptions<TB extends string, C extends string>(table: CreateTableBuilder<TB, C>): CreateTableBuilder<TB, C> {
+    return table.modifyEnd(sql.raw("engine=InnoDB default charset=utf8mb4"));
   },
 
   addIdColumn<TB extends string, C extends string>(table: CreateTableBuilder<TB, C>): CreateTableBuilder<TB, C | "id"> {
@@ -31,6 +31,29 @@ export const mysqlSchemaDialect: SchemaDialect = {
   }
 
 };
+
+/**
+ * An ASCII column is stored and compared as ASCII: the server's default collation is case insensitive,
+ * where these values are ids that differ by case.
+ */
+function collation(column: ColumnType): string {
+  return column.ascii && column.type.type === "text" ? " character set ascii collate ascii_bin" : "";
+}
+
+function storageType(field: FieldType): string {
+  switch (field.type) {
+    case "text": return field.variableLength ? `varchar(${field.length})` : `char(${field.length})`;
+    case "boolean": return "tinyint(1) unsigned";
+    case "date": return "date";
+    case "time": return "time";
+    case "double": return `double(${field.length}, ${field.decimalDigits}) unsigned`;
+    // signed, unlike the other numbers here: a decimal holds a coordinate
+    case "decimal": return `decimal(${field.length}, ${field.decimalDigits})`;
+    case "float": return "double";
+    case "int": return `${intType(field.length)}(${field.length}) unsigned`;
+    case "foreignKey": return "int(11) unsigned";
+  }
+}
 
 /**
  * MySQL has a type for every size of integer, use the smallest one that fits

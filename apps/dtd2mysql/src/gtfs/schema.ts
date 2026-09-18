@@ -1,4 +1,4 @@
-import {boolean, char, date, decimal, float, integer, nullable, time, varchar} from "../database/Schema";
+import {ascii, boolean, char, date, decimal, defaultTo, float, integer, nullable, time, varchar} from "../database/Schema";
 import {gtfsTable} from "../database/GTFSSchema";
 
 /**
@@ -39,7 +39,12 @@ export const attributions = gtfsTable({
 });
 
 export const calendar = gtfsTable({
-  service_id: integer(4),
+  // A counter over the distinct calendars of a build rather than anything the feed numbers, so the
+  // digits are a ceiling on how many a feed may have. Four of them is 9999 calendars, and Postgres
+  // stores that as a smallint, which stops at 32767 where MySQL's unsigned one reaches 65535: a
+  // three month national feed is close enough to both for the difference to be a failed import on
+  // one database and not the other. See CreateCalendar.ts.
+  service_id: integer(7),
   monday: boolean,
   tuesday: boolean,
   wednesday: boolean,
@@ -57,7 +62,7 @@ export const calendar = gtfsTable({
 });
 
 export const calendar_dates = gtfsTable({
-  service_id: integer(4),
+  service_id: integer(7),
   date: date,
   exception_type: integer(2),
 }, {
@@ -97,7 +102,7 @@ export const routes = gtfsTable({
 export const shapes = gtfsTable({
   // Twelve hex characters of a digest of the stations the line runs through, so the same line is the
   // same id in every build. See Shapes.ts.
-  shape_id: char(12),
+  shape_id: ascii(char(12)),
   // Six decimal places, which is what the feed writes. Two integer digits for a latitude and three for
   // a longitude, because those are the ranges: +-90 and +-180.
   //
@@ -119,7 +124,7 @@ export const shapes = gtfsTable({
  * between, e.g. G38968_20261018_20261018. The longest in a three month feed is 26 characters.
  */
 export const stop_times = gtfsTable({
-  trip_id: varchar(32),
+  trip_id: ascii(varchar(32)),
   arrival_time: nullable(time),
   departure_time: nullable(time),
   stop_id: varchar(100),
@@ -164,8 +169,8 @@ export const stops = gtfsTable({
 export const transfers = gtfsTable({
   from_stop_id: varchar(100),
   to_stop_id: varchar(100),
-  from_trip_id: varchar(32),
-  to_trip_id: varchar(32),
+  from_trip_id: defaultTo(ascii(varchar(32)), ""),
+  to_trip_id: defaultTo(ascii(varchar(32)), ""),
   transfer_type: integer(2),
   min_transfer_time: nullable(integer(4)),
   mode: nullable(varchar(255)),
@@ -186,15 +191,15 @@ export const transfers = gtfsTable({
 
 export const trips = gtfsTable({
   route_id: varchar(255),
-  service_id: integer(4),
-  trip_id: varchar(32),
+  service_id: integer(7),
+  trip_id: ascii(varchar(32)),
   trip_headsign: nullable(varchar(50)),
   trip_short_name: nullable(varchar(50)),
   direction_id: nullable(integer(2)),
   wheelchair_accessible: nullable(integer(2)),
   bikes_allowed: nullable(integer(2)),
   // Nullable: a trip every station of which the feed cannot place has no line to point at. See Shapes.ts.
-  shape_id: nullable(char(12)),
+  shape_id: nullable(ascii(char(12))),
 }, {
   primaryKey: ["trip_id"],
   indexes: ["service_id", "trip_headsign"]

@@ -1,9 +1,18 @@
-import {CreateTableBuilder, Kysely, sql} from "kysely";
+import {ColumnDefinitionBuilder, CreateTableBuilder, Kysely, sql} from "kysely";
 import {Database} from "./Database";
 import {SchemaDialect} from "./SchemaDialect";
-import {Table} from "./Schema";
+import {Column, Table} from "./Schema";
 
 export const LOG_TABLE = "log";
+
+/**
+ * Everything the declaration says about a column beyond the type it is stored as
+ */
+export function definition(builder: ColumnDefinitionBuilder, column: Column): ColumnDefinitionBuilder {
+  const nulls = column.nullable ? builder : builder.notNull();
+
+  return column.default === undefined ? nulls : nulls.defaultTo(column.default);
+}
 
 /**
  * Creates and drops a declared table in whichever database the dialect describes
@@ -21,21 +30,21 @@ export class SchemaBuilder {
    * Create the table and its indexes
    */
   public async createSchema(): Promise<void> {
+    const created = this.db.schema.createTable(this.name).ifNotExists();
+
     // the column names are known to the declaration but not to the builder's own types
     let table: CreateTableBuilder<string, string> =
-      this.dialect.addIdColumn(this.db.schema.createTable(this.name).ifNotExists());
+      this.table.generatedId ? this.dialect.addIdColumn(created) : created;
 
     for (const [name, column] of Object.entries(this.table.columns)) {
-      const type = this.dialect.columnType(column.type);
-
-      table = table.addColumn(name, type, builder => column.nullable ? builder : builder.notNull());
+      table = table.addColumn(name, this.dialect.columnType(column), builder => definition(builder, column));
     }
 
     if (this.table.key.length > 0) {
       table = table.addUniqueConstraint(`${this.name}_key`, [...this.table.key]);
     }
 
-    await table.execute();
+    await this.dialect.tableOptions(table).execute();
 
     for (const index of this.table.indexes) {
       await this.createIndex(index);
@@ -75,11 +84,12 @@ export class SchemaBuilder {
  * Create the table that records which feed files have been processed
  */
 export async function createLogSchema(db: Kysely<Database>, dialect: SchemaDialect): Promise<void> {
-  await dialect
+  const table = dialect
     .addIdColumn(db.schema.createTable(LOG_TABLE).ifNotExists())
     .addColumn("filename", sql.raw("varchar(255)"))
-    .addColumn("processed", timestampType(dialect))
-    .execute();
+    .addColumn("processed", timestampType(dialect));
+
+  await dialect.tableOptions(table).execute();
 }
 
 function timestampType(dialect: SchemaDialect) {

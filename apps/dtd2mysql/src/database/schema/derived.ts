@@ -13,6 +13,10 @@ export const network_flow_restriction = table({
   route_code: char(5),
   direction: char(1),
   restriction_code: char(2),
+}, {
+  // the five columns are the whole table, as they were before it was declared here. Nothing reads it
+  // by a generated id, and adding one as the first column shifts every field of a SELECT *.
+  generatedId: false
 });
 
 export default {

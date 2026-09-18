@@ -5,7 +5,7 @@ import {SchemaDialect} from "./SchemaDialect";
 import {mysqlSchemaDialect, postgresSchemaDialect, sqliteSchemaDialect} from "./dialect";
 import {nodeSqliteDialect} from "./NodeSqliteDatabase";
 import {recording} from "./testing/recording";
-import {Table} from "./Schema";
+import {ascii, defaultTo, Table, table, varchar} from "./Schema";
 import {feedTables, intTable, testTable} from "./testing/records";
 
 describe("SchemaBuilder", () => {
@@ -31,7 +31,7 @@ describe("SchemaBuilder", () => {
       "`field6` time, " +
       "`field7` tinyint(1) unsigned not null, " +
       "`field8` double(7, 5) unsigned not null, " +
-      "constraint `test_key` unique (`field`, `field4`))"
+      "constraint `test_key` unique (`field`, `field4`)) engine=InnoDB default charset=utf8mb4"
     );
 
     expect(indexes).to.deep.equal([
@@ -65,14 +65,52 @@ describe("SchemaBuilder", () => {
       'create table if not exists "test" (' +
       '"id" integer primary key autoincrement, ' +
       '"field" integer not null, ' +
-      '"field2" text not null, ' +
-      '"field3" text not null, ' +
-      '"field4" text not null, ' +
+      '"field2" char(3) not null, ' +
+      '"field3" char(5) not null, ' +
+      '"field4" varchar(5) not null, ' +
       '"field5" text not null, ' +
       '"field6" text, ' +
       '"field7" integer not null, ' +
       '"field8" numeric not null, ' +
       'constraint "test_key" unique ("field", "field4"))'
+    );
+  });
+
+  /**
+   * MySQL's default collation is case insensitive, so two ids differing only in case are one id to a
+   * key and to a join. Only it needs telling: SQLite compares byte for byte and Postgres compares
+   * varchar exactly.
+   */
+  it("compares an ascii column byte for byte", async () => {
+    const identifiers = table({ code: ascii(varchar(32)), name: varchar(32) });
+
+    const [mysql] = await compile(mysqlSchemaDialect, "t", identifiers, schema => schema.createSchema());
+    const [postgres] = await compile(postgresSchemaDialect, "t", identifiers, schema => schema.createSchema());
+    const [sqlite] = await compile(sqliteSchemaDialect, "t", identifiers, schema => schema.createSchema());
+
+    expect(mysql).to.contain("`code` varchar(32) character set ascii collate ascii_bin not null");
+    expect(mysql).to.contain("`name` varchar(32) not null");
+    expect(postgres).to.contain('"code" varchar(32) not null');
+    expect(sqlite).to.contain('"code" varchar(32) not null');
+  });
+
+  // a column the feed leaves out has to land as the empty string, which is what keeps it in a key
+  it("gives a column its declared default", async () => {
+    const withDefault = table({ code: defaultTo(varchar(32), "") });
+
+    const [mysql] = await compile(mysqlSchemaDialect, "t", withDefault, schema => schema.createSchema());
+
+    expect(mysql).to.contain("`code` varchar(32) default '' not null");
+  });
+
+  // it had five columns and no surrogate key before it was declared here, and adding one shifts them
+  it("leaves out the generated id where a table is declared without one", async () => {
+    const keyless = table({ code: varchar(32) }, { generatedId: false });
+
+    const [mysql] = await compile(mysqlSchemaDialect, "t", keyless, schema => schema.createSchema());
+
+    expect(mysql).to.equal(
+      "create table if not exists `t` (`code` varchar(32) not null) engine=InnoDB default charset=utf8mb4"
     );
   });
 

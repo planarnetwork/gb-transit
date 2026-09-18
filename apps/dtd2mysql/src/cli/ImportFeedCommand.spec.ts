@@ -8,7 +8,7 @@ import {FeedFile, ParsedRecord, Record as FeedRecord, RecordAction} from "@gb-tr
 import {ImportFeedCommand} from "./ImportFeedCommand";
 import {nodeSqliteDialect} from "../database/NodeSqliteDatabase";
 import {getSchemaDialect} from "../database/dialect";
-import {char, FeedSchema} from "../database/Schema";
+import {char, FeedSchema, table} from "../database/Schema";
 
 /**
  * The log table is what says an archive has been imported: the next download starts from the file it
@@ -49,7 +49,7 @@ const codes = (db: Kysely<any>) =>
   db.selectFrom("thing").select("code").orderBy("code").execute().then(rows => rows.map(row => row.code));
 
 function command(db: Kysely<any>): ImportFeedCommand {
-  const schema: FeedSchema = { thing: { columns: { code: char(4) }, key: ["code"], indexes: [] } };
+  const schema: FeedSchema = { thing: table({ code: char(4) }, { key: ["code"] }) };
 
   return new ImportFeedCommand(
     db,

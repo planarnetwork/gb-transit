@@ -1,5 +1,5 @@
 import {CreateTableBuilder, Expression, sql} from "kysely";
-import {FieldType, getErrorCode, SchemaDialect} from "../SchemaDialect";
+import {ColumnType, FieldType, getErrorCode, SchemaDialect} from "../SchemaDialect";
 
 const DUPLICATE_TABLE = "42P07";
 
@@ -15,7 +15,8 @@ export const postgresSchemaDialect: SchemaDialect = {
 
   name: "postgres",
 
-  columnType(field: FieldType): Expression<unknown> {
+  // varchar comparison is already exact, so an ascii column needs nothing said about it here
+  columnType({ type: field }: ColumnType): Expression<unknown> {
     switch (field.type) {
       // character(n) pads a value back out to the width of the column when it is read, where MySQL
       // strips the padding instead. varchar returns exactly what was stored, which is what agrees.
@@ -32,6 +33,11 @@ export const postgresSchemaDialect: SchemaDialect = {
       case "int": return sql.raw(intType(field.length));
       case "foreignKey": return sql.raw("integer");
     }
+  },
+
+  // there is one engine and one encoding, both the database's
+  tableOptions<TB extends string, C extends string>(table: CreateTableBuilder<TB, C>): CreateTableBuilder<TB, C> {
+    return table;
   },
 
   addIdColumn<TB extends string, C extends string>(table: CreateTableBuilder<TB, C>): CreateTableBuilder<TB, C | "id"> {

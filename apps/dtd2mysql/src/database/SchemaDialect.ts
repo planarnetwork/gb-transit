@@ -33,6 +33,24 @@ export type FieldType =
   | { type: "foreignKey" };
 
 /**
+ * A column as the schema layer sees it: what it holds, and how the database is to compare it.
+ *
+ * Declared here rather than beside the rest of a column so that a dialect can be written against it
+ * without the declarations having to know a dialect exists.
+ */
+export interface ColumnType {
+  readonly type: FieldType;
+  /**
+   * The value is ASCII and is to be compared byte for byte, case included.
+   *
+   * Only MySQL has an opinion: its default collation is case insensitive, which makes two ids that
+   * differ only in case the same id. SQLite compares byte for byte already and Postgres compares
+   * varchar exactly, so both ignore this.
+   */
+  readonly ascii: boolean;
+}
+
+/**
  * The schema vocabulary of a database.
  *
  * Kysely's Dialect decides how to talk to a database - the driver, the placeholder style and identifier
@@ -44,9 +62,14 @@ export interface SchemaDialect {
   readonly name: DialectName;
 
   /**
-   * The column type used to store the given field
+   * The column type used to store the given column
    */
-  columnType(field: FieldType): Expression<unknown>;
+  columnType(column: ColumnType): Expression<unknown>;
+
+  /**
+   * Whatever the database needs said about the table rather than its columns
+   */
+  tableOptions<TB extends string, C extends string>(table: CreateTableBuilder<TB, C>): CreateTableBuilder<TB, C>;
 
   /**
    * Add the auto incrementing surrogate primary key to the table
