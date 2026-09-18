@@ -84,6 +84,23 @@ describe("KyselyTimetableSource", () => {
     expect(transfers[0].min_transfer_time).to.equal(300);
   });
 
+  /**
+   * The rating is what a transfer time comes from, so a TIPLOC without one cannot supply it. Applied
+   * after the ranking rather than before, the unrated TIPLOC won its CRS and was then dropped, and
+   * the station had no transfer time at all - where the rated TIPLOC beside it had one all along.
+   */
+  it("takes the transfer time from a rated tiploc, not from the one that ranks first", async () => {
+    await db.insertInto("physical_station").values([
+      station({tiploc_code: "AAAAAAA", crs_code: "RDG", cate_interchange_status: null}),
+      station({tiploc_code: "RDNGSTN", crs_code: "RDG", cate_interchange_status: 2})
+    ] as any).execute();
+
+    const transfers = await source().getTransfers();
+
+    expect(transfers.map(transfer => transfer.from_stop_id)).to.deep.equal(["RDG"]);
+    expect(transfers[0].min_transfer_time).to.equal(300);
+  });
+
   it("reports the last imported file as the feed version", async () => {
     expect(await source().getFeedVersion()).to.equal(null);
 

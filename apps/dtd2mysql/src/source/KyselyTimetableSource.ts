@@ -67,8 +67,7 @@ export class KyselyTimetableSource implements TimetableSource {
    * station a code refers to.
    */
   public async getTransfers(): Promise<Transfer[]> {
-    const results = await this.preferred()
-      .where("cate_interchange_status", "is not", null)
+    const results = await this.preferred({ rated: true })
       .select(["crs_code", "minimum_change_time"])
       .orderBy("crs_code")
       .execute();
@@ -139,10 +138,15 @@ export class KyselyTimetableSource implements TimetableSource {
    * spells its own way - `cate_interchange_status <=> 9` is its null safe equals - so a CASE says the
    * same thing, including for the null the operator quietly treats as "not 9".
    */
-  private preferred() {
-    const ranked = this.db
+  private preferred(options: { rated?: boolean } = {}) {
+    const stations = this.db
       .selectFrom("physical_station")
-      .where("crs_code", "is not", null)
+      .where("crs_code", "is not", null);
+
+    // Before the ranking rather than after it. A CRS whose winning TIPLOC has no rating would
+    // otherwise rank first and then be filtered out, so the station has no transfer time at all
+    // rather than the one its rated TIPLOC gives it.
+    const ranked = (options.rated ? stations.where("cate_interchange_status", "is not", null) : stations)
       .selectAll()
       .select(eb => sql<number>`row_number() over (
         partition by ${eb.ref("crs_code")}
