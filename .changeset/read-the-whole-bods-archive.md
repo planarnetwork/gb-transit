@@ -43,7 +43,8 @@ quietly producing an empty feed.
 **Calendars are clamped before they are compared**, so two registrations that differ only outside
 the window become one service rather than two. Clamping is what makes them coincide: a service
 registered from 2018 and one registered from 2020 describe the same calendar inside a window that
-starts after both.
+starts after both. The dates a calendar is compared on are sorted for the same reason - an operating
+profile lists its holidays in whatever order it likes.
 
 **`feed_info.txt` is written**, with the window as its dates. TransXChange says nothing about what a
 feed covers, and a registration's own dates are not an answer.

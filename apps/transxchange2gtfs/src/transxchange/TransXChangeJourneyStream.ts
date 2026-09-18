@@ -36,6 +36,10 @@ function minDate(a: LocalDate, b: LocalDate): LocalDate {
   return a.isBefore(b) ? a : b;
 }
 
+function sortedDates(of: LocalDate[]): string {
+  return of.map(date => date.toString()).sort().join();
+}
+
 /**
  * Transforms TransXChange objects into TransXChangeJourneys that are closer to GTFS calendars, calendar dates, trips
  * and stop times.
@@ -287,12 +291,16 @@ export class TransXChangeJourneyStream extends Transform implements Skipped {
                           endDate: LocalDate,
                           includes: LocalDate[],
                           excludes: LocalDate[]): string {
+    // Sorted, because the dates are collected in the order the operating profile
+    // happens to list its holidays and special days, and two calendars that run
+    // on the same days are the same calendar whatever order they were written
+    // down in.
     return [
       days.toString(),
       startDate.toString(),
       endDate.toString(),
-      includes.map(d => d.toString()).join(),
-      excludes.map(d => d.toString()).join()
+      sortedDates(includes),
+      sortedDates(excludes)
     ].join("_");
   }
 

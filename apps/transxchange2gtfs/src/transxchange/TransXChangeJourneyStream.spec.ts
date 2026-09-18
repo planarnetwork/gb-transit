@@ -287,6 +287,37 @@ describe("TransXChangeJourneyStream", () => {
     });
   });
 
+  it("gives two profiles that list the same dates in a different order one service", async () => {
+    const holidays = {
+      GoodFriday: [LocalDate.parse("2026-04-03")],
+      EasterMonday: [LocalDate.parse("2026-04-06")]
+    } as unknown as BankHolidays;
+
+    const profile = (order: string[]) => ({
+      ...transxchange,
+      VehicleJourneys: [{
+        ...transxchange.VehicleJourneys[0],
+        OperatingProfile: {
+          ...transxchange.VehicleJourneys[0].OperatingProfile,
+          BankHolidayOperation: {DaysOfNonOperation: [], DaysOfOperation: order},
+          SpecialDaysOperation: {DaysOfNonOperation: [], DaysOfOperation: []}
+        }
+      }]
+    });
+
+    const stream = new TransXChangeJourneyStream(holidays);
+
+    stream.write(profile(["GoodFriday", "EasterMonday"]));
+    stream.write(profile(["EasterMonday", "GoodFriday"]));
+    stream.end();
+
+    return awaitStream(stream, (rows: TransXChangeJourney[]) => {
+      expect(rows.length).to.equal(2);
+      expect(rows[0].calendar.includes.length).to.equal(2);
+      expect(rows[0].calendar.id).to.equal(rows[1].calendar.id);
+    });
+  });
+
   it("drops a journey that runs on no day inside the window", async () => {
     const stream = new TransXChangeJourneyStream({} as BankHolidays, {
       from: LocalDate.parse("2000-01-01"),
