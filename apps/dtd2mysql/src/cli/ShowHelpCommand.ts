@@ -32,7 +32,7 @@ The --gtfs and --gtfs-zip commands take the following options:
 
 The following environment properties are expected to be set:
   
-  DATABASE_URL               a connection string, handed to the driver as it is.
+  DATABASE_URL               a connection string, read by the driver's own parser.
                              The dialect comes from its scheme. Anything the
                              driver accepts works, including a unix socket:
                              mysql://user@host/db?socketPath=/var/run/mysqld/mysqld.sock

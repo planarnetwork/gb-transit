@@ -1,3 +1,4 @@
+import mysql2 from "mysql2";
 import {DialectName, dialectNames} from "./SchemaDialect";
 
 /**
@@ -56,13 +57,36 @@ export function consumerOptions(): Record<string, unknown> {
  * URL sets.
  */
 export function dialectName(): DialectName {
-  const name = process.env.DATABASE_DIALECT || dialectFromUrl() || "mysql";
+  // read whether or not DATABASE_DIALECT is set, so an unreadable scheme is reported rather than
+  // skipped - a Postgres URL handed to mysql2 because the dialect said mysql fails somewhere much
+  // less obvious than here, which is the failure this exists to catch
+  const fromUrl = dialectFromUrl();
+  const named = process.env.DATABASE_DIALECT;
 
-  if (!dialectNames.includes(name as DialectName)) {
-    throw new Error(`Unknown DATABASE_DIALECT "${name}", expected one of ${dialectNames.join(", ")}.`);
+  if (!named) {
+    return fromUrl ?? "mysql";
   }
 
-  return name as DialectName;
+  if (!dialectNames.includes(named as DialectName)) {
+    throw new Error(`Unknown DATABASE_DIALECT "${named}", expected one of ${dialectNames.join(", ")}.`);
+  }
+
+  if (fromUrl && fromUrl !== named) {
+    throw new Error(`DATABASE_DIALECT says ${named}, but DATABASE_URL is a ${fromUrl} URL.`);
+  }
+
+  return named as DialectName;
+}
+
+/**
+ * Whether the consumer has named a database at all.
+ *
+ * What a command asks before deciding there is one to read: downloading does not need a database,
+ * and it is answered here because this is what reads the environment. Asking for one of the three
+ * ways in - DATABASE_NAME - is how an install configured by URL ended up with no feed cursor.
+ */
+export function databaseConfigured(): boolean {
+  return databaseUrl() !== undefined || process.env.DATABASE_NAME !== undefined;
 }
 
 const SCHEMES: { [scheme: string]: DialectName } = {
@@ -101,20 +125,35 @@ function dialectFromUrl(): DialectName | undefined {
 /**
  * The options for a mysql2 pool.
  *
- * mysql2 parses the uri itself and copies every query parameter into its options, so the whole
- * driver surface is reachable through DATABASE_URL. It only takes a parsed value where the option is
- * not already set, which is what makes the ordering here hold.
+ * The URL is read by mysql2's own parser, which copies every query parameter into its options, so
+ * the whole driver surface is reachable through DATABASE_URL. It is parsed here rather than handed
+ * over as a uri because mysql2 merges a uri over its options on truthiness - `if (options[key])
+ * continue` - so a false or an empty string in DATABASE_OPTIONS lost to the URL, which is the
+ * opposite of what this file and the README promise. Parsed first and spread over, the ordering is
+ * the ordering.
  */
 export function mysqlOptions(): Record<string, unknown> {
+  const url = databaseUrl();
+
   return {
     connectionLimit: 20,
-    multipleStatements: true,
-    ...(databaseUrl() ? { uri: databaseUrl() } : fields()),
+    ...(url ? parseMysqlUrl(url) : fields()),
     ...consumerOptions(),
     // see the note at the top: this one is not a preference
     dateStrings: true
   };
 }
+
+/**
+ * mysql2's own URL parser, which is what it runs over a uri it is handed.
+ *
+ * The package exports it; its typings describe only the interface of the same name, so the shape is
+ * stated here. Using it rather than writing one means every URL mysql2 accepts still works,
+ * including the query parameters it reads as options.
+ */
+const parseMysqlUrl: (url: string) => Record<string, unknown> =
+  (mysql2 as unknown as { ConnectionConfig: { parseUrl(url: string): Record<string, unknown> } })
+    .ConnectionConfig.parseUrl;
 
 /**
  * The options for a pg pool.
@@ -141,12 +180,33 @@ export function postgresOptions(): Record<string, unknown> {
  * says so in DATABASE_OPTIONS.
  */
 export function sqliteOptions(): { filename: string, options: Record<string, unknown> } {
-  const url = databaseUrl();
-
   return {
-    filename: url ? url.replace(/^(sqlite|file):(\/\/)?/, "") : databaseName(),
+    filename: sqliteFilename(),
     options: { timeout: SQLITE_BUSY_TIMEOUT, ...consumerOptions() }
   };
+}
+
+/**
+ * The file a URL names.
+ *
+ * node:sqlite opens a path rather than a URI, so a query string is not something it can be given -
+ * left on, `file:feed.db?mode=ro` opens a file called `feed.db?mode=ro`. The scheme is checked
+ * where the dialect is read, so a URL for another database cannot reach this.
+ */
+function sqliteFilename(): string {
+  const url = databaseUrl();
+
+  if (!url) {
+    return databaseName();
+  }
+
+  const [filename, query] = url.replace(/^(sqlite|file):(\/\/)?/, "").split("?");
+
+  if (query !== undefined) {
+    throw new Error(`DATABASE_URL carries "?${query}", which node:sqlite does not read. Use DATABASE_OPTIONS.`);
+  }
+
+  return filename;
 }
 
 const SQLITE_BUSY_TIMEOUT = 5000;

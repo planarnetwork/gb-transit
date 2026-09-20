@@ -1,5 +1,7 @@
 import {afterEach, beforeEach, describe, expect, it} from "vitest";
-import {consumerOptions, databaseUrl, dialectName, mysqlOptions, postgresOptions, sqliteOptions} from "./connection";
+import {
+  consumerOptions, databaseConfigured, databaseUrl, dialectName, mysqlOptions, postgresOptions, sqliteOptions
+} from "./connection";
 
 describe("the database connection", () => {
   const environment = process.env;
@@ -52,11 +54,30 @@ describe("the database connection", () => {
       expect(() => dialectName()).to.throw(/scheme "oracle"/);
     });
 
-    it("is overridden by DATABASE_DIALECT", () => {
+    it("is named by DATABASE_DIALECT where there is no URL to read it from", () => {
+      process.env.DATABASE_DIALECT = "postgres";
+
+      expect(dialectName()).to.equal("postgres");
+    });
+
+    /**
+     * Saying both and saying two different things is a misconfiguration rather than a preference:
+     * the URL would otherwise reach a driver that cannot read it, which is what reading the scheme
+     * exists to prevent.
+     */
+    it("refuses a dialect that contradicts the URL", () => {
       process.env.DATABASE_URL = "postgres://localhost/feed";
       process.env.DATABASE_DIALECT = "mysql";
 
-      expect(dialectName()).to.equal("mysql");
+      expect(() => dialectName()).to.throw(/says mysql, but DATABASE_URL is a postgres URL/);
+    });
+
+    // the scheme was only read where DATABASE_DIALECT was unset, so setting it skipped the check
+    it("reads the scheme even when the dialect is named", () => {
+      process.env.DATABASE_URL = "oracle://localhost/feed";
+      process.env.DATABASE_DIALECT = "mysql";
+
+      expect(() => dialectName()).to.throw(/scheme "oracle"/);
     });
 
     it("rejects a dialect it does not have", () => {
@@ -69,12 +90,24 @@ describe("the database connection", () => {
 
   describe("mysql", () => {
 
-    it("hands the URL to the driver rather than taking it apart", () => {
+    it("reads the URL with the driver's own parser", () => {
       process.env.DATABASE_URL = "mysql://root@localhost/feed?socketPath=/var/run/mysqld/mysqld.sock";
 
       // the socket is the driver's option, and nothing here had to know it exists
-      expect(mysqlOptions().uri).to.equal(process.env.DATABASE_URL);
-      expect(mysqlOptions().host).to.equal(undefined);
+      expect(mysqlOptions()).to.include({
+        host: "localhost", user: "root", database: "feed", socketPath: "/var/run/mysqld/mysqld.sock"
+      });
+    });
+
+    /**
+     * Handed the URL as a uri, mysql2 merges it over the options on truthiness, so a false or an
+     * empty string lost to the URL - the opposite of the order the README promises.
+     */
+    it("lets the consumer override what the URL says, including with a falsy value", () => {
+      process.env.DATABASE_URL = "mysql://root:secret@localhost/feed?multipleStatements=true";
+      process.env.DATABASE_OPTIONS = '{"password":"","multipleStatements":false,"database":"other"}';
+
+      expect(mysqlOptions()).to.include({password: "", multipleStatements: false, database: "other"});
     });
 
     it("uses the named fields when there is no URL", () => {
@@ -150,6 +183,16 @@ describe("the database connection", () => {
       expect(sqliteOptions().options.timeout).to.equal(0);
     });
 
+    /**
+     * node:sqlite opens a path rather than a URI, so the query string is not something it reads:
+     * left on, the file it opens is one called feed.db?mode=ro.
+     */
+    it("refuses a URL carrying parameters it cannot pass on", () => {
+      process.env.DATABASE_URL = "file:feed.db?mode=ro";
+
+      expect(() => sqliteOptions()).to.throw(/mode=ro.*DATABASE_OPTIONS/);
+    });
+
     it("passes the driver's own options through", () => {
       process.env.DATABASE_NAME = ":memory:";
       process.env.DATABASE_OPTIONS = '{"readOnly":true,"timeout":5000}';
@@ -157,6 +200,24 @@ describe("the database connection", () => {
       expect(sqliteOptions().options).to.deep.equal({readOnly: true, timeout: 5000});
     });
 
+  });
+
+  /**
+   * Downloading needs no database, and the feed cursor is the one thing that does: asked of
+   * DATABASE_NAME alone, a URL-only install had no cursor and re-took the most recent full refresh
+   * every run, skipping every changes file between.
+   */
+  it("knows whether a database has been named, by either of the ways of naming one", () => {
+    expect(databaseConfigured()).to.equal(false);
+
+    process.env.DATABASE_NAME = "feed";
+
+    expect(databaseConfigured()).to.equal(true);
+
+    delete process.env.DATABASE_NAME;
+    process.env.DATABASE_URL = "postgresql://postgres@/feed?host=/var/run/postgresql";
+
+    expect(databaseConfigured()).to.equal(true);
   });
 
   it("says so when DATABASE_OPTIONS is not JSON", () => {
