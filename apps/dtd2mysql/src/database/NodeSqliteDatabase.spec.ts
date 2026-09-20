@@ -1,4 +1,7 @@
 import {describe, it, expect} from 'vitest';
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
 import {Kysely, sql} from "kysely";
 import {nodeSqliteDialect} from "./NodeSqliteDatabase";
 
@@ -107,6 +110,24 @@ describe("node:sqlite as a Kysely database", () => {
       .rejects.toThrow(/cannot store|cannot be bound/);
 
     expect((await db.selectFrom("stops").selectAll().execute()).length).to.equal(0);
+
+    await db.destroy();
+  });
+
+  /**
+   * A command that never runs a query should not leave a database behind: --download-timetable
+   * writes files and imports nothing, and it created an empty one because the dialect opened the
+   * file as it was built rather than when it was first used.
+   */
+  it("opens the file when the first query runs, not when the dialect is built", async () => {
+    const filename = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "dtd-sqlite")), "feed.sqlite");
+    const db = new Kysely<any>({ dialect: nodeSqliteDialect(filename) });
+
+    expect(fs.existsSync(filename), "before the first query").to.equal(false);
+
+    await db.schema.createTable("t").addColumn("a", sql.raw("text")).execute();
+
+    expect(fs.existsSync(filename), "after it").to.equal(true);
 
     await db.destroy();
   });

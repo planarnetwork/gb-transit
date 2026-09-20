@@ -24,7 +24,7 @@ import {ShowHelpCommand} from "./cli/ShowHelpCommand";
 import {DatabaseConnection} from "./database/DatabaseConnection";
 import {Database} from "./database/Database";
 import {SchemaDialect} from "./database/SchemaDialect";
-import {dialectName, mysqlOptions, postgresOptions, sqliteOptions} from "./database/connection";
+import {databaseConfigured, dialectName, mysqlOptions, postgresOptions, sqliteOptions} from "./database/connection";
 import {getSchemaDialect} from "./database/dialect";
 import {nodeSqliteDialect} from "./database/NodeSqliteDatabase";
 import schema from "./database/schema";
@@ -114,7 +114,8 @@ const getKysely = once((_: null): Kysely<Database> => {
     case "sqlite": {
       const {filename, options} = sqliteOptions();
 
-      return new Kysely({dialect: nodeSqliteDialect(filename, options)});
+      // the file is the connection, and Kysely is what holds it: there is no pool to end
+      return trackClose(new Kysely({dialect: nodeSqliteDialect(filename, options)}));
     }
     case "postgres":
       return new Kysely({
@@ -150,27 +151,37 @@ const getDatabaseStream = once((_: null): mysql.Pool =>
  * finishing. Closing from here covers every command rather than the ones that
  * remember to.
  */
-const pools: {end(...args: any[]): any}[] = [];
+const open: (() => unknown)[] = [];
 
 function track<T extends {end(...args: any[]): any}>(pool: T): T {
-  pools.push(pool);
+  open.push(() => pool.end());
 
   return pool;
+}
+
+/**
+ * The same, for something closed by destroy() rather than end(). A pool has neither the SQLite
+ * handle's lifecycle nor its method, and a Kysely that is never closed holds the file open.
+ */
+function trackClose<T extends {destroy(): Promise<unknown>}>(db: T): T {
+  open.push(() => db.destroy());
+
+  return db;
 }
 
 export async function closeConnections(): Promise<void> {
   // A command that closes its own pool - the GTFS build does - has already been
   // here, and mysql2 throws on a second close. Nothing to report either way.
-  await Promise.all(pools.map(async pool => {
+  await Promise.all(open.map(async close => {
     try {
-      await pool.end();
+      await close();
     }
     catch (err) {
       return undefined;
     }
   }));
 
-  pools.length = 0;
+  open.length = 0;
 }
 
 const databaseConnection = () => getDatabaseConnection(null);
@@ -236,7 +247,7 @@ const getSFTP = once((_: null): Promise<PromiseSFTP> =>
  * refresh"; constructing it eagerly is what turned that into a failure instead.
  */
 export function feedCursor(): FeedCursor {
-  return process.env.DATABASE_NAME ? new LogTableFeedCursor(kysely()) : NO_CURSOR;
+  return databaseConfigured() ? new LogTableFeedCursor(kysely()) : NO_CURSOR;
 }
 
 const getDownloadCommand = once(async (directory: string) =>
@@ -269,6 +280,13 @@ function timetableSource(context: BuildContext): TimetableSource {
       dateRange(context),
       context.removePassingPoints
     );
+  }
+
+  // the build streams the stop times of a whole feed, and Kysely's Postgres dialect only streams
+  // with pg-cursor. Asked for here it names the package; left to the dialect it fails part way
+  // through a build, with a message that names neither the package nor the fix.
+  if (dialectName() === "postgres") {
+    driver("pg-cursor");
   }
 
   return new KyselyTimetableSource(
