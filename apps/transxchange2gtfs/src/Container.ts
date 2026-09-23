@@ -123,7 +123,7 @@ export class Container {
         journeys.pipe(new CalendarDatesStream()),
         journeys.pipe(new TripsStream()),
         journeys.pipe(new StopTimesStream()),
-        journeys.pipe(new ShapesStream()),
+        journeys.pipe(new ShapesStream(naptanIndex, areas)),
         journeys.pipe(new FeedInfoStream(window, options.version ?? LocalDate.now().toString())),
         transxchange.pipe(new AgencyStream()),
         transxchange.pipe(new RoutesStream()),

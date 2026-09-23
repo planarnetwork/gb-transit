@@ -320,8 +320,12 @@ digit, which no CRS code does, for the [transfer patterns](#the-transfer-pattern
 codes are numbered in the order of the stations' ids, so they are stable within a release and not
 between them.
 
-TfL's trips carry no shape. The timetables say which stops a train calls at and not the line
-between them.
+A TfL line is one route, `tfl_BAK` for the Bakerloo, whichever of TfL's timetables a trip came
+from, in the line's colour from TfL's
+[Colour Standard](https://content.tfl.gov.uk/tfl-colour-standard.pdf) and linking to its page on
+tfl.gov.uk. TfL's trips are drawn station to station, like the rail feed's: the timetables say which
+stops a train calls at and nothing of the line between them, so the shape is a straight line from each
+stop to the next.
 
 TfL's open data licence makes the acknowledgement "Powered by TfL Open Data" a condition of using
 the timetables, and the feed's `attributions.txt` carries it.

@@ -108,4 +108,47 @@ describe("ShapesStream", () => {
     });
   });
 
+  /**
+   * TfL's route links have no track. The journey is still drawn, stop to stop,
+   * through where NaPTAN places the stops - and through the station of a
+   * platform NaPTAN does not list.
+   */
+  it("draws a link with no track from the stop it leaves to the stop it reaches", async () => {
+    const naptan: any = {
+      "9400ZZLUBST1": {latitude: "51.5232", longitude: "-0.1575"},
+      "9400ZZLUBND1": {latitude: "51.5142", longitude: "-0.1494"}
+    };
+    const areas: any = {"940GZZLUOXC": {id: "940GZZLUOXC", name: "", latitude: "51.5152", longitude: "-0.1415"}};
+    const tube = journey({
+      route: "1-JUB|1-JUB",
+      routeLinkIds: ["L1", "L2"],
+      routeLinks: [
+        {From: "9400ZZLUBST1", To: "9400ZZLUBND1", Distance: 1100, Locations: []},
+        {From: "9400ZZLUBND1", To: "9400ZZLUOXC7", Distance: 600, Locations: []}
+      ]
+    });
+    const stream = new ShapesStream(naptan, areas);
+
+    stream.write(tube);
+    stream.end();
+
+    return awaitStream(stream, (rows: any[]) => {
+      expect(rows.map(r => [r.shape_pt_lat, r.shape_pt_lon])).to.deep.equal([
+        [51.5232, -0.1575], [51.5142, -0.1494], [51.5152, -0.1415]
+      ]);
+      expect(parseFloat(rows[2].shape_dist_traveled)).to.be.closeTo(1.7, 1e-6);
+    });
+  });
+
+  it("leaves a link out where neither end can be placed, rather than drawing to Null Island", async () => {
+    const stream = new ShapesStream();
+
+    stream.write(journey({routeLinks: [{From: "X", To: "Y", Distance: 100, Locations: []}]}));
+    stream.end();
+
+    return awaitStream(stream, (rows: any[]) => {
+      expect(rows).to.deep.equal([]);
+    });
+  });
+
 });
