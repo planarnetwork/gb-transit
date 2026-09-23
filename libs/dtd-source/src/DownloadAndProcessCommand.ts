@@ -7,21 +7,22 @@ export class DownloadAndProcessCommand {
   ) {}
 
   /**
-   * Download and process the feed in one command
+   * Download and process the feed in one command.
+   *
+   * The files are changes applied in order, so processing stops at the first that fails: going on to
+   * the next would record it as processed, and the one that failed would never be taken again.
    */
   public async run(argv: string[]): Promise<any> {
     const files = await this.download.run([]);
 
-    for (const filename of files) {
-      try {
+    try {
+      for (const filename of files) {
         await this.process.doImport(filename);
       }
-      catch (err) {
-        console.error(err);
-      }
     }
-
-    return this.process.end();
+    finally {
+      await this.process.end();
+    }
   }
 
 }
