@@ -281,6 +281,18 @@ describe("an apply allowlist", () => {
     expect(restricted.refused).to.equal(1);
   });
 
+  it("says which enricher's list turned them away", async () => {
+    // The total says a config is wrong somewhere; this says which line.
+    const allowed = new Map([["PARTIAL", new Set(["stop_desc"])]]);
+    const restricted = new MutableFeed([stop("PAD"), stop("WAT")], [], [], new Provenance(), allowed);
+
+    await enrich(restricted, [both("PARTIAL"), both("OPEN")]);
+
+    expect(restricted.refusedBy("PARTIAL")).to.equal(2);
+    expect(restricted.refusedBy("OPEN")).to.equal(0);
+    expect(restricted.refused).to.equal(2);
+  });
+
   it("leaves an enricher with no list alone", async () => {
     const open = new MutableFeed([stop("PAD")], [], []);
 

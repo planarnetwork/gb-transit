@@ -20,7 +20,7 @@ export async function convert(options: ConvertOptions): Promise<void> {
   const converter = await new Container().getConverter({
     ...options,
     tmp: options.tmp ?? workingDirectory(options.output)
-  });
+  }, options.inputs);
 
   return converter.process([...options.inputs], options.output);
 }

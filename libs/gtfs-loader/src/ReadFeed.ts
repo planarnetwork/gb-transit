@@ -1,4 +1,4 @@
-import {CSVParser} from "./CSVParser.js";
+import {CSVParser, Row} from "./CSVParser.js";
 import {GTFSSource, toChunks} from "./Source.js";
 import {readZip} from "./ZipReader.js";
 import {FeedFileName, FeedRowTypes, FEED_FILES, READ_COLUMNS, feedFileOf, toRow} from "./FeedFile.js";
@@ -16,6 +16,13 @@ export interface ReadFeedOptions {
    * default is to ignore it, because most feeds are missing most files.
    */
   onMissing?: (file: FeedFileName) => void;
+  /**
+   * Columns to read from a file beyond the ones the schema knows, carried on the
+   * row as the text the file held. For a tool that passes a feed's columns
+   * through rather than interpreting them. A column the schema already knows is
+   * read as it always is, so naming one here changes nothing.
+   */
+  extraColumns?: Partial<Record<FeedFileName, readonly string[]>>;
 }
 
 /**
@@ -50,7 +57,10 @@ export async function readFeed(
 
     seen.add(file);
 
-    const parser = new CSVParser(READ_COLUMNS[file], row => handler(toRow(file, row)));
+    const extra = (options.extraColumns?.[file] ?? []).filter(column => !READ_COLUMNS[file].includes(column));
+    const parser = extra.length === 0
+      ? new CSVParser(READ_COLUMNS[file], row => handler(toRow(file, row)))
+      : new CSVParser([...READ_COLUMNS[file], ...extra], row => handler(withExtra(toRow(file, row), row, extra)));
 
     return (text, final) => {
       parser.write(text);
@@ -68,6 +78,16 @@ export async function readFeed(
       }
     }
   }
+}
+
+function withExtra<T>(typed: T, row: Row, extra: readonly string[]): T {
+  const out = typed as Record<string, unknown>;
+
+  for (const column of extra) {
+    out[column] = row[column];
+  }
+
+  return typed;
 }
 
 /**

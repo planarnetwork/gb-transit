@@ -24,7 +24,7 @@ const assets = [
 ---
 <Base
   title="The feeds"
-  description="Open transit data for Great Britain, rebuilt every night and released as plain GTFS zips: the standard feed, and National Rail services only."
+  description="Open transit data for Great Britain, rebuilt every night and released as plain GTFS zips: the standard feed, National Rail services only, and National Rail with TfL's tube, DLR and trams."
 >
   <div class="shell page-head">
     <p class="crumb">Feeds</p>
@@ -42,8 +42,8 @@ const assets = [
     </div>
     <p style="margin: 22px 0 0; font-size: 15px; color: var(--ink-quiet); max-width: 70ch;">
       Every link resolves to the most recent release, so it can be bookmarked or scripted against.
-      The first two hold the same trips and differ only in their stop times; the third holds fewer
-      trips than either.
+      The second holds fewer trips than the first, and the third holds the second&rsquo;s and
+      TfL&rsquo;s.
     </p>
   </section>
 
@@ -54,15 +54,16 @@ const assets = [
         <h3>1 · Download</h3>
         <p>
           The most recent full refresh of the DTD timetable and every incremental published since,
-          plus the fares refresh the station groups come from.
+          plus the fares refresh the station groups come from, and TfL&rsquo;s Journey Planner
+          Timetables.
         </p>
       </div>
       <div class="stripe stripe--signal">
         <h3>2 · Build</h3>
         <p>
           Three builds from <a href={source("gtfs.config.yaml")}><code>gtfs.config.yaml</code></a>{" "}
-          and its National Rail only variant. Stations get their real coordinates and names from
-          NaPTAN.
+          and its two variants, the last with TfL&rsquo;s Journey Planner Timetables put beside it.
+          Stations get their real coordinates and names from NaPTAN.
         </p>
       </div>
       <div class="stripe stripe--go">
@@ -76,7 +77,7 @@ const assets = [
       <div class="stripe stripe--quiet">
         <h3>4 · Compare, then release</h3>
         <p>
-          A feed with more than a 5% swing in trips against yesterday needs a human. Otherwise all
+          A feed with more than a 15% swing in trips against yesterday needs a human. Otherwise all
           three are attached to a dated release.
         </p>
       </div>

@@ -28,12 +28,17 @@ import * as path from "node:path";
 const ROOT = path.resolve(import.meta.dirname, "..");
 
 /**
- * Every workspace that publishes, so any of them can be an override.
+ * Every library that publishes, so any of them can be an override, read from the
+ * workspaces rather than listed: a list kept by hand missed fares-source and
+ * routeing-source, so their tarballs were never checked at all.
  */
-const LIBRARIES = [
-  "gtfs-schema", "feed-parser", "dtd-schema", "dtd-source", "gtfs", "gtfs-output", "gtfs-loader",
-  "naptan", "enrich-naptan", "extend-station-groups"
-];
+const LIBRARIES = fs.readdirSync(path.join(ROOT, "libs"))
+  .filter(dir => {
+    const manifest = path.join(ROOT, "libs", dir, "package.json");
+
+    return fs.existsSync(manifest) && JSON.parse(fs.readFileSync(manifest, "utf8")).private !== true;
+  })
+  .sort();
 
 const APPLICATIONS = ["dtd2mysql", "cif2gtfs", "transxchange2gtfs", "gtfsmerge"];
 
@@ -88,9 +93,14 @@ const CHECKS = [
     help: ["transxchange2gtfs"],
     run: dir => {
       const fixtures = path.join(ROOT, "apps/transxchange2gtfs/fixtures/mini");
-      // --naptan, so the check is not held up by a 100MB download.
+      // --naptan, so the check is not held up by a 100MB download. The window
+      // and the version are pinned to the ones the golden was built for, which
+      // otherwise default to today and would differ from it every day.
       const run = attempt(dir, "./node_modules/.bin/transxchange2gtfs", [
         "--naptan", path.join(fixtures, "naptan.csv"),
+        "--from", "2026-01-05",
+        "--to", "2026-12-31",
+        "--feed-version", "mini",
         path.join(fixtures, "mini.xml"),
         "./feed"
       ]);
@@ -181,6 +191,30 @@ const CHECKS = [
     }
   },
 ];
+
+/**
+ * Every library, installed from its tarball and imported. Nothing more specific
+ * than that, which is still enough to catch a tarball without its entry points:
+ * files: ["dist"] packs an empty dist without a word, and
+ * knowledgebase-fare-group-permitted-stations@1.0.0 was published as a
+ * package.json and a README.
+ */
+const LIBRARY_CHECKS = LIBRARIES.map(library => ({
+  name: `@gb-transit/${library}`,
+  run: dir => {
+    const installed = path.join(dir, "node_modules", "@gb-transit", library);
+    const manifest = JSON.parse(fs.readFileSync(path.join(installed, "package.json"), "utf8"));
+
+    for (const file of [manifest.main, manifest.types].filter(file => file !== undefined)) {
+      expect(fs.existsSync(path.join(installed, file)), `${file} is not in the tarball`);
+    }
+
+    node(dir, `
+      const m = await import(${JSON.stringify(`@gb-transit/${library}`)});
+      if (Object.keys(m).length === 0) throw new Error("it exports nothing");
+    `, true);
+  }
+}));
 
 function expect(condition, message) {
   if (!condition) {
@@ -300,7 +334,7 @@ if (import.meta.filename === process.argv[1]) {
 
     const tarballs = packAll(path.join(work, "tarballs"));
 
-    for (const check of CHECKS) {
+    for (const check of [...CHECKS, ...LIBRARY_CHECKS]) {
       const dir = path.join(work, "install", check.name.replace("@gb-transit/", ""));
 
       console.log(`\n=== ${check.name} ===`);

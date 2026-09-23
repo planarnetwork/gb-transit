@@ -80,6 +80,32 @@ which is also how the tests run offline:
 transxchange2gtfs --naptan Stops.csv transxchange.zip gtfs-output.zip
 ```
 
+`--from` and `--to` are the days the feed describes, defaulting to today and a year out. A bus
+registration's own dates run from whenever it began to as far out as 2099 and neither says anything
+about what the feed can be trusted for, so a journey that runs on no day in the range is left out and
+the calendars of the rest are clipped to it.
+
+```
+transxchange2gtfs --from 2026-09-18 --to 2027-12-07 transxchange.zip gtfs-output.zip
+```
+
+Where NaPTAN pairs the two sides of a street, both stops are put under a station of their own so a
+planner treats them as one place. A metro, tram or ferry platform is put under the station NaPTAN
+numbers it after - `9400ZZLUKSX1` under `940GZZLUKSX`, King's Cross St. Pancras - including a
+platform NaPTAN does not list, which stands at its station. `--skip-stop-areas` writes every stop on
+its own.
+
+TfL's [Journey Planner Timetables](https://tfl.gov.uk/info-for/open-data-users/our-open-data)
+publish a line's engineering works timetable as a service of its own, overlapping the base timetable
+it interrupts, and nothing in either says the one replaces the other. `--supersede-by-line` runs only
+the service that starts latest on the days two services of one operator and line share, so a works
+weekend replaces the base timetable rather than running beside it. It is not for BODS, where an
+operator can run two unrelated services under one line name:
+
+```
+transxchange2gtfs --supersede-by-line "LULDLRTRAMRIVERCABLE FULL.zip" tfl.zip
+```
+
 The output may be a directory rather than a `.zip`, which is what you want if the next thing to
 touch it is [`gtfsmerge`](../gtfsmerge) or another tool.
 
@@ -89,7 +115,8 @@ touch it is [`gtfsmerge`](../gtfsmerge) or another tool.
 
 - All stop times are left in the original timezones (assumed to be local time).
 - It is assumed that any stops in different TransXChange documents with the same ATCO are the same stop.
-- There is no `feed_info.txt`: TransXChange carries no publisher, version or feed date range to build one from.
+- `feed_info.txt` says what the conversion was asked for, because TransXChange carries no publisher, version or feed date range of its own.
+- Agencies are keyed on the National Operator Code. The `Operator` id a TransXChange document uses means nothing outside that document — `tkt_oid` is the id 167 different operators in the national dataset give themselves.
 - Stops are named by their ATCO code, which is what lets the output merge with a GB rail feed from [`cif2gtfs`](../cif2gtfs) without reconciling anything.
 - Stop data is derived from [NaPTAN](http://naptan.app.dft.gov.uk/datarequest/help).
 - TransXChange is a [bizarre and over-engineered standard](http://naptan.dft.gov.uk/transxchange/training/EBSR/EBSR%20Training%20Toolkit%20v1.0/3%20Resources/Guides/TransXChange%20Schema%20Guide-2.1-v-44.pdf), there are probably edge cases that have not been covered.

@@ -32,6 +32,28 @@ enrichers:
       # renamed; docs/station-names.md records where the two sources differ.
       - stop_name
 
+  # Whether a wheelchair user can get to a platform, which the DTD says nothing
+  # about. The Knowledgebase is the industry's own record of it, audited by the
+  # ORR and updated daily.
+  #
+  # Named for the feed rather than the source: the Knowledgebase publishes
+  # several and there will be more of these.
+  #
+  # Needs a Rail Data Marketplace subscription to the stations feed, whose key
+  # is read from KNOWLEDGEBASE_API_KEY. The copy on disk is used for a week, and
+  # if a refresh then fails the build warns and carries on with the stale one
+  # rather than stopping. Only a download needs the key.
+  KNOWLEDGEBASE_STATIONS:
+    apply:
+      # 1 wherever a step-free path to a platform exists - categories A, B1, B2
+      # and B3 - and 2 only for C, which is the value that tells a wheelchair
+      # user not to travel. A station the Knowledgebase has not classified keeps
+      # whatever it already had rather than being set to "no information".
+      - wheelchair_boarding
+      # The station's page, which has the lifts, the ramps and the opening
+      # times this feed has nowhere to put.
+      - stop_url
+
 extensions:
   # Group stations as GTFS Fares v2 areas: 1072 "London Terminals" is Euston,
   # Waterloo, King's Cross and fifteen others, and a rider holding a ticket to

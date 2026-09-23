@@ -6,7 +6,7 @@ import {Association} from "../model/Association";
 import {applyOverlays} from "../transform/ApplyOverlays";
 import {mergeSchedules} from "../transform/MergeSchedules";
 import {applyAssociations, AssociationIndex, ScheduleIndex} from "../transform/ApplyAssociations";
-import {excludeServices, NO_EXCLUSIONS} from "../transform/ExcludeServices";
+import {excludeLinks, excludeServices, NO_EXCLUSIONS} from "../transform/ExcludeServices";
 import {createCalendar, ServiceIdIndex} from "../transform/CreateCalendar";
 import {ScheduleResults} from "./ScheduleBuilder";
 import {FileSchema, GTFSOutput, RowWriter} from "@gb-transit/gtfs-schema";
@@ -57,7 +57,13 @@ export class BuildFeed {
      * Sources of files the core build has no concept of. Empty produces the
      * same feed as a build with no extensions at all.
      */
-    private readonly extensions: readonly Extension[] = []
+    private readonly extensions: readonly Extension[] = [],
+    /**
+     * Per enricher, the only fields it may write - the config's `apply:`, which
+     * `applyLists` puts in this shape. An enricher with no entry is
+     * unrestricted, which is what a build that passes nothing gets.
+     */
+    private readonly allowed: ReadonlyMap<string, ReadonlySet<string>> = new Map()
   ) {
     checkKeys(extensions);
   }
@@ -111,7 +117,8 @@ export class BuildFeed {
     // stops.txt is written after the schedules and the links are known, because
     // whether an unlocated station is published depends on whether anything
     // references it.
-    const [sourceStops, fixedLinks] = await Promise.all([stopsQ, fixedLinksQ]);
+    const [sourceStops, allFixedLinks] = await Promise.all([stopsQ, fixedLinksQ]);
+    const fixedLinks = excludeLinks(allFixedLinks, this.context.exclude ?? NO_EXCLUSIONS);
     const located = locate(sourceStops, referenced(schedules, fixedLinks));
     // Every index the build keeps is on the CRS code, because that is what a
     // schedule, an association and a fixed link name a station by.
@@ -122,7 +129,7 @@ export class BuildFeed {
     // Only the stops are offered to an enricher. Trips and routes are streamed
     // straight to their files rather than held, and materialising 276,000 trips
     // to enrich a handful is the wrong trade until something needs it.
-    const feed = new MutableFeed(located, [], []);
+    const feed = new MutableFeed(located, [], [], undefined, this.allowed);
     const reports = this.enrichers.length > 0 ? await enrich(feed, this.enrichers) : [];
     // Everything a station decides is decided here, once it is final: what a
     // train is named after, and the boarding points that carry its position.

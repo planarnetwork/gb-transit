@@ -1,0 +1,35 @@
+{
+  "name": "@gb-transit/fares-source",
+  "version": "0.1.0",
+  "description": "Read the DTD fares feed straight from its zips into memory, with change files applied",
+  "license": "GPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/planarnetwork/gb-transit.git",
+    "directory": "libs/fares-source"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@gb-transit/dtd-schema": "workspace:^",
+    "@gb-transit/feed-parser": "workspace:^"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2"
+  }
+}

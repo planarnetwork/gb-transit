@@ -10,6 +10,7 @@ describe("RoutesStream", () => {
     const stream = new RoutesStream();
 
     stream.write({
+      Operators: {"OId_DLR": {NationalOperatorCode: "DLRL", OperatorCode: "DLR"}},
       Services: {
         "25-DLR-_-y05-216": {
           "Description": "Bank - Beckton",
@@ -35,10 +36,35 @@ describe("RoutesStream", () => {
     });
   });
 
+  it("falls back to the document's own operator id when there is no code", async () => {
+    const stream = new RoutesStream();
+
+    stream.write({
+      Services: {
+        "S1": {
+          "Description": "",
+          "Lines": {"l1": {"LineName": "1", "Description": ""}},
+          "Mode": "bus",
+          "OperatingPeriod": {
+            "EndDate": LocalDate.parse("2099-12-31"),
+            "StartDate": LocalDate.parse("2018-06-24")
+          },
+          "RegisteredOperatorRef": "OP1",
+          "ServiceCode": "S1"
+        }
+      }
+    });
+
+    stream.end();
+
+    return awaitStream(stream, (rows: any[]) => expect(rows[0].agency_id).to.equal("OP1"));
+  });
+
   it("emits routes", async () => {
     const stream = new RoutesStream();
 
     stream.write({
+      Operators: {"OId_MEGA": {NationalOperatorCode: "MEGA", OperatorCode: "MG"}},
       Services: {
         "M6_MEGA": {
           "Description": "Falmouth - Victoria,London",
@@ -62,10 +88,11 @@ describe("RoutesStream", () => {
       const {route_id, agency_id, route_short_name, route_long_name, route_type} = rows[0];
 
       expect(route_id).to.equal("M6_MEGA|l_M6_MEGA");
-      expect(agency_id).to.equal("OId_MEGA");
+      expect(agency_id).to.equal("MEGA");
       expect(route_short_name).to.equal("M6");
       expect(route_long_name).to.equal("Falmouth - Victoria,London");
-      expect(route_type).to.equal(3);
+      // A coach is the extended route type for one, not a bus.
+      expect(route_type).to.equal(200);
     });
   });
 

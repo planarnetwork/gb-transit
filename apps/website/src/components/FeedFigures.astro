@@ -17,9 +17,10 @@ const rows = feed === undefined ? [] : [
     .map(figure => ({label: `Stop times, ${each.file}`, value: figure.value})))
 ];
 
-// Trips is already on the board for the standard feed; the National Rail only
-// feed holds its own number and is worth stating next to it.
+// Trips is already on the board for the standard feed; the other two hold their
+// own numbers and are worth stating next to it.
 const only = feed?.trips_national_rail_only;
+const withTfl = feed?.trips_rail_and_tfl;
 ---
 {rows.length === 0
   ? <p><em>No feed has been published yet, so there are no figures to give.</em></p>
@@ -30,6 +31,9 @@ const only = feed?.trips_national_rail_only;
         ))}
         {only !== undefined && (
           <div><dt>Trips, gtfs-national-rail-only.zip</dt><dd>{number(only)}</dd></div>
+        )}
+        {withTfl !== undefined && (
+          <div><dt>Trips, gtfs-rail-and-tfl.zip</dt><dd>{number(withTfl)}</dd></div>
         )}
       </dl>
     </div>}

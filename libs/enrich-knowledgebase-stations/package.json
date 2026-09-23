@@ -1,0 +1,34 @@
+{
+  "name": "@gb-transit/enrich-knowledgebase-stations",
+  "version": "1.0.0",
+  "description": "Station accessibility from the National Rail Enquiries Knowledgebase stations feed",
+  "license": "GPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/planarnetwork/gb-transit.git",
+    "directory": "libs/enrich-knowledgebase-stations"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@gb-transit/gtfs": "workspace:^"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2"
+  }
+}

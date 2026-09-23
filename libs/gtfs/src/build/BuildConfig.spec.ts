@@ -1,6 +1,6 @@
 import {describe, it, expect} from "vitest";
 import {RouteType} from "@gb-transit/gtfs-schema";
-import {parseConfig} from "./BuildConfig";
+import {applyLists, parseConfig} from "./BuildConfig";
 import {NO_EXCLUSIONS} from "../transform/ExcludeServices";
 
 const minimal = {source: "RJTTF918.ZIP"};
@@ -229,9 +229,47 @@ describe("parseConfig, reading what to exclude", () => {
       .to.throw(/exclude.operators takes two-letter ATOC codes. Got "London Underground"./);
   });
 
+  it("reads the fixed link modes however they were typed", () => {
+    expect(parseConfig({...minimal, exclude: {links: ["tube", "Metro"]}}).exclude.links)
+      .to.deep.equal(["TUBE", "METRO"]);
+  });
+
+  it("refuses a fixed link mode the ALF does not have", () => {
+    expect(() => parseConfig({...minimal, exclude: {links: ["underground"]}}))
+      .to.throw(/exclude.links does not take "underground". Expected one of: BUS, FERRY, METRO/);
+  });
+
   it("names something it was asked to exclude that is not a thing to exclude", () => {
     expect(() => parseConfig({...minimal, exclude: {operatrs: ["LT"]}}))
-      .to.throw(/exclude.operatrs is not something to exclude. Expected one of: modes, operators, replacementBuses./);
+      .to.throw(/exclude.operatrs is not something to exclude. Expected one of: modes, operators, replacementBuses, links./);
+  });
+
+});
+
+describe("applyLists", () => {
+
+  const lists = (raw: object) => applyLists(parseConfig({...minimal, ...raw}, ["A", "B"]).enrichers);
+
+  it("gives the feed the fields an enricher is allowed to write", () => {
+    const allowed = lists({enrichers: {A: {apply: ["stop_lat", "stop_lon"]}}});
+
+    expect([...allowed.get("A")!].sort()).to.deep.equal(["stop_lat", "stop_lon"]);
+  });
+
+  /**
+   * An empty set would mean the opposite of what the config says: every write
+   * turned away, from a source the config asked for as it comes.
+   */
+  it("says nothing about an enricher with no list, which is not the same as an empty one", () => {
+    const allowed = lists({enrichers: {A: null}});
+
+    expect(allowed.has("A")).to.equal(false);
+  });
+
+  it("restricts one enricher without restricting the other", () => {
+    const allowed = lists({enrichers: {A: {apply: "stop_lat"}, B: null}});
+
+    expect([...allowed.keys()]).to.deep.equal(["A"]);
   });
 
 });

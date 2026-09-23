@@ -35,3 +35,30 @@ the CSV held, so `51.45000` stays `51.45000` rather than becoming `51.45`.
 **The zip is written in process.** `yazl` is replaced by the same deterministic
 archiver the rail feed uses: flat, entries sorted, and awaited, so the command
 resolves when the file exists.
+
+## Operator identity, coordinates and the shape of a place
+
+**`agency_id` is the National Operator Code.** It was the `Operator` element's
+`id`, which means something only inside the document it is written in. The
+fixture's operator is `CHIL` rather than `OP1`.
+
+**A coach is `route_type` 200.** It was 3, the same as a bus.
+
+**stops.txt has a `platform_code` column.** It is written where NaPTAN's
+indicator names a stand — `Stand C`, `Bay 4`, `A` — and left empty where the
+indicator is a relative position such as `adj` or a compass bearing. The
+fixture's indicators are `->NE`, `->SW`, `C1` and `T2`, so the column is empty in
+all four rows.
+
+**There is a feed_info.txt**, with the window the conversion was asked for as its
+dates. The test passes a fixed window and version, because a golden that changes
+with the date is not a golden.
+
+The rest of the change leaves the fixture untouched and is visible only on a real
+dataset: a journey that runs on no day inside the window is dropped and the
+calendars of the rest are clamped to it, two registrations that differ only
+outside the window become one service, a pair of stops either side of a street
+stands under a station of its own, and a stop that NaPTAN gives only a grid
+reference is placed from it. The fixture's window is its own operating period,
+its four stops are four separate places, and every one of them has a longitude
+and latitude.

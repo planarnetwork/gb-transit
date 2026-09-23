@@ -1,6 +1,6 @@
 {
   "name": "cif2gtfs",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "Build a GTFS feed from the GB rail DTD timetable feed, with no database",
   "main": "./dist/api.js",
   "types": "./dist/api.d.ts",
@@ -37,6 +37,7 @@
   },
   "dependencies": {
     "@gb-transit/dtd-source": "workspace:^",
+    "@gb-transit/enrich-knowledgebase-stations": "workspace:^",
     "@gb-transit/enrich-naptan": "workspace:^",
     "@gb-transit/extend-station-groups": "workspace:^",
     "@gb-transit/gtfs": "workspace:^",

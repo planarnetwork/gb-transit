@@ -57,7 +57,7 @@ export {mergeSchedules} from "./transform/MergeSchedules";
 export {TIMETABLE_ATTRIBUTION, createAttributions} from "./transform/CreateAttributions";
 export {createFeedInfo} from "./transform/CreateFeedInfo";
 export {dropUnknownStops} from "./transform/DropUnknownStops";
-export {excludeServices, MODES, NO_EXCLUSIONS} from "./transform/ExcludeServices";
+export {excludeLinks, excludeServices, LINK_MODES, MODES, NO_EXCLUSIONS} from "./transform/ExcludeServices";
 export type {ServiceExclusions} from "./transform/ExcludeServices";
 export {interchange, mergeTransfers} from "./transform/MergeTransfers";
 export {stopId, toStopTimeRow, withStopPoints} from "./transform/Platforms";
@@ -75,7 +75,7 @@ export {buildReport} from "./build/BuildReport";
 export type {BuildReport, SourceReport} from "./build/BuildReport";
 export {ScheduleBuilder} from "./build/ScheduleBuilder";
 export type {ScheduleResults} from "./build/ScheduleBuilder";
-export {parseConfig} from "./build/BuildConfig";
+export {applyLists, parseConfig} from "./build/BuildConfig";
 export type {BuildConfig, EnricherConfig, ExtensionConfig, Licence} from "./build/BuildConfig";
 
 // Enrichment - what an external source is allowed to change, and the record of

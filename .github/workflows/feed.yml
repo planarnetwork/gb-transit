@@ -23,11 +23,19 @@ concurrency:
 permissions:
   contents: write
 
+# Named rather than left to the default, which is `bash -e` without pipefail: a
+# build piped into tee that crashed would leave the step green and the failure to
+# turn up later, somewhere with nothing to do with it.
+defaults:
+  run:
+    shell: bash
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    # Two builds and two validator runs, 45 minutes each.
-    timeout-minutes: 90
+    # Three builds and three validator runs, the third over a feed half as
+    # large again as the others, so 45 minutes each.
+    timeout-minutes: 135
     # The tag the patterns are attached to, so the jobs below add to the release
     # this run made rather than looking up the newest one and racing a rerun.
     outputs:
@@ -39,6 +47,9 @@ jobs:
       SFTP_HOSTNAME: ${{ secrets.DTD_HOSTNAME }}
       SFTP_USERNAME: ${{ secrets.DTD_USERNAME }}
       SFTP_PASSWORD: ${{ secrets.DTD_PASSWORD }}
+      # The Knowledgebase is an HTTP product of the same marketplace rather
+      # than an SFTP one, and the enricher reads the key straight from here.
+      KNOWLEDGEBASE_API_KEY: ${{ secrets.KNOWLEDGEBASE_API_KEY }}
       GTFS_RANGE: ${{ inputs.range || '3 months' }}
     steps:
       - uses: actions/checkout@v5
@@ -62,6 +73,17 @@ jobs:
           if [ -z "$SFTP_USERNAME" ] || [ -z "$SFTP_PASSWORD" ]; then
             echo "The DTD_USERNAME and DTD_PASSWORD secrets are not set for this repository."
             echo "They come from a Rail Data Marketplace subscription - raildata.org.uk."
+            exit 1
+          fi
+
+          # Checked here rather than left to fail mid-build: gtfs.config.yaml
+          # enables the KNOWLEDGEBASE enricher, and a runner has no cached
+          # copy to fall back on, so without this the failure arrives forty
+          # minutes in with the timetable already downloaded.
+          if [ -z "$KNOWLEDGEBASE_API_KEY" ]; then
+            echo "The KNOWLEDGEBASE_API_KEY secret is not set for this repository."
+            echo "It is the subscription key for the National Rail Knowledgebase stations"
+            echo "feed on the Rail Data Marketplace, and gtfs.config.yaml asks for it."
             exit 1
           fi
 
@@ -120,11 +142,46 @@ jobs:
           yarn tsx apps/cif2gtfs/src/index.ts build --config gtfs.national-rail-only.config.yaml \
             | tee build-national-rail-only.log
 
+      # The National Rail only feed with TfL's tube, DLR, trams, river boats and
+      # cable car beside it, for planning a journey across London on the trains
+      # that actually run rather than on the DTD's fixed tube links.
+      #
+      # The rail half is its own build because it leaves the tube links out,
+      # which the National Rail only feed as published keeps for a consumer
+      # merging it with sources that have no tube. TfL's Journey Planner
+      # Timetables need no key; the part with the buses is not used. The window
+      # is the rail feed's, so the two cover the same days.
+      - name: Build the rail and TfL feed
+        run: |
+          yarn tsx apps/cif2gtfs/src/index.ts build --config gtfs.rail-and-tfl.config.yaml \
+            | tee build-rail-and-tfl.log
+
+          curl -sSfL -o tfl-timetables.zip \
+            "https://tfl.gov.uk/tfl/syndication/feeds/journey-planner-timetables.zip"
+          unzip -o -j tfl-timetables.zip "LULDLRTRAMRIVERCABLE*" -d tfl-source
+
+          read -r from to <<< "$(node -p "
+            const [names, values] = require('fs').readFileSync('feed-rail-for-tfl/feed_info.txt', 'utf8')
+              .trim().split('\n').map(line => line.split(','));
+            const info = Object.fromEntries(names.map((name, i) => [name, values[i]]));
+            const day = d => d.slice(0, 4) + '-' + d.slice(4, 6) + '-' + d.slice(6);
+            day(info.feed_start_date) + ' ' + day(info.feed_end_date)
+          ")"
+
+          AGENCY_URL=https://tfl.gov.uk AGENCY_TIMEZONE=Europe/London AGENCY_LANG=en \
+            yarn tsx apps/transxchange2gtfs/src/index.ts --supersede-by-line --from "$from" --to "$to" \
+            tfl-source/*.zip tfl.zip | grep -v '^Processing' | tee -a build-rail-and-tfl.log
+
+          cd feed-rail-for-tfl && zip -q -r ../rail-for-tfl.zip . \
+            -x validation.json feed-meta.json enrichment-report.json provenance.json && cd ..
+          node --max-old-space-size=4096 scripts/combine-rail-and-tfl.mjs \
+            rail-for-tfl.zip tfl.zip feed-rail-and-tfl | tee -a build-rail-and-tfl.log
+
       # A published feed that fails referential integrity must never reach a
       # release, so the validator runs before anything is attached. What counts
       # as a failure is a baseline file: an unlisted error, or more of a listed
       # one than it accepts. One baseline each, because accepting in one feed what
-      # only the other raises would not be a gate. Either failing stops the
+      # only another raises would not be a gate. Any of them failing stops the
       # release: a half-published set is worse than a late one.
       - name: Validate
         run: |
@@ -141,8 +198,19 @@ jobs:
             .github/validator-baseline-national-rail-only.json \
             feed-national-rail-only/validation.json
 
+          java -jar gtfs-validator.jar -i feed-rail-and-tfl -o report-rail-and-tfl -svu
+          node scripts/check-validation.mjs \
+            report-rail-and-tfl/report.json \
+            .github/validator-baseline-rail-and-tfl.json \
+            feed-rail-and-tfl/validation.json
+
       # A feed that suddenly has a fifth fewer trips than yesterday is a feed
       # with something wrong in it, and it is cheaper to stop than to withdraw.
+      # The limit is a sixth rather than something tighter because a timetable
+      # change moves the count on its own. The window reaches three months
+      # ahead, so it ends past the last day the current timetable covers, and
+      # the day the new one loads those days go from empty to a full service in
+      # a single build.
       # There is no previous release on the first run, so there is nothing to
       # compare against and nothing to complain about.
       - name: Compare with the last release
@@ -200,6 +268,23 @@ jobs:
             exit 1
           fi
 
+          # The rail half is the National Rail only feed's trips, so the TfL half
+          # is everything above that. Held to a floor of its own rather than only
+          # to being more than nothing, because the swing check below has nothing
+          # to compare the first release against: TfL's timetables of September
+          # 2026 are 79,722 trips over three months, and half of that is a
+          # download or a conversion that lost most of it. The combine script
+          # already stops on a tube line, the DLR or the trams with no trips.
+          rail_and_tfl=$(( $(wc -l < feed-rail-and-tfl/trips.txt) - 1 ))
+          tfl=$(( rail_and_tfl - national_rail_only ))
+          echo "rail_and_tfl_trips=$rail_and_tfl" >> "$GITHUB_OUTPUT"
+          echo "Rail and TfL: $rail_and_tfl trips, $tfl of them TfL's"
+
+          if [ "$tfl" -lt 40000 ]; then
+            echo "The rail and TfL feed has $tfl of TfL's trips, fewer than half as many as it should."
+            exit 1
+          fi
+
           previous=$(gh release list --limit 20 --json tagName \
             --jq '[.[] | select(.tagName | startswith("feed-"))][0].tagName' || true)
 
@@ -212,12 +297,14 @@ jobs:
           was=$(node -p "require('./previous.json').trips")
           echo "Previous ($previous): $was trips"
 
+          limit=15
+
           node -e "
             const was = $was, now = $trips;
             const swing = Math.abs(now - was) / was * 100;
             console.log('Swing: ' + swing.toFixed(1) + '%');
-            if (swing > 5) {
-              console.error('More than 5% different from the last release. Releasing this needs a human.');
+            if (swing > $limit) {
+              console.error('More than $limit% different from the last release. Releasing this needs a human.');
               process.exit(1);
             }
           "
@@ -235,8 +322,25 @@ jobs:
             }
             const swing = Math.abs(now - previous) / previous * 100;
             console.log('National Rail only: ' + previous + ' -> ' + now + ', swing ' + swing.toFixed(1) + '%');
-            if (swing > 5) {
-              console.error('The National Rail only feed moved more than 5%. Releasing this needs a human.');
+            if (swing > $limit) {
+              console.error('The National Rail only feed moved more than $limit%. Releasing this needs a human.');
+              process.exit(1);
+            }
+          "
+
+          # And on the rail and TfL feed, whose TfL half moves with TfL's
+          # timetables rather than the DTD's.
+          node -e "
+            const previous = require('./previous.json').trips_rail_and_tfl;
+            const now = $rail_and_tfl;
+            if (previous === undefined) {
+              console.log('The last release predates the rail and TfL feed.');
+              process.exit(0);
+            }
+            const swing = Math.abs(now - previous) / previous * 100;
+            console.log('Rail and TfL: ' + previous + ' -> ' + now + ', swing ' + swing.toFixed(1) + '%');
+            if (swing > $limit) {
+              console.error('The rail and TfL feed moved more than $limit%. Releasing this needs a human.');
               process.exit(1);
             }
           "
@@ -256,6 +360,23 @@ jobs:
             const report = fs.existsSync('feed/enrichment-report.json')
               ? JSON.parse(fs.readFileSync('feed/enrichment-report.json', 'utf8'))
               : {sources: [], enrichers: [], extensions: []};
+            // The rail and TfL feed is built from sources the rail build did not
+            // use - TfL, whose licence makes its acknowledgement a condition of
+            // using the timetables - and its attributions.txt says who, in the
+            // words their licences ask for.
+            const fields = line => [...line.matchAll(/(?:^|,)(\"(?:[^\"]|\"\")*\"|[^,]*)/g)]
+              .map(match => match[1].replace(/^\"|\"$/g, '').replace(/\"\"/g, '\"'));
+            const [header, ...lines] = fs.readFileSync('feed-rail-and-tfl/attributions.txt', 'utf8')
+              .trimEnd().split('\n').map(fields);
+            const credited = new Set(report.sources.map(source => source.organisation));
+            const others = [...new Map(lines
+              .map(values => Object.fromEntries(header.map((name, i) => [name, values[i]])))
+              .filter(row => !credited.has(row.organization_name))
+              .map(row => [row.organization_name, {
+                organisation: row.organization_name,
+                licence: row.attribution_licence,
+                url: row.attribution_url
+              }])).values()];
             // Counted rather than described, so the release says what the
             // zips actually hold rather than what they were meant to.
             const rows = file => fs.readFileSync(file, 'utf8').trimEnd().split('\n').length - 1;
@@ -264,8 +385,10 @@ jobs:
               commit: '${{ github.sha }}',
               trips: ${{ steps.compare.outputs.trips }},
               trips_national_rail_only: ${{ steps.compare.outputs.national_rail_only_trips }},
+              trips_rail_and_tfl: ${{ steps.compare.outputs.rail_and_tfl_trips }},
               stop_times: rows('feed/stop_times.txt'),
               stop_times_national_rail_only: rows('feed-national-rail-only/stop_times.txt'),
+              stop_times_rail_and_tfl: rows('feed-rail-and-tfl/stop_times.txt'),
               shape_points: rows('feed/shapes.txt'),
               shapes: new Set(
                 fs.readFileSync('feed/shapes.txt', 'utf8').trimEnd().split('\n').slice(1)
@@ -274,7 +397,7 @@ jobs:
               feed_version: feed.feed_version,
               feed_start_date: feed.feed_start_date,
               feed_end_date: feed.feed_end_date,
-              sources: report.sources,
+              sources: [...report.sources, ...others],
               enrichers: report.enrichers,
               extensions: report.extensions
             }, null, 2));
@@ -286,10 +409,12 @@ jobs:
           cd feed && zip -q -r ../gtfs.zip . -x validation.json feed-meta.json enrichment-report.json provenance.json && cd ..
           cd feed-national-rail-only && zip -q -r ../gtfs-national-rail-only.zip . \
             -x validation.json feed-meta.json enrichment-report.json provenance.json && cd ..
-          # A release asset is named by its basename, so the second feed's report
+          cd feed-rail-and-tfl && zip -q -r ../gtfs-rail-and-tfl.zip . -x validation.json && cd ..
+          # A release asset is named by its basename, so the other feeds' reports
           # cannot go up as validation.json alongside the first's.
           cp feed-national-rail-only/validation.json validation-national-rail-only.json
-          ls -la gtfs.zip gtfs-national-rail-only.zip
+          cp feed-rail-and-tfl/validation.json validation-rail-and-tfl.json
+          ls -la gtfs.zip gtfs-national-rail-only.zip gtfs-rail-and-tfl.zip
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -298,13 +423,16 @@ jobs:
           path: |
             gtfs.zip
             gtfs-national-rail-only.zip
+            gtfs-rail-and-tfl.zip
             feed/validation.json
             feed/feed-meta.json
             feed/enrichment-report.json
             feed/provenance.json
             feed-national-rail-only/validation.json
+            feed-rail-and-tfl/validation.json
             build.log
             build-national-rail-only.log
+            build-rail-and-tfl.log
           retention-days: 14
 
       # The tag is the date, so the release list reads as a history of feeds and
@@ -327,7 +455,7 @@ jobs:
                 '| Source | ' + m.feed_version + ' |',
                 '| Built from | ' + m.commit.slice(0, 7) + ' |',
                 '',
-                'Two feeds. A shape is drawn through every timing point a train touches, ' +
+                'Three feeds. A shape is drawn through every timing point a train touches, ' +
                   'including the ones it runs through without stopping. The line between two ' +
                   'stations is straight, because the DTD gives no coordinate for the junctions ' +
                   'between them.',
@@ -341,6 +469,10 @@ jobs:
                   'buses and the replacement buses TfL runs. ' +
                   m.trips_national_rail_only.toLocaleString() + ' trips, ' +
                   m.stop_times_national_rail_only.toLocaleString() + ' stop times.',
+                '- \`gtfs-rail-and-tfl.zip\` - the National Rail only feed with TfL\'s tube, DLR, ' +
+                  'trams, river boats and cable car beside it, for journeys across London. ' +
+                  m.trips_rail_and_tfl.toLocaleString() + ' trips, ' +
+                  m.stop_times_rail_and_tfl.toLocaleString() + ' stop times. Powered by TfL Open Data.',
                 '',
                 // Written before the scan has run, so it says what is coming
                 // rather than what arrived.
@@ -349,14 +481,14 @@ jobs:
                   'journey planner reads, and belongs with \`gtfs.zip\` above.'
               ].join('\n')
             ")" \
-            gtfs.zip gtfs-national-rail-only.zip \
-            feed/validation.json validation-national-rail-only.json \
+            gtfs.zip gtfs-national-rail-only.zip gtfs-rail-and-tfl.zip \
+            feed/validation.json validation-national-rail-only.json validation-rail-and-tfl.json \
             feed/feed-meta.json feed/enrichment-report.json \
             $([ -f feed/provenance.json ] && echo feed/provenance.json)
         env:
           GH_TOKEN: ${{ github.token }}
 
-      # A release a day, each carrying two zips of 20 MB and up, accumulates
+      # A release a day, each carrying three zips of 20 MB and up, accumulates
       # forever. The last month is what anybody fetches; past that what is
       # wanted is the
       # ability to say what the feed looked like in April, and one release a

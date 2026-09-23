@@ -1,4 +1,5 @@
 import {NaptanRow, eachNaptanRow, parseNaptanRows} from "@gb-transit/naptan";
+import {fromGrid} from "./OSGridReference";
 
 /**
  * String e.g. 3890D102801
@@ -22,6 +23,12 @@ export interface NaptanStopPoint {
   readonly indicator: string;
   readonly locality: string;
   readonly parentLocality: string;
+  /** The locality as NPTG codes it, which is what groups stops into a place. */
+  readonly localityCode: string;
+  /** The direction a vehicle faces at the stop, e.g. `N`, `SW`. */
+  readonly bearing: string;
+  /** NaPTAN's own classification, e.g. `BCT` for an on-street bus stop. */
+  readonly stopType: string;
   /** Kept as text: re-serialising through a number drops trailing digits. */
   readonly longitude: string;
   readonly latitude: string;
@@ -70,23 +77,40 @@ function emptyIndexes(): [NaPTANIndex, StopLocationIndex] {
   return [{}, {}];
 }
 
-function add([byCode, byLocation]: [NaPTANIndex, StopLocationIndex], row: NaptanRow): void {
-  const code = row.ATCOCode;
+/**
+ * NaPTAN pads some fields, and a padded name reaches the feed as a stop called
+ * `" Sutton Court Farm"`.
+ */
+function text(value: string | undefined): string {
+  return value?.trim() ?? "";
+}
 
-  if (code === undefined || code === "") {
+function add([byCode, byLocation]: [NaPTANIndex, StopLocationIndex], row: NaptanRow): void {
+  const code = text(row.ATCOCode);
+
+  if (code === "") {
     return;
   }
 
+  const latitude = text(row.Latitude);
+  const longitude = text(row.Longitude);
+  const position = latitude !== "" && longitude !== ""
+    ? {latitude, longitude}
+    : fromGrid(text(row.Easting), text(row.Northing));
+
   const stop: NaptanStopPoint = {
     atcoCode: code,
-    naptanCode: row.NaptanCode ?? "",
-    name: row.CommonName ?? "",
-    street: row.Street ?? "",
-    indicator: row.Indicator ?? "",
-    locality: row.LocalityName ?? "",
-    parentLocality: row.ParentLocalityName ?? "",
-    longitude: row.Longitude ?? "",
-    latitude: row.Latitude ?? ""
+    naptanCode: text(row.NaptanCode),
+    name: text(row.CommonName),
+    street: text(row.Street),
+    indicator: text(row.Indicator),
+    locality: text(row.LocalityName),
+    parentLocality: text(row.ParentLocalityName),
+    localityCode: text(row.NptgLocalityCode),
+    bearing: text(row.Bearing),
+    stopType: text(row.StopType),
+    longitude: position.longitude,
+    latitude: position.latitude
   };
 
   byCode[code] = stop;

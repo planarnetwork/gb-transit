@@ -2,9 +2,10 @@ import {describe, it, expect} from "vitest";
 import {naptanIndexes} from "./NaPTAN";
 
 const CSV = [
-  "ATCOCode,NaptanCode,CommonName,Street,Indicator,LocalityName,ParentLocalityName,Longitude,Latitude",
-  "stopA,naptanA,Name A,Street A,NE,Town A,City A,-1.5,53.8",
-  "stopB,naptanB,Name B,Street B,SW,Town B,,-1.6,53.9"
+  "ATCOCode,NaptanCode,CommonName,Street,Indicator,Bearing,NptgLocalityCode,StopType,"
+  + "LocalityName,ParentLocalityName,Longitude,Latitude",
+  "stopA,naptanA,Name A,Street A,NE,N,E001,BCT,Town A,City A,-1.5,53.8",
+  "stopB,naptanB,Name B,Street B,SW,S,E002,BCT,Town B,,-1.6,53.9"
 ].join("\n");
 
 describe("naptanIndexes", () => {
@@ -23,6 +24,9 @@ describe("naptanIndexes", () => {
       indicator: "NE",
       locality: "Town A",
       parentLocality: "City A",
+      localityCode: "E001",
+      bearing: "N",
+      stopType: "BCT",
       longitude: "-1.5",
       latitude: "53.8"
     });
@@ -33,6 +37,25 @@ describe("naptanIndexes", () => {
 
     expect(byLocation["City A"]).to.deep.equal(["stopA"]);
     expect(byLocation["Town B"]).to.deep.equal(["stopB"]);
+  });
+
+  it("trims what NaPTAN pads", () => {
+    const [byCode] = naptanIndexes("ATCOCode,CommonName\nstopD, Sutton Court Farm ");
+
+    expect(byCode["stopD"].name).to.equal("Sutton Court Farm");
+  });
+
+  it("projects the grid reference when there is no longitude and latitude", () => {
+    // 37,210 of the 435,546 stops in the national file give an easting and a
+    // northing and leave the other two columns empty.
+    const [byCode] = naptanIndexes(
+      "ATCOCode,Easting,Northing,Longitude,Latitude\n0590PGA721,511721,298789,,"
+    );
+
+    // Where the DfT's own feed puts this stop, which is the check that the
+    // projection is the one NaPTAN's grid references are in.
+    expect(Number(byCode["0590PGA721"].latitude)).to.be.closeTo(52.575453532, 0.00001);
+    expect(Number(byCode["0590PGA721"].longitude)).to.be.closeTo(-0.352812181, 0.00001);
   });
 
   it("keeps the coordinates as text", () => {

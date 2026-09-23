@@ -18,7 +18,7 @@ them. This page lists those decisions and the behaviour they produce.
 
 ## What you get
 
-Two feeds, from the same build:
+Three feeds, from the same build:
 
 <FeedTable />
 
@@ -27,6 +27,10 @@ through the stations it runs through as well as the ones it calls at.
 
 A feed being merged with the tube and bus timetables wants the second, which has fewer trips than the
 first. See [the National Rail only feed](#the-national-rail-only-feed).
+
+A journey planner for journeys that cross London wants the third: the second with TfL's own
+timetables for the tube, DLR, trams, river boats and cable car beside it. See
+[the rail and TfL feed](#the-rail-and-tfl-feed).
 
 Every link resolves to the most recent release, so they can be bookmarked or scripted against.
 
@@ -37,7 +41,7 @@ describe the feed rather than being part of it and somebody unzipping a GTFS fee
 
 | asset | what it is |
 |---|---|
-| `validation.json` | the validator's report, including every accepted error. One per feed, the second suffixed as its zip is |
+| `validation.json` | the validator's report, including every accepted error. One per feed, the others suffixed as their zips are |
 | `feed-meta.json` | what was built, from what, and when |
 | `enrichment-report.json` | what each external source matched and missed |
 | `provenance.json` | every field an external source wrote, and every write that lost |
@@ -113,7 +117,7 @@ Every call gets a boarding point, whether or not it names a platform, because a 
 reference a station. A station where some calls name a platform and some do not therefore has a
 platform-less child as well, which is what NaPTAN calls the station's access node.
 
-Four things are worth knowing before joining anything to `stops.txt`:
+Five things are worth knowing before joining anything to `stops.txt`:
 
 - **`stop_desc` is not a description.** It holds the CATE interchange status as a bare number: 0 is
   not an interchange, 1 to 3 its significance, 9 a subsidiary location.
@@ -124,10 +128,16 @@ Four things are worth knowing before joining anything to `stops.txt`:
   published. One that something references is published at 0,0 and named in a warning. It is not
   given a plausible centroid, because a validator will flag 0,0 and a centroid would pass as a real
   position.
+- **Accessibility and station pages come from the National Rail Knowledgebase.**
+  `wheelchair_boarding` is `1` wherever a step-free path to a platform exists and `2` only where no
+  platform has one. It is set on the station; a boarding point is `0`, which the spec reads as
+  "inherit from the station", because no source says which of a station's platforms are reachable.
+  `stop_url` is the station's page on nationalrail.co.uk.
 - **Coordinates and station names come from NaPTAN**, which supersedes the upper case, sixteen
-  character names the timetable carries. Boarding points are created before enrichment runs, so a
-  platform keeps the pre-enrichment name and coordinate while its station gets NaPTAN's. Read a
-  station's geometry from the station.
+  character names the timetable carries. Boarding points are created after enrichment, as copies of
+  the station, so a platform carries the same surveyed coordinate and the same readable name — a
+  platform of `Newcastle Airport Metro`, never of `NEWCASTLE AIRPRT`. `wheelchair_boarding` is the
+  exception, and deliberately: see above.
 
 A station nothing calls at within the window is still published, as a childless `location_type=1`
 row, so the station list does not change with the length of the build window.
@@ -287,6 +297,45 @@ Everything else is identical to `gtfs.zip`. A station left with no calls is stil
 tube-only station is still somewhere a ticket can be bought to — but its boarding points are not,
 because those are built from the calls.
 
+## The rail and TfL feed
+
+`gtfs-rail-and-tfl.zip` is the National Rail only feed with TfL's own timetables for the tube, the
+DLR, the trams, the river boats and the cable car beside it, from TfL's
+[Journey Planner Timetables](https://tfl.gov.uk/info-for/open-data-users/our-open-data). It is for
+planning a journey across London on the trains that actually run: the other two feeds cross London
+on the DTD's fixed links, which say the tube takes a fixed number of minutes whatever the time of
+day.
+
+The rail half is the National Rail only feed without those tube links. Its walks, and its links
+of every other mode, stay. The TfL half covers the same days. TfL publishes an engineering works
+timetable as a service of its own on top of the one it interrupts, and on the days it applies it
+replaces that service rather than running beside it.
+
+**A TfL station inside a rail station is one of its platforms.** Liverpool Street's tube platforms
+are children of `910GLIVST`, so the rail station's minimum connection time is the interchange for
+every change there — train to tube, tube to train, and tube to tube. The rail feed charges a
+station's connection time on every arrival, so a tube station of its own, with a walk to it, would
+charge both stations' times on every change between the two. A tube station that is not inside a
+rail station is a station of its own, with a walk to the rail stations and other TfL stations near
+it, timed by distance.
+
+TfL's ids are its own. A stop is its NaPTAN ATCO code, as the rail feed's are — `9400ZZLUBST1` is a
+Baker Street platform and `940GZZLUBST` the station — and TfL's trips, routes and services are
+prefixed `tfl_`. A TfL station of its own carries a three character `stop_code` starting with a
+digit, which no CRS code does, for the [transfer patterns](#the-transfer-patterns) planner. The
+codes are numbered in the order of the stations' ids, so they are stable within a release and not
+between them.
+
+A TfL line is one route, `tfl_BAK` for the Bakerloo, whichever of TfL's timetables a trip came
+from, in the line's colour from TfL's
+[Colour Standard](https://content.tfl.gov.uk/tfl-colour-standard.pdf) and linking to its page on
+tfl.gov.uk. TfL's trips are drawn station to station, like the rail feed's: the timetables say which
+stops a train calls at and nothing of the line between them, so the shape is a straight line from each
+stop to the next.
+
+TfL's open data licence makes the acknowledgement "Powered by TfL Open Data" a condition of using
+the timetables, and the feed's `attributions.txt` carries it.
+
 ## The transfer patterns
 
 `transfer-patterns.br` is not a feed. It is a companion to `gtfs.zip`: every sequence of stations a
@@ -385,9 +434,12 @@ These are out of scope rather than pending:
 - **No `pathways.txt` and no station entrances.** Without pathways an entrance is a node nothing
   can route through, so both wait on the other.
 - **No bank holiday variations**, as above.
-- **Accessibility is station-level only.** `wheelchair_boarding` comes from a hand-maintained table
-  covering most stations, is not per platform, and is `0` — no information — where the table has no
-  entry.
+- **Accessibility is station-level only.** `wheelchair_boarding` is the step-free access category
+  the National Rail Knowledgebase publishes for the station as a whole, so a station with step-free
+  access to two of its four platforms is `1` like one with access to all four. Boarding points
+  carry `0` rather than repeating their station's value, because nothing says which platforms those
+  two are. It is `0` on the station too for the stations the Knowledgebase has not classified —
+  37 of the 2,613 it lists. The station's own page, in `stop_url`, has the detail.
 
 ## Validation, and reporting a problem
 

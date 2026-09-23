@@ -54,16 +54,22 @@ A config file looks like this. Only source is required:
     modes: [metro, bus, ship]  # replacement buses are their own mode and stay
     operators: [ES, LT, TW, ZZ]     # every service these operators run
     replacementBuses: [LO, XR]      # only their buses; their trains stay
+    links: [TUBE]                   # fixed links of these modes stay out of transfers.txt
   enrichers:
     NAPTAN:                  # on, with its own defaults
-    KNOWLEDGEBASE:
+    KNOWLEDGEBASE_STATIONS:
       priority: 80           # outrank another source for a contested field
       apply: [wheelchair_boarding]   # and only take this from it
       options:
-        cache: ./cache
+        cache: ./cache       # where to keep the downloaded feed
 
 The same GTFS_RANGE and GTFS_TODAY environment variables dtd2mysql reads are
 honoured, and --range and --today override them. GTFS_REMOVE_PASSING_POINTS
 does the same for --remove-passing-points.
+
+KNOWLEDGEBASE_STATIONS downloads the National Rail Enquiries stations feed,
+which needs a Rail Data Marketplace subscription. Its key is read from
+KNOWLEDGEBASE_API_KEY. A cached copy is used for a week, and only a download
+needs the key.
 `);
 }

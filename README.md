@@ -22,15 +22,20 @@ with the coverage window, what the current feed was built from, and a page for e
 |---|---|
 | [`gtfs.zip`](https://github.com/planarnetwork/gb-transit/releases/latest/download/gtfs.zip) | where a service calls, and the line it runs over |
 | [`gtfs-national-rail-only.zip`](https://github.com/planarnetwork/gb-transit/releases/latest/download/gtfs-national-rail-only.zip) | without the services National Rail does not run — the tube, the Metro, the ferries, the buses and TfL's replacement buses |
+| [`gtfs-rail-and-tfl.zip`](https://github.com/planarnetwork/gb-transit/releases/latest/download/gtfs-rail-and-tfl.zip) | the National Rail only feed with TfL's tube, DLR, trams, river boats and cable car beside it, for journeys across London. Powered by TfL Open Data |
 | [`transfer-patterns.br`](https://github.com/planarnetwork/gb-transit/releases/latest/download/transfer-patterns.br) | the stations a journey can change at, for a transfer pattern journey planner |
 
-Both feeds are rebuilt every night by [`feed.yml`](.github/workflows/feed.yml) from the
-configuration in [`gtfs.config.yaml`](gtfs.config.yaml) and
-[`gtfs.national-rail-only.config.yaml`](gtfs.national-rail-only.config.yaml), each validated against
-a pinned baseline of its own —
-[standard](.github/validator-baseline.json) and
-[National Rail only](.github/validator-baseline-national-rail-only.json) — and attached to a dated
-release. A build that fails validation is not published.
+All three feeds are rebuilt every night by [`feed.yml`](.github/workflows/feed.yml) from the
+configuration in [`gtfs.config.yaml`](gtfs.config.yaml),
+[`gtfs.national-rail-only.config.yaml`](gtfs.national-rail-only.config.yaml) and
+[`gtfs.rail-and-tfl.config.yaml`](gtfs.rail-and-tfl.config.yaml) — the last put beside TfL's
+[Journey Planner Timetables](https://tfl.gov.uk/info-for/open-data-users/our-open-data) by
+[`scripts/combine-rail-and-tfl.mjs`](scripts/combine-rail-and-tfl.mjs) — each validated against a
+pinned baseline of its own —
+[standard](.github/validator-baseline.json),
+[National Rail only](.github/validator-baseline-national-rail-only.json) and
+[rail and TfL](.github/validator-baseline-rail-and-tfl.json) — and attached to a dated release. A
+build that fails validation is not published.
 
 `transfer-patterns.br` is not a feed but a companion to the first one: 57 million routes through the
 network, found in advance so a journey planner does not have to search for them. It is built from
@@ -114,12 +119,18 @@ README describing what it is for and how to use it.
 | [`libs/gtfs-loader`](libs/gtfs-loader/README.md) | `@gb-transit/gtfs-loader` | The reader: a GTFS zip, stream or response, as a timetable or as its rows |
 | [`libs/naptan`](libs/naptan/README.md) | `@gb-transit/naptan` | Download, cache and read the NaPTAN national stop dataset |
 | [`libs/enrich-naptan`](libs/enrich-naptan/README.md) | `@gb-transit/enrich-naptan` | Station coordinates and names from NaPTAN |
+| [`libs/enrich-knowledgebase-stations`](libs/enrich-knowledgebase-stations/README.md) | `@gb-transit/enrich-knowledgebase-stations` | Station accessibility from the National Rail Enquiries Knowledgebase |
+| [`libs/knowledgebase-fare-group-permitted-stations`](libs/knowledgebase-fare-group-permitted-stations/README.md) | `@gb-transit/knowledgebase-fare-group-permitted-stations` | Read the Knowledgebase fare group permitted stations reference data |
 | [`libs/extend-station-groups`](libs/extend-station-groups/README.md) | `@gb-transit/extend-station-groups` | Group stations as GTFS Fares v2 areas |
 
 `libs/gtfs` carries two extension points, so a source of data this repository does not know about
 can be added without changing the build: an `Enricher` writes fields on entities the timetable
-produced, and an `Extension` contributes whole files. `enrich-naptan` and `extend-station-groups`
-are the two implementations, and they are the worked examples.
+produced, and an `Extension` contributes whole files. `enrich-naptan` and
+`enrich-knowledgebase-stations` are the enrichers, `extend-station-groups` the extension, and they
+are the worked examples.
+
+An enricher is named for the feed it reads rather than for who publishes it. The Knowledgebase has
+several, on different terms, and only the stations one is here.
 
 `dtd2mysql` depends on the libraries the way any other consumer would, so a GTFS build reading from
 something other than this tool's MySQL schema needs `@gb-transit/gtfs` rather than the CLI.

@@ -1,0 +1,35 @@
+{
+  "name": "@gb-transit/knowledgebase-fare-group-permitted-stations",
+  "version": "1.0.1",
+  "description": "Read the National Rail Knowledgebase fare group permitted stations reference data",
+  "license": "GPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/planarnetwork/gb-transit.git",
+    "directory": "libs/knowledgebase-fare-group-permitted-stations"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "sax": "1.6.1"
+  },
+  "devDependencies": {
+    "@types/sax": "1.2.7",
+    "typescript": "7.0.2"
+  }
+}

@@ -5,11 +5,11 @@
     "and an entry that stops occurring has to be removed."
   ],
   "reasons": {
-    "missing_recommended_file": "feed_info.txt. TransXChange carries no publisher, no version and no feed date range, so there is nothing to build one from and inventing it would be worse than the warning",
+    "missing_feed_contact_email_and_url": "no contact address to publish yet, the same as the rail feed",
     "same_name_and_description_for_route": "a TransXChange line whose OutboundDescription is the service description, so route_long_name and route_desc agree. Only avoidable by dropping one of them, and both are what the source says"
   },
   "accepted": [
-    "missing_recommended_file",
+    "missing_feed_contact_email_and_url",
     "same_name_and_description_for_route"
   ]
 }

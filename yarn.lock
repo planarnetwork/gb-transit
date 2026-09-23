@@ -816,6 +816,15 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@gb-transit/enrich-knowledgebase-stations@workspace:^, @gb-transit/enrich-knowledgebase-stations@workspace:libs/enrich-knowledgebase-stations":
+  version: 0.0.0-use.local
+  resolution: "@gb-transit/enrich-knowledgebase-stations@workspace:libs/enrich-knowledgebase-stations"
+  dependencies:
+    "@gb-transit/gtfs": "workspace:^"
+    typescript: "npm:7.0.2"
+  languageName: unknown
+  linkType: soft
+
 "@gb-transit/enrich-naptan@workspace:^, @gb-transit/enrich-naptan@workspace:libs/enrich-naptan":
   version: 0.0.0-use.local
   resolution: "@gb-transit/enrich-naptan@workspace:libs/enrich-naptan"
@@ -834,6 +843,16 @@ __metadata:
     "@gb-transit/dtd-source": "workspace:^"
     "@gb-transit/feed-parser": "workspace:^"
     "@gb-transit/gtfs": "workspace:^"
+    typescript: "npm:7.0.2"
+  languageName: unknown
+  linkType: soft
+
+"@gb-transit/fares-source@workspace:^, @gb-transit/fares-source@workspace:libs/fares-source":
+  version: 0.0.0-use.local
+  resolution: "@gb-transit/fares-source@workspace:libs/fares-source"
+  dependencies:
+    "@gb-transit/dtd-schema": "workspace:^"
+    "@gb-transit/feed-parser": "workspace:^"
     typescript: "npm:7.0.2"
   languageName: unknown
   linkType: soft
@@ -889,11 +908,30 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@gb-transit/knowledgebase-fare-group-permitted-stations@workspace:libs/knowledgebase-fare-group-permitted-stations":
+  version: 0.0.0-use.local
+  resolution: "@gb-transit/knowledgebase-fare-group-permitted-stations@workspace:libs/knowledgebase-fare-group-permitted-stations"
+  dependencies:
+    "@types/sax": "npm:1.2.7"
+    sax: "npm:1.6.1"
+    typescript: "npm:7.0.2"
+  languageName: unknown
+  linkType: soft
+
 "@gb-transit/naptan@workspace:^, @gb-transit/naptan@workspace:libs/naptan":
   version: 0.0.0-use.local
   resolution: "@gb-transit/naptan@workspace:libs/naptan"
   dependencies:
     csv-parse: "npm:^7.0.2"
+    typescript: "npm:7.0.2"
+  languageName: unknown
+  linkType: soft
+
+"@gb-transit/routeing-source@workspace:libs/routeing-source":
+  version: 0.0.0-use.local
+  resolution: "@gb-transit/routeing-source@workspace:libs/routeing-source"
+  dependencies:
+    "@gb-transit/fares-source": "workspace:^"
     typescript: "npm:7.0.2"
   languageName: unknown
   linkType: soft
@@ -1619,6 +1657,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/sax@npm:1.2.7":
+  version: 1.2.7
+  resolution: "@types/sax@npm:1.2.7"
+  dependencies:
+    "@types/node": "npm:*"
+  checksum: 10c0/d077a761a0753b079bf8279b3993948030ca86ed9125437b9b29c1de40db9b2deb7fddc369f014b58861d450e8b8cc75f163aa29dc8cea81952efbfd859168cf
+  languageName: node
+  linkType: hard
+
 "@types/ssh2@npm:1.15.5":
   version: 1.15.5
   resolution: "@types/ssh2@npm:1.15.5"
@@ -2195,6 +2242,7 @@ __metadata:
   resolution: "cif2gtfs@workspace:apps/cif2gtfs"
   dependencies:
     "@gb-transit/dtd-source": "workspace:^"
+    "@gb-transit/enrich-knowledgebase-stations": "workspace:^"
     "@gb-transit/enrich-naptan": "workspace:^"
     "@gb-transit/extend-station-groups": "workspace:^"
     "@gb-transit/gtfs": "workspace:^"
@@ -4737,6 +4785,7 @@ __metadata:
     adm-zip: "npm:0.6.0"
     date-holidays: "npm:^3.27.0"
     fflate: "npm:^0.8.3"
+    proj4: "npm:2.20.9"
     typescript: "npm:7.0.2"
     xml2js: "npm:^0.6.2"
   bin:

@@ -108,4 +108,121 @@ describe("ShapesStream", () => {
     });
   });
 
+  /**
+   * TfL's route links have no track. The journey is still drawn, stop to stop,
+   * through where NaPTAN places the stops - and through the station of a
+   * platform NaPTAN does not list.
+   */
+  it("draws a link with no track from the stop it leaves to the stop it reaches", async () => {
+    const naptan: any = {
+      "9400ZZLUBST1": {latitude: "51.5232", longitude: "-0.1575"},
+      "9400ZZLUBND1": {latitude: "51.5142", longitude: "-0.1494"}
+    };
+    const areas: any = {"940GZZLUOXC": {id: "940GZZLUOXC", name: "", latitude: "51.5152", longitude: "-0.1415"}};
+    const tube = journey({
+      route: "1-JUB|1-JUB",
+      routeLinkIds: ["L1", "L2"],
+      routeLinks: [
+        {From: "9400ZZLUBST1", To: "9400ZZLUBND1", Distance: 1100, Locations: []},
+        {From: "9400ZZLUBND1", To: "9400ZZLUOXC7", Distance: 600, Locations: []}
+      ]
+    });
+    const stream = new ShapesStream(naptan, areas);
+
+    stream.write(tube);
+    stream.end();
+
+    return awaitStream(stream, (rows: any[]) => {
+      expect(rows.map(r => [r.shape_pt_lat, r.shape_pt_lon])).to.deep.equal([
+        [51.5232, -0.1575], [51.5142, -0.1494], [51.5152, -0.1415]
+      ]);
+      expect(parseFloat(rows[2].shape_dist_traveled)).to.be.closeTo(1.7, 1e-6);
+    });
+  });
+
+  it("leaves a link out where neither end can be placed, rather than drawing to Null Island", async () => {
+    const stream = new ShapesStream();
+
+    stream.write(journey({routeLinks: [{From: "X", To: "Y", Distance: 100, Locations: []}]}));
+    stream.end();
+
+    return awaitStream(stream, (rows: any[]) => {
+      expect(rows).to.deep.equal([]);
+    });
+  });
+
+  const kilometres = (rows: any[]) => rows.map(r => parseFloat(r.shape_dist_traveled));
+
+  it("puts a stop only one end of a link can place at its distance along the journey", async () => {
+    // B cannot be placed, so the first link draws only A and the second only C
+    const naptan: any = {A: {latitude: "51.0", longitude: "-1.0"}, C: {latitude: "51.03", longitude: "-1.0"}};
+    const stream = new ShapesStream(naptan);
+
+    stream.write(journey({routeLinks: [
+      {From: "A", To: "B", Distance: 2000, Locations: []},
+      {From: "B", To: "C", Distance: 800, Locations: []}
+    ]}));
+    stream.end();
+
+    return awaitStream(stream, (rows: any[]) => {
+      expect(kilometres(rows)).to.deep.equal([0, 2.8]);
+    });
+  });
+
+  it("measures a link that gives no distance rather than scaling it to nothing", async () => {
+    const stream = new ShapesStream();
+
+    stream.write(journey({routeLinks: [{
+      From: "A", To: "B", Distance: 0,
+      Locations: [{Latitude: 51.0, Longitude: -1.0}, {Latitude: 51.001, Longitude: -1.0}, {Latitude: 51.002, Longitude: -1.0}]
+    }]}));
+    stream.end();
+
+    return awaitStream(stream, (rows: any[]) => {
+      const distances = kilometres(rows);
+
+      expect(distances[1]).to.be.closeTo(0.111, 0.001);
+      expect(distances[2]).to.be.closeTo(0.222, 0.001);
+    });
+  });
+
+  it("never puts a point behind the one before it, or level with it", async () => {
+    // The second link says 50m where the straight line to its end is over a kilometre, and the
+    // third link's start is the first link's end - so measured naively the line goes backwards.
+    const naptan: any = {
+      A: {latitude: "51.0", longitude: "-1.0"}, B: {latitude: "51.01", longitude: "-1.0"},
+      C: {latitude: "51.02", longitude: "-1.0"}, D: {latitude: "51.03", longitude: "-1.0"}
+    };
+    const stream = new ShapesStream(naptan);
+
+    stream.write(journey({routeLinks: [
+      {From: "A", To: "B", Distance: 1100, Locations: []},
+      {From: "X", To: "C", Distance: 50, Locations: []},
+      {From: "B", To: "D", Distance: 0, Locations: []}
+    ]}));
+    stream.end();
+
+    return awaitStream(stream, (rows: any[]) => {
+      const distances = kilometres(rows);
+
+      for (let i = 1; i < distances.length; i++) {
+        expect(distances[i]).to.be.greaterThan(distances[i - 1]);
+      }
+    });
+  });
+
+  it("places a stop NaPTAN does not know where its own document does", async () => {
+    const stream = new ShapesStream();
+
+    stream.write(journey({
+      routeLinks: [{From: "A", To: "B", Distance: 100, Locations: []}],
+      stopLocations: {A: {Latitude: 51.0, Longitude: -1.0}, B: {Latitude: 51.001, Longitude: -1.0}}
+    }));
+    stream.end();
+
+    return awaitStream(stream, (rows: any[]) => {
+      expect(rows.map(r => [r.shape_pt_lat, r.shape_pt_lon])).to.deep.equal([[51.0, -1.0], [51.001, -1.0]]);
+    });
+  });
+
 });
