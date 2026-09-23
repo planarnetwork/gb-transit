@@ -12,12 +12,6 @@ entry here does not excuse a golden feed moving, and an entry there does not exc
 
 ## The type surface
 
-**Passing columns through a merge.** `@gb-transit/gtfs-loader` gains `readHeaders`, the header row of
-each file in a feed, decompressing each entry only as far as its first line. An addition only.
-`ReadFeedOptions` gains an optional `extraColumns`, which the surface records by name and so does
-not show: the named columns the schema does not know, read onto the row as text. Without it
-`readFeed` reads what it always did.
-
 **Naming and drawing the trips couplings make.** `@gb-transit/gtfs-loader` gains `linkShapes`, which
 makes the shapes of the trips `linkTrips` makes out of joins and splits. An addition only: `Trip` is
 unchanged, and the through trip now fills the optional `routeId`, `shortName`, `headsign` and
