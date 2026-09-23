@@ -29,19 +29,11 @@ import {Database} from "../database/Database";
 /**
  * The timetable read through Kysely, so the same build runs against MySQL, Postgres or SQLite.
  *
- * MySqlTimetableSource is the same data expressed in the SQL one database happens to accept. Four things
- * in it do not translate:
- *
- * - `cate_interchange_status <=> 9` is MySQL's null safe equals. A CASE says the same thing everywhere,
- *   including for the null the operator quietly treats as "not 9".
- * - `IF(train_status = "S", ...)` is a MySQL function; CASE is the standard spelling.
- * - matching a fixed link on `CONCAT(origin, destination)` can match the wrong link, because the codes
- *   are glued together before they are compared. `AB` + `CDE` and `ABC` + `DE` are the same string.
- * - a bare `GROUP BY crs_code` with columns that are not in it. MySQL answers by choosing a row for you
- *   and Postgres rejects the query outright, so the row is chosen here instead.
- *
- * The queries are built rather than written, so they are checked against the schema declarations rather
- * than being strings that happen to name columns.
+ * The queries are standard SQL rather than any one database's dialect of it: a CASE rather than MySQL's
+ * IF or its null safe `<=>`, a fixed link matched on its origin and destination rather than on the two
+ * codes glued together, and a row chosen by ranking rather than by a GROUP BY that leaves the database
+ * to pick one. They are built rather than written, so they are checked against the schema declarations
+ * rather than being strings that happen to name columns.
  */
 export class KyselyTimetableSource implements TimetableSource {
 
@@ -53,8 +45,7 @@ export class KyselyTimetableSource implements TimetableSource {
      * Whether to drop the locations a service runs through without stopping.
      * See BuildContext: on unless the build asked for them.
      *
-     * Handed to ScheduleBuilder rather than written into the query, the same way the MySQL source does
-     * it. The stop times a service runs through are selected either way, because the shapes are drawn
+     * Handed to ScheduleBuilder rather than written into the query. The stop times a service runs through are selected either way, because the shapes are drawn
      * through them.
      */
     private readonly removePassingPoints: boolean = true

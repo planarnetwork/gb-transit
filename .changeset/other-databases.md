@@ -10,9 +10,8 @@ Run the import and the GTFS build against Postgres and SQLite as well as MySQL, 
 The tables are declared rather than implied by the feed definitions, and both the schema and the
 statements that fill it go through Kysely, so the same declaration produces a MySQL, Postgres or
 SQLite table. `--fares-clean`, `--gtfs-import` and the GTFS build follow: the first two were raw
-MySQL, and the third gains a `TimetableSource` that reads through the query builder.
-`MySqlTimetableSource` is unchanged and still serves MySQL, because it streams through mysql2
-directly and that is worth keeping for the millions of stop times a full feed has.
+MySQL, and the third reads through the query builder on every database, MySQL included, streaming
+the stop times through the driver as it did before.
 
 `pg` and `pg-cursor` are optional peer dependencies, installed by somebody pointing at Postgres.
 SQLite needs nothing, so a whole feed can be imported and queried with no server:

@@ -13,7 +13,7 @@ const notAdvertisedActivity = "N ";
 /**
  * Where a run of rows for one schedule is accumulated.
  *
- * One per run, not one per builder: the MySQL source loads the passenger
+ * One per run, not one per builder: a source may load the passenger
  * schedules and the z-trains concurrently into the same builder, and two
  * interleaved streams sharing a cursor would splice each other's stop times into
  * the wrong trains.

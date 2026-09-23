@@ -2,7 +2,6 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import mysql from "mysql2";
-import mysqlPromise from "mysql2/promise";
 import {Kysely, MysqlDialect, PostgresDialect} from "kysely";
 import config, {downloadUrl} from "@gb-transit/dtd-schema";
 import {BuildFeed, buildContext, dateRange, GTFSOutput, stationCoordinates} from "@gb-transit/gtfs";
@@ -21,7 +20,6 @@ import {CleanFaresCommand} from "./cli/CleanFaresCommand";
 import {GTFSImportCommand} from "./cli/GTFSImportCommand";
 import {ImportFeedCommand} from "./cli/ImportFeedCommand";
 import {ShowHelpCommand} from "./cli/ShowHelpCommand";
-import {DatabaseConnection} from "./database/DatabaseConnection";
 import {Database} from "./database/Database";
 import {SchemaDialect} from "./database/SchemaDialect";
 import {databaseConfigured, dialectName, mysqlOptions, postgresOptions, sqliteOptions} from "./database/connection";
@@ -30,14 +28,13 @@ import {nodeSqliteDialect} from "./database/NodeSqliteDatabase";
 import schema from "./database/schema";
 import gtfsSchema from "./gtfs/schema";
 import {LogTableFeedCursor} from "./source/LogTableFeedCursor";
-import {MySqlTimetableSource} from "./source/MySqlTimetableSource";
 import {KyselyTimetableSource} from "./source/KyselyTimetableSource";
 
 /**
  * Composition root for the dtd2mysql CLI: it resolves a flag to the command that
- * implements it, and owns the two connection pools everything else shares.
+ * implements it, and owns the database connection everything else shares.
  *
- * The pools are created on first use rather than at module load, because
+ * The connection is created on first use rather than at module load, because
  * `dtd2mysql --help` has to work without DATABASE_NAME set.
  */
 
@@ -103,14 +100,13 @@ const getPostgresPool = once((_: null) => {
 });
 
 /**
- * The schema layer talks to the database through Kysely so that it can target more than just MySQL.
- *
- * MySQL shares the streaming pool rather than opening a third one.
+ * Everything talks to the database through Kysely, so that the same queries run on MySQL, Postgres
+ * and SQLite.
  */
 const getKysely = once((_: null): Kysely<Database> => {
   switch (dialectName()) {
     case "mysql":
-      return new Kysely({dialect: new MysqlDialect({pool: getDatabaseStream(null)})});
+      return new Kysely({dialect: new MysqlDialect({pool: track(mysql.createPool(mysqlOptions()))})});
     case "sqlite": {
       const {filename, options} = sqliteOptions();
 
@@ -129,18 +125,6 @@ const getKysely = once((_: null): Kysely<Database> => {
 });
 
 export const kysely = () => getKysely(null);
-
-/**
- * DatabaseConnection models a pool and a connection with one type, so it declares
- * release(), which a pool does not have. Nothing calls release() on the pool.
- */
-const getDatabaseConnection = once((_: null): DatabaseConnection =>
-  track(mysqlPromise.createPool(mysqlOptions()) as unknown as DatabaseConnection)
-);
-
-const getDatabaseStream = once((_: null): mysql.Pool =>
-  track(mysql.createPool(mysqlOptions()))
-);
 
 /**
  * Every pool this container has actually created.
@@ -183,9 +167,6 @@ export async function closeConnections(): Promise<void> {
 
   open.length = 0;
 }
-
-const databaseConnection = () => getDatabaseConnection(null);
-const databaseStream = () => getDatabaseStream(null);
 
 const getImportFeedCommand = once((feed: "fares" | "routeing" | "timetable" | "nfm64") =>
   new ImportFeedCommand(
@@ -266,22 +247,8 @@ function buildFeed(output: GTFSOutput): BuildFeed {
 
 /**
  * Where the build reads the timetable from.
- *
- * MySQL keeps its own source: it streams through mysql2 directly, which is faster than going through
- * the query builder for the millions of stop time rows a full feed has. The other two go through
- * Kysely, which is the only way they can be read at all.
  */
 function timetableSource(context: BuildContext): TimetableSource {
-  if (dialectName() === "mysql") {
-    return new MySqlTimetableSource(
-      databaseConnection(),
-      databaseStream(),
-      stationCoordinates,
-      dateRange(context),
-      context.removePassingPoints
-    );
-  }
-
   // the build streams the stop times of a whole feed, and Kysely's Postgres dialect only streams
   // with pg-cursor. Asked for here it names the package; left to the dialect it fails part way
   // through a build, with a message that names neither the package nor the fix.

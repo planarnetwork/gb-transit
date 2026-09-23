@@ -39,12 +39,12 @@ const SUBSIDIARY = 9;
 /**
  * A TimetableSource that reads the DTD feed files directly, with no database.
  *
- * MySqlTimetableSource's SQL is the specification. Three of its behaviours come
- * from MySQL rather than from the feed, and each is reproduced here with the
- * query it belongs to:
+ * The SQL of dtd2mysql's KyselyTimetableSource is the specification. Three of
+ * its behaviours come from the database rather than from the feed, and each is
+ * reproduced here with the query it belongs to:
  *
  *  - a CHAR column loses its trailing spaces and a VARCHAR does not (MemoryTable)
- *  - GROUP BY crs_code returns the first row inserted for that code
+ *  - one row per CRS code, chosen by ranking its TIPLOCs (groupByCrs)
  *  - UNION deduplicates the fixed links, so importing the same ALF three times
  *    does not triple links.txt
  *
@@ -284,7 +284,7 @@ class ScheduleLoader {
   private zScheduleId = 0;
 
   // Summed across builders because there is one per schedule here, unlike the
-  // MySQL source which streams every schedule through a single builder.
+  // database source which streams every schedule through a single builder.
   public droppedStops = 0;
 
   constructor(
