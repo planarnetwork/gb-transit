@@ -99,6 +99,12 @@ export class Container {
    * scanned before the conversion starts.
    */
   public async getConverter(options: ConverterOptions = {}, inputs: readonly string[] = []): Promise<Converter> {
+    // Scanning nothing finds nothing to supersede, and a conversion that quietly
+    // runs both timetables is the thing the option exists to prevent.
+    if (options.supersedeByLine && inputs.length === 0) {
+      throw new Error("supersedeByLine scans the inputs before converting them, so it needs to be given them.");
+    }
+
     const [naptanIndex, locationIndex] = await this.getNaPTANIndexes(options);
     const areas = options.skipStopAreas ? {} : {...stopAreas(naptanIndex), ...stationAreas(naptanIndex)};
     const window = this.getWindow(options);

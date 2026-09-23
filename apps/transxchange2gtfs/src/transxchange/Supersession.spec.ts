@@ -1,11 +1,18 @@
 import {describe, it, expect} from "vitest";
 import {LocalDate} from "@js-joda/core";
 import {ServiceHeader, serviceHeaders, supersession, supersessionKey} from "./Supersession";
+import {DaysOfWeek} from "./TransXChange";
 
 const window = {from: LocalDate.parse("2026-09-22"), to: LocalDate.parse("2026-12-22")};
 
-function service(serviceCode: string, start: string, end: string, lines = "Central", operator = "LUL"): ServiceHeader {
-  return {serviceCode, operator, lines, start: LocalDate.parse(start), end: LocalDate.parse(end)};
+const EVERY_DAY: DaysOfWeek = [1, 1, 1, 1, 1, 1, 1];
+const WEEKDAYS: DaysOfWeek = [1, 1, 1, 1, 1, 0, 0];
+const WEEKENDS: DaysOfWeek = [0, 0, 0, 0, 0, 1, 1];
+
+function service(
+  serviceCode: string, start: string, end: string, lines = "Central", operator = "LUL", days = EVERY_DAY
+): ServiceHeader {
+  return {serviceCode, operator, lines, start: LocalDate.parse(start), end: LocalDate.parse(end), days};
 }
 
 function days(of: ReadonlyMap<string, readonly LocalDate[]>, header: ServiceHeader): string[] {
@@ -45,6 +52,22 @@ describe("supersession", () => {
     expect(replaced.size).to.equal(0);
   });
 
+  it("does not let a weekday timetable that starts later take a Saturday", () => {
+    // 2026-10-03 is a Saturday
+    const saturdays = service("SAT", "2026-09-19", "2026-12-23", "Central", "LUL", WEEKENDS);
+    const weekdays = service("WKD", "2026-09-28", "2026-12-23", "Central", "LUL", WEEKDAYS);
+    const replaced = supersession([saturdays, weekdays], window);
+
+    expect(days(replaced, saturdays)).to.deep.equal([]);
+  });
+
+  it("does not let a works weekend take the Friday and Monday its period spans but it does not run on", () => {
+    const base = service("CEN-base", "2026-09-19", "2026-12-23");
+    const works = service("CEN-works", "2026-10-02", "2026-10-05", "Central", "LUL", WEEKENDS);
+
+    expect(days(supersession([base, works], window), base)).to.deep.equal(["2026-10-03", "2026-10-04"]);
+  });
+
   it("leaves other lines and other operators alone", () => {
     const central = service("CEN", "2026-09-19", "2026-12-23");
     const jubilee = service("JUB", "2026-10-02", "2026-10-04", "Jubilee");
@@ -73,12 +96,27 @@ describe("serviceHeaders", () => {
         <OperatingPeriod><StartDate>2026-10-02</StartDate><EndDate>2026-10-08</EndDate></OperatingPeriod>
         <RegisteredOperatorRef>OId_TCL</RegisteredOperatorRef>
       </Service></Services>
-      <VehicleJourneys><VehicleJourney><ServiceRef>63-TR-_-y05-151</ServiceRef></VehicleJourney></VehicleJourneys>
+      <VehicleJourneys>
+        <VehicleJourney><OperatingProfile><RegularDayType><DaysOfWeek><MondayToFriday /></DaysOfWeek></RegularDayType></OperatingProfile>
+          <ServiceRef>63-TR-_-y05-151</ServiceRef></VehicleJourney>
+        <VehicleJourney><OperatingProfile><RegularDayType><DaysOfWeek><Saturday/></DaysOfWeek></RegularDayType></OperatingProfile>
+          <ServiceRef>63-TR-_-y05-151</ServiceRef></VehicleJourney>
+      </VehicleJourneys>
     </TransXChange>`;
 
     expect(serviceHeaders(xml)).to.deep.equal([
-      service("63-TR-_-y05-151", "2026-10-02", "2026-10-08", "Tram", "TCL")
+      service("63-TR-_-y05-151", "2026-10-02", "2026-10-08", "Tram", "TCL", [1, 1, 1, 1, 1, 1, 0])
     ]);
+  });
+
+  it("gives a journey with no profile of its own its service's days", () => {
+    const xml = `<Service><ServiceCode>S</ServiceCode><Lines><Line id="1"><LineName>1</LineName></Line></Lines>
+      <OperatingPeriod><StartDate>2026-01-01</StartDate></OperatingPeriod>
+      <OperatingProfile><RegularDayType><DaysOfWeek><Weekend /></DaysOfWeek></RegularDayType></OperatingProfile>
+      <RegisteredOperatorRef>O</RegisteredOperatorRef></Service>
+      <VehicleJourney><ServiceRef>S</ServiceRef></VehicleJourney>`;
+
+    expect(serviceHeaders(xml)[0].days).to.deep.equal(WEEKENDS);
   });
 
   it("takes a service with no end date to run indefinitely, as the conversion does", () => {
@@ -86,6 +124,21 @@ describe("serviceHeaders", () => {
       <OperatingPeriod><StartDate>2026-01-01</StartDate></OperatingPeriod><RegisteredOperatorRef>O</RegisteredOperatorRef></Service>`;
 
     expect(serviceHeaders(xml)[0].end.toString()).to.equal("2099-12-31");
+  });
+
+  it("takes an empty end date the same way, rather than failing the scan", () => {
+    const xml = `<Service><ServiceCode>S</ServiceCode><Lines><Line id="1"><LineName>1</LineName></Line></Lines>
+      <OperatingPeriod><StartDate>2026-01-01</StartDate><EndDate></EndDate></OperatingPeriod>
+      <RegisteredOperatorRef>O</RegisteredOperatorRef></Service>`;
+
+    expect(serviceHeaders(xml)[0].end.toString()).to.equal("2099-12-31");
+  });
+
+  it("leaves out a service whose start is not a date, for the conversion to report", () => {
+    const xml = `<Service><ServiceCode>S</ServiceCode><Lines><Line id="1"><LineName>1</LineName></Line></Lines>
+      <OperatingPeriod><StartDate>soon</StartDate></OperatingPeriod><RegisteredOperatorRef>O</RegisteredOperatorRef></Service>`;
+
+    expect(serviceHeaders(xml)).to.deep.equal([]);
   });
 
 });

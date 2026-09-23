@@ -18,7 +18,14 @@ services under one line name.
 area it belongs to - `9400ZZLUKSX1` is platform 1 of `940GZZLUKSX` - and the feed now publishes that
 station and puts its platforms under it, so changing lines at King's Cross is an interchange rather
 than a walk between two places. A platform the timetable calls at that NaPTAN does not list, which is
-87 of TfL's, is put under its station and stands at it rather than having no position.
+87 of TfL's, is put under its station and stands at it rather than having no position. The platform
+number is the last digit only, so Heathrow's Terminal 4 and Terminal 5 - `9400ZZLUHR41` and
+`9400ZZLUHR51` - stay two stations, and a station whose platforms are named for their direction, as
+Sheffield's tram stops are, is named without it.
+
+A service only replaces another on the days of the week its journeys run, so a weekday timetable
+starting later does not take the Saturdays, and a service whose `EndDate` is empty runs indefinitely
+in the scan as it does in the conversion.
 
 **gtfsmerge exports `readHeaders`**, which gives the columns of each file in a feed from the start
 of each zip entry, for `scripts/combine-rail-and-tfl.mjs` to carry every column of both feeds.

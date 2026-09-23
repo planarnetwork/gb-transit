@@ -88,7 +88,7 @@ describe("stationAreas", () => {
     const grouped = stations(
       "9400ZZLUKSX1,King's Cross St. Pancras Underground Station,,,E001,PLT,London,,-0.12400,51.53000",
       "9400ZZLUKSX4,King's Cross St. Pancras Underground Station,,,E001,PLT,London,,-0.12600,51.53020",
-      "9300SWK1,Bankside Pier,,,E001,FER,London,,-0.09600,51.50800"
+      "9300SWK1,Bankside Pier,,,E001,FBT,London,,-0.09600,51.50800"
     );
 
     expect(grouped["9400ZZLUKSX1"].id).to.equal("940GZZLUKSX");
@@ -96,6 +96,40 @@ describe("stationAreas", () => {
     expect(grouped["9400ZZLUKSX1"].name).to.equal("King's Cross St. Pancras Underground Station");
     expect(grouped["9400ZZLUKSX1"].longitude).to.equal("-0.125");
     expect(grouped["9300SWK1"].id).to.equal("930GSWK");
+  });
+
+  it("keeps Heathrow's terminals apart, whose number is part of the station code", () => {
+    const grouped = stations(
+      "9400ZZLUHR41,Heathrow Terminal 4 Underground Station,,,E001,PLT,London,,-0.44600,51.45900",
+      "9400ZZLUHR51,Heathrow Terminal 5 Underground Station,,,E001,PLT,London,,-0.48800,51.47100"
+    );
+
+    expect(grouped["9400ZZLUHR41"].id).to.equal("940GZZLUHR4");
+    expect(grouped["9400ZZLUHR51"].id).to.equal("940GZZLUHR5");
+  });
+
+  it("leaves a station's entrance out of it, which shares the code but is not a platform", () => {
+    expect(stations(
+      "9400ZZLUHR4,Heathrow Terminal 4 Underground Station,,,E001,MET,London,,-0.44600,51.45900"
+    )).to.deep.equal({});
+  });
+
+  it("names a station for what its platforms share, without the direction they face", () => {
+    const grouped = stations(
+      "9400ZZSYRTH1,Rotherham Station To Parkgate,,,E001,PLT,Rotherham,,-1.36000,53.43000",
+      "9400ZZSYRTH2,Rotherham Station To Sheffield,,,E001,PLT,Rotherham,,-1.36010,53.43010"
+    );
+
+    expect(grouped["9400ZZSYRTH1"].name).to.equal("Rotherham Station");
+  });
+
+  it("names a station for its first platform where the platforms disagree about more than that", () => {
+    const grouped = stations(
+      "9400ZZLUHRC2,Heathrow Terminals 1-2-3 Underground Station,,,E001,PLT,London,,-0.45200,51.47100",
+      "9400ZZLUHRC1,Heathrow Terminals 2 & 3 Underground Station,,,E001,PLT,London,,-0.45210,51.47110"
+    );
+
+    expect(grouped["9400ZZLUHRC1"].name).to.equal("Heathrow Terminals 2 & 3 Underground Station");
   });
 
   it("leaves a stop that is not a numbered platform alone", () => {

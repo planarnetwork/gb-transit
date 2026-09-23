@@ -76,7 +76,7 @@ export function stopAreas(naptan: NaPTANIndex): StopAreaIndex {
       continue;
     }
 
-    const area = describe(stops);
+    const area = describeStreet(stops);
 
     for (const stop of stops) {
       areas[stop.atcoCode] = area;
@@ -88,10 +88,20 @@ export function stopAreas(naptan: NaPTANIndex): StopAreaIndex {
 
 /**
  * A metro, tram or ferry platform's ATCO code, and the stop area NaPTAN files it
- * under: `9400ZZLUKSX1` is platform 1 of `940GZZLUKSX`, King's Cross St. Pancras,
- * and `9300SWK3` a berth of `930GSWK`, Bankside Pier.
+ * under: the station's code and one digit. `9400ZZLUKSX1` is platform 1 of
+ * `940GZZLUKSX`, King's Cross St. Pancras, and `9300SWK3` a berth of `930GSWK`,
+ * Bankside Pier. One digit, not all of the trailing ones: Heathrow's terminals
+ * carry theirs in the station code, so `9400ZZLUHR41` is platform 1 of
+ * `940GZZLUHR4`, Terminal 4, and not of a station spanning Terminals 4 and 5.
  */
-const PLATFORM = /^(9[34])00(.+?)\d+$/;
+const PLATFORM = /^(9[34])00(.+)\d$/;
+
+/**
+ * NaPTAN's types for a metro or tram platform and a ferry berth. The other stops
+ * with a code of the same shape are the stations' own entrances, which are not
+ * something a timetable calls at.
+ */
+const PLATFORM_TYPES = new Set(["PLT", "FBT"]);
 
 /**
  * The stop area a metro, tram or ferry platform belongs to, by NaPTAN's own
@@ -122,7 +132,7 @@ export function stationAreas(naptan: NaPTANIndex): StopAreaIndex {
   for (const stop of Object.values(naptan)) {
     const station = platformStation(stop.atcoCode);
 
-    if (station !== undefined && stop.latitude !== "" && stop.longitude !== "") {
+    if (station !== undefined && PLATFORM_TYPES.has(stop.stopType) && stop.latitude !== "" && stop.longitude !== "") {
       (platforms[station] ||= []).push(stop);
     }
   }
@@ -130,15 +140,7 @@ export function stationAreas(naptan: NaPTANIndex): StopAreaIndex {
   const areas: StopAreaIndex = {};
 
   for (const [station, stops] of Object.entries(platforms)) {
-    const [first] = [...stops].sort((a, b) => a.atcoCode < b.atcoCode ? -1 : 1);
-    const mean = (of: (stop: NaptanStopPoint) => number) =>
-      stops.reduce((total, stop) => total + of(stop), 0) / stops.length;
-    const area = {
-      id: station,
-      name: first.name,
-      longitude: String(mean(stop => Number(stop.longitude))),
-      latitude: String(mean(stop => Number(stop.latitude)))
-    };
+    const area = describe(stops, station, sharedName(stops));
 
     areas[station] = area;
 
@@ -178,23 +180,57 @@ function isOnePlace(stops: NaptanStopPoint[]): boolean {
   return true;
 }
 
+/**
+ * The two sides of a street as an area of their own. Prefixed: this is our
+ * grouping rather than NaPTAN's, and every other id in stops.txt is an ATCO code
+ * that means something.
+ */
+function describeStreet(stops: NaptanStopPoint[]): NaptanStopArea {
+  const first = firstOf(stops);
+
+  return describe(stops, "gp:" + first.atcoCode, first.name + ", " + (first.parentLocality || first.locality));
+}
+
 /** The area itself, standing at the middle of its stops. */
-function describe(stops: NaptanStopPoint[]): NaptanStopArea {
+function describe(stops: NaptanStopPoint[], id: string, name: string): NaptanStopArea {
   const mean = (of: (stop: NaptanStopPoint) => number) =>
     stops.reduce((total, stop) => total + of(stop), 0) / stops.length;
 
-  // Sorted rather than first seen, so the area does not change with the order
-  // NaPTAN was read in.
-  const [first] = [...stops].sort((a, b) => a.atcoCode < b.atcoCode ? -1 : 1);
-
   return {
-    // Prefixed: this is our grouping rather than NaPTAN's, and every other id in
-    // stops.txt is an ATCO code that means something.
-    id: "gp:" + first.atcoCode,
-    name: first.name + ", " + (first.parentLocality || first.locality),
+    id,
+    name,
     longitude: String(mean(stop => Number(stop.longitude))),
     latitude: String(mean(stop => Number(stop.latitude)))
   };
+}
+
+/**
+ * Sorted rather than first seen, so the area does not change with the order
+ * NaPTAN was read in.
+ */
+function firstOf(stops: NaptanStopPoint[]): NaptanStopPoint {
+  return [...stops].sort((a, b) => a.atcoCode < b.atcoCode ? -1 : 1)[0];
+}
+
+/** A platform named for the way it faces: "Arbourthorne Road From City", "Rotherham Station To Parkgate". */
+const DIRECTION = /\s+(?:From|To)\s+.+$/;
+
+/**
+ * What a station's platforms are all called. Sheffield's tram stops name each
+ * platform for its direction - "Arbourthorne Road From City" and "Arbourthorne
+ * Road To City" - and the stop is what is left without it. Where the platforms
+ * still disagree, the first one's name.
+ */
+function sharedName(stops: NaptanStopPoint[]): string {
+  const names = new Set(stops.map(stop => stop.name));
+
+  if (names.size === 1) {
+    return stops[0].name;
+  }
+
+  const places = new Set(stops.map(stop => stop.name.replace(DIRECTION, "")));
+
+  return places.size === 1 ? [...places][0] : firstOf(stops).name;
 }
 
 function metresBetween(a: NaptanStopPoint, b: NaptanStopPoint): number {
