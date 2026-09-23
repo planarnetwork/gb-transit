@@ -94,6 +94,9 @@ const TFL_AGENCIES = {
   CV: {agency_name: "Uber Boat by Thames Clippers", agency_url: "https://www.thamesclippers.com/"}
 };
 
+/** The lines a complete download always has: the Underground's, the DLR and the trams. */
+const REQUIRED = /^(BAK|CEN|CIR|DIS|HAM|JUB|MET|NTN|PIC|VIC|WAC|DLR|TR)$/;
+
 /** The line code of a TfL route: `1-BAK-_-y05-635201|1-BAK-_-y05-635201` is `BAK`. */
 const lineOf = routeId => routeId.split("-")[1];
 
@@ -108,17 +111,21 @@ function textOn(colour) {
 
 /**
  * TfL's open data licence makes this statement a condition of using the timetables, and
- * attributions.txt is where a feed says who it is built from.
+ * attributions.txt is where a feed says who it is built from. One row per agency TfL's timetables
+ * describe, because a row naming no agency, route or trip is about the whole feed - and TfL is not
+ * the producer of the National Rail half, nor the authority for it. TfL produces these timetables
+ * and is the authority the operators run under; it is not the operator of all of them.
  */
-const TFL = {
+const tflAttribution = agencyId => ({
+  agency_id: agencyId,
   organization_name: "Transport for London",
-  is_producer: 0,
-  is_operator: 1,
+  is_producer: 1,
+  is_operator: 0,
   is_authority: 1,
   attribution_url: "https://tfl.gov.uk/corporate/terms-and-conditions/transport-data-service",
   attribution_licence: "Powered by TfL Open Data. Contains OS data © Crown copyright and database rights 2016 " +
     "and Geomni UK Map data © and database rights [2019]"
-};
+});
 
 const [railPath, tflPath, outPath, interchangePath = path.join(import.meta.dirname, "tfl-interchange.csv")] = process.argv.slice(2);
 
@@ -177,21 +184,27 @@ function open(file, columns) {
 const railParent = new Map(rail["stops.txt"].map(s => [s.stop_id, s.parent_station || s.stop_id]));
 const served = new Set();
 const stopTimes = open("stop_times.txt", columnsOf("stop_times.txt"));
-const shapes = open("shapes.txt", columnsOf("shapes.txt"));
+const shapes = columnsOf("shapes.txt").length === 0 ? undefined : open("shapes.txt", columnsOf("shapes.txt"));
+// A TfL journey none of whose stops can be placed is named a shape that has no points, and a trip
+// pointing at a shape that is not there fails validation, so only the ones written are kept.
+const drawn = new Set();
 
 await readFeed(source(railPath), {
   "stop_times.txt": row => {
     served.add(railParent.get(row.stop_id) ?? row.stop_id);
     stopTimes.write(row);
   },
-  "shapes.txt": row => shapes.write(row)
+  "shapes.txt": row => shapes?.write(row)
 }, {extraColumns: railHeaders});
 await readFeed(source(tflPath), {
   "stop_times.txt": row => stopTimes.write({...row, trip_id: "tfl_" + row.trip_id}),
-  "shapes.txt": row => shapes.write({...row, shape_id: "tfl_" + row.shape_id})
+  "shapes.txt": row => {
+    drawn.add(row.shape_id);
+    shapes?.write({...row, shape_id: "tfl_" + row.shape_id});
+  }
 }, {extraColumns: tflHeaders});
 stopTimes.end();
-shapes.end();
+shapes?.end();
 
 const metres = (a, b) => {
   const lat = (Number(a.stop_lat) + Number(b.stop_lat)) / 2 * Math.PI / 180;
@@ -362,8 +375,22 @@ for (const route of [...tfl["routes.txt"]].sort((a, b) => (runsOn.get(b.route_id
 }
 
 const tflAgencies = tfl["agency.txt"].map(agency => ({...agency, ...TFL_AGENCIES[agency.agency_id]}));
-const tflTrips = prefix(tfl["trips.txt"], "trip_id", "service_id", "shape_id")
-  .map(trip => ({...trip, route_id: "tfl_" + lineOf(trip.route_id)}));
+const tflTrips = prefix(tfl["trips.txt"], "trip_id", "service_id")
+  .map(trip => ({
+    ...trip,
+    route_id: "tfl_" + lineOf(trip.route_id),
+    shape_id: drawn.has(trip.shape_id) ? "tfl_" + trip.shape_id : undefined
+  }));
+
+// A download that came back short is a feed missing a line, which nothing downstream can tell from a
+// quiet night on it. Every tube line, the DLR and the trams run every day.
+const running = new Set(tflTrips.map(trip => trip.route_id));
+const missing = Object.keys(TFL_LINES).filter(line => REQUIRED.test(line) && !running.has("tfl_" + line));
+
+if (missing.length > 0) {
+  console.error(`TfL's timetables have no trips on ${missing.join(", ")}, so the download is incomplete.`);
+  process.exit(1);
+}
 
 const combined = {
   "agency.txt": [rail["agency.txt"], tflAgencies],
@@ -373,12 +400,12 @@ const combined = {
   "calendar_dates.txt": [rail["calendar_dates.txt"], prefix(tfl["calendar_dates.txt"], "service_id")],
   "stops.txt": [rail["stops.txt"], tflStops],
   "transfers.txt": [rail["transfers.txt"], transfers],
-  "attributions.txt": [rail["attributions.txt"], [TFL]],
+  "attributions.txt": [rail["attributions.txt"], tfl["agency.txt"].map(agency => tflAttribution(agency.agency_id))],
   ...Object.fromEntries(COPIED.filter(file => railHeaders[file] !== undefined).map(file => [file, [rail[file]]]))
 };
 
 /** Columns the script writes whether or not either feed had them. */
-const WRITTEN = {"transfers.txt": ["mode"], "attributions.txt": Object.keys(TFL)};
+const WRITTEN = {"transfers.txt": ["mode"], "attributions.txt": Object.keys(tflAttribution(""))};
 
 for (const [file, parts] of Object.entries(combined)) {
   const columns = [...new Set([...columnsOf(file), ...WRITTEN[file] ?? []])];

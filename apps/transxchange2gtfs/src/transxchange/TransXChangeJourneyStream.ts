@@ -10,7 +10,8 @@ import {
   JPJourneyStop,
   VJJourneyStop,
   TimingStatus,
-  RouteLink
+  RouteLink,
+  Location
 } from "./TransXChange";
 import {Transform, TransformCallback} from "node:stream";
 import {LocalDate, LocalTime, Duration, DateTimeFormatter} from "@js-joda/core";
@@ -155,8 +156,24 @@ export class TransXChangeJourneyStream extends Transform implements Skipped {
         headsign
       };
 
-      this.push({calendar, stops, trip, route, blockId, routeLinkIds, routeLinks} as TransXChangeJourney);
+      const stopLocations = this.stopLocationsOf(schedule);
+
+      this.push({calendar, stops, trip, route, blockId, routeLinkIds, routeLinks, stopLocations} as TransXChangeJourney);
     }
+  }
+
+  /** Where the document places its stops, once per document rather than once per journey in it. */
+  private readonly locations = new WeakMap<TransXChange, Record<ATCOCode, Location>>();
+
+  private stopLocationsOf(schedule: TransXChange): Record<ATCOCode, Location> {
+    let found = this.locations.get(schedule);
+
+    if (found === undefined) {
+      found = Object.fromEntries((schedule.StopPoints ?? []).map(stop => [stop.StopPointRef, stop.Location]));
+      this.locations.set(schedule, found);
+    }
+
+    return found;
   }
 
   private getCalendar(operatingProfile: OperatingProfile, service: Service): JourneyCalendar | undefined {
@@ -389,6 +406,8 @@ export interface TransXChangeJourney {
   blockId?: string,
   routeLinkIds: string[],
   routeLinks: RouteLink[],
+  /** Where the journey's document places its stops, which is a position NaPTAN may not have. */
+  stopLocations?: Record<ATCOCode, Location>,
 }
 
 export interface JourneyCalendar {

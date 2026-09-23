@@ -23,6 +23,13 @@ concurrency:
 permissions:
   contents: write
 
+# Named rather than left to the default, which is `bash -e` without pipefail: a
+# build piped into tee that crashed would leave the step green and the failure to
+# turn up later, somewhere with nothing to do with it.
+defaults:
+  run:
+    shell: bash
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -248,14 +255,19 @@ jobs:
           fi
 
           # The rail half is the National Rail only feed's trips, so the TfL half
-          # is everything above that - and a TfL download that came back empty,
-          # or a conversion that read none of it, leaves nothing above it.
+          # is everything above that. Held to a floor of its own rather than only
+          # to being more than nothing, because the swing check below has nothing
+          # to compare the first release against: TfL's timetables of September
+          # 2026 are 79,722 trips over three months, and half of that is a
+          # download or a conversion that lost most of it. The combine script
+          # already stops on a tube line, the DLR or the trams with no trips.
           rail_and_tfl=$(( $(wc -l < feed-rail-and-tfl/trips.txt) - 1 ))
+          tfl=$(( rail_and_tfl - national_rail_only ))
           echo "rail_and_tfl_trips=$rail_and_tfl" >> "$GITHUB_OUTPUT"
-          echo "Rail and TfL: $rail_and_tfl trips, $(( rail_and_tfl - national_rail_only )) of them TfL's"
+          echo "Rail and TfL: $rail_and_tfl trips, $tfl of them TfL's"
 
-          if [ "$rail_and_tfl" -le "$national_rail_only" ]; then
-            echo "The rail and TfL feed has no more trips than the National Rail only feed, so TfL is missing."
+          if [ "$tfl" -lt 40000 ]; then
+            echo "The rail and TfL feed has $tfl of TfL's trips, fewer than half as many as it should."
             exit 1
           fi
 
@@ -334,6 +346,23 @@ jobs:
             const report = fs.existsSync('feed/enrichment-report.json')
               ? JSON.parse(fs.readFileSync('feed/enrichment-report.json', 'utf8'))
               : {sources: [], enrichers: [], extensions: []};
+            // The rail and TfL feed is built from sources the rail build did not
+            // use - TfL, whose licence makes its acknowledgement a condition of
+            // using the timetables - and its attributions.txt says who, in the
+            // words their licences ask for.
+            const fields = line => [...line.matchAll(/(?:^|,)(\"(?:[^\"]|\"\")*\"|[^,]*)/g)]
+              .map(match => match[1].replace(/^\"|\"$/g, '').replace(/\"\"/g, '\"'));
+            const [header, ...lines] = fs.readFileSync('feed-rail-and-tfl/attributions.txt', 'utf8')
+              .trimEnd().split('\n').map(fields);
+            const credited = new Set(report.sources.map(source => source.organisation));
+            const others = [...new Map(lines
+              .map(values => Object.fromEntries(header.map((name, i) => [name, values[i]])))
+              .filter(row => !credited.has(row.organization_name))
+              .map(row => [row.organization_name, {
+                organisation: row.organization_name,
+                licence: row.attribution_licence,
+                url: row.attribution_url
+              }])).values()];
             // Counted rather than described, so the release says what the
             // zips actually hold rather than what they were meant to.
             const rows = file => fs.readFileSync(file, 'utf8').trimEnd().split('\n').length - 1;
@@ -354,13 +383,7 @@ jobs:
               feed_version: feed.feed_version,
               feed_start_date: feed.feed_start_date,
               feed_end_date: feed.feed_end_date,
-              // TfL's timetables are in the release too, and its licence makes the
-              // acknowledgement a condition of using them.
-              sources: [...report.sources, {
-                organisation: 'Transport for London',
-                licence: 'Powered by TfL Open Data',
-                url: 'https://tfl.gov.uk/corporate/terms-and-conditions/transport-data-service'
-              }],
+              sources: [...report.sources, ...others],
               enrichers: report.enrichers,
               extensions: report.extensions
             }, null, 2));
