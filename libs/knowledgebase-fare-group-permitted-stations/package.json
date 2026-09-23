@@ -1,6 +1,6 @@
 {
   "name": "@gb-transit/knowledgebase-fare-group-permitted-stations",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Read the National Rail Knowledgebase fare group permitted stations reference data",
   "license": "GPL-3.0",
   "repository": {
