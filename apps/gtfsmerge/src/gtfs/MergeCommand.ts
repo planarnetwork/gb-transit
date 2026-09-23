@@ -29,18 +29,18 @@ export class MergeCommand {
     // otherwise arrive too late to be in it.
     const extra = await extraColumns(inputs, declaredColumns(this.shapes), withheldColumns(this.shapes));
 
-    for (const [file, columns] of Object.entries(extra.write)) {
+    for (const [file, columns] of Object.entries(extra)) {
       console.log(`Passing through ${file} ${columns.join(", ")}`);
     }
 
-    const output = this.outputFactory.create(extra.write);
+    const output = this.outputFactory.create(extra);
 
     for (const input of inputs) {
       console.log("Loading " + input);
-      const gtfs = await readMergeInput(input, filterDatesBefore, extra.read);
+      const gtfs = await readMergeInput(input, filterDatesBefore, extra);
 
       console.log("Processing " + input);
-      await output.write(gtfs, streamOf(input, this.shapes, extra.read));
+      await output.write(gtfs, streamOf(input, this.shapes, extra));
     }
 
     await output.end();

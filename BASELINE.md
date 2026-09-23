@@ -12,11 +12,11 @@ entry here does not excuse a golden feed moving, and an entry there does not exc
 
 ## The type surface
 
-**Passing columns through a merge.** `@gb-transit/gtfs-loader` gains `readHeaders`, the header row of
-each file in a feed, decompressing each entry only as far as its first line. An addition only.
-`ReadFeedOptions` gains an optional `extraColumns`, which the surface records by name and so does
-not show: the named columns the schema does not know, read onto the row as text. Without it
-`readFeed` reads what it always did.
+**Leaving a fixed link out by its mode.** `@gb-transit/gtfs` gains `excludeLinks`, which drops the
+fixed links of the modes a build's `exclude.links` names before they are merged into
+`transfers.txt`, and `LINK_MODES`, the eight modes the ALF and FLF describe a link by, which the
+config is checked against. Additions only. `ServiceExclusions` gains an optional `links`, which the
+surface records by name and so does not show; optional so a rule written before it still compiles.
 
 **Naming and drawing the trips couplings make.** `@gb-transit/gtfs-loader` gains `linkShapes`, which
 makes the shapes of the trips `linkTrips` makes out of joins and splits. An addition only: `Trip` is

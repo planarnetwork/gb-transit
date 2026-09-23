@@ -19,8 +19,8 @@ export interface ReadFeedOptions {
   /**
    * Columns to read from a file beyond the ones the schema knows, carried on the
    * row as the text the file held. For a tool that passes a feed's columns
-   * through rather than interpreting them; see `readHeaders` for finding out
-   * what they are.
+   * through rather than interpreting them. A column the schema already knows is
+   * read as it always is, so naming one here changes nothing.
    */
   extraColumns?: Partial<Record<FeedFileName, readonly string[]>>;
 }

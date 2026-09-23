@@ -77,22 +77,59 @@ export const trips = (shapes: boolean) => fileSchema<TripRow>("trips.txt", [
 export const TRIPS = trips(true);
 
 /**
+ * Every file a merge writes, which is the one list both the writers are opened
+ * from and a feed's own columns are compared against - two lists kept in step by
+ * hand would pass a column through twice, or not at all, the day they drifted.
+ */
+export function outputFiles(shapes: boolean) {
+  return {
+    agency: AGENCY,
+    areas: AREAS,
+    attributions: ATTRIBUTIONS,
+    feedInfo: FEED_INFO,
+    stopAreas: STOP_AREAS,
+    frequencies: FREQUENCIES,
+    calendar: CALENDAR,
+    calendarDates: CALENDAR_DATES,
+    routes: ROUTES,
+    stopTimes: STOP_TIMES,
+    stops: STOPS,
+    transfers: TRANSFERS,
+    trips: trips(shapes),
+    // Not written at all without shapes, so the feed has no empty shapes.txt to explain.
+    shapes: shapes ? SHAPES : undefined
+  };
+}
+
+/**
  * The columns a merge writes of each file it writes, which is what a feed's own
  * columns are compared against to find the ones to pass through.
  */
 export function declaredColumns(shapes: boolean): Partial<Record<FeedFileName, readonly string[]>> {
-  const files = [
-    AGENCY, AREAS, ATTRIBUTIONS, FEED_INFO, STOP_AREAS, FREQUENCIES, CALENDAR, CALENDAR_DATES,
-    ROUTES, STOP_TIMES, STOPS, TRANSFERS, trips(shapes), ...(shapes ? [SHAPES] : [])
-  ];
-
-  return Object.fromEntries(files.map(file => [file.filename, file.columns as readonly string[]]));
+  return Object.fromEntries(Object.values(outputFiles(shapes))
+    .filter(file => file !== undefined)
+    .map(file => [file.filename, file.columns as readonly string[]]));
 }
 
 /**
- * The columns a merge leaves out on purpose, which a feed carrying them does not
- * put back.
+ * The columns a merge will not pass through, because each names something the
+ * merged feed would not have:
+ *
+ * - a route by the id its own feed gave it, where the merge renumbers the routes
+ *   - and keeps one transfer per pair of stops, so it could not hold transfers
+ *   scoped to routes even renumbered;
+ * - a row of a file the merge does not write: levels.txt, networks.txt, the
+ *   flexible services' locations and booking rules;
+ * - a shape, in a merge without shapes.
+ *
+ * All of these were dropped before columns were passed through at all.
  */
 export function withheldColumns(shapes: boolean): Partial<Record<FeedFileName, readonly string[]>> {
-  return shapes ? {} : {"trips.txt": ["shape_id"]};
+  return {
+    "transfers.txt": ["from_route_id", "to_route_id"],
+    "stops.txt": ["level_id"],
+    "routes.txt": ["network_id"],
+    "stop_times.txt": ["location_id", "location_group_id", "pickup_booking_rule_id", "drop_off_booking_rule_id"],
+    ...(shapes ? {} : {"trips.txt": ["shape_id"]})
+  };
 }

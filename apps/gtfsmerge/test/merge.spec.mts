@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import {zipSync, strToU8} from "fflate";
-import {loadGTFS, FeedFileName} from "@gb-transit/gtfs-loader";
+import {loadGTFS, readFeed, FeedFileName} from "@gb-transit/gtfs-loader";
 import {TransferType} from "@gb-transit/gtfs-schema";
 import {merge} from "../src/api.js";
 
@@ -386,8 +386,9 @@ describe("columns a feed carries that the merge does not declare", () => {
   let merged: string;
 
   /**
-   * Fixture a with the rail feed's fixed link columns on its transfers, and a
-   * column on its trips that no schema here has heard of.
+   * Fixture a with the rail feed's fixed link columns on its transfers, a route
+   * a transfer is scoped to, and a column on its trips that no schema here has
+   * heard of.
    */
   beforeAll(async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "gtfsmerge-extra"));
@@ -395,9 +396,9 @@ describe("columns a feed carries that the merge does not declare", () => {
 
     fs.cpSync(path.join(fixtures, "a"), extended, {recursive: true});
     fs.writeFileSync(path.join(extended, "transfers.txt"),
-      "from_stop_id,to_stop_id,from_trip_id,to_trip_id,transfer_type,min_transfer_time,mode,start_time\n" +
-      "910GBETA,910GBETA,TA1,TA2,4,,,\n" +
-      "910GALPHA,910GALPHA,,,2,300,WALK,06:00:00\n");
+      "from_stop_id,to_stop_id,from_trip_id,to_trip_id,transfer_type,min_transfer_time,from_route_id,mode,start_time\n" +
+      "910GBETA,910GBETA,TA1,TA2,4,,,,\n" +
+      "910GALPHA,910GALPHA,,,2,300,RA1,WALK,06:00:00\n");
 
     const trips = fs.readFileSync(path.join(extended, "trips.txt"), "utf8").trimEnd().split("\n");
 
@@ -423,33 +424,39 @@ describe("columns a feed carries that the merge does not declare", () => {
     });
   }, 60_000);
 
-  const read = (file: string) => {
-    const [header, ...lines] = fs.readFileSync(path.join(merged, file), "utf8").trimEnd().split("\n");
+  const header = (file: string) => fs.readFileSync(path.join(merged, file), "utf8").split("\n")[0].split(",");
 
-    return {header: header.split(","), lines};
-  };
+  /** The rows of a merged file, read as a consumer would, with the extra columns asked for. */
+  async function rowsOf(file: FeedFileName, extra: string[]): Promise<Record<string, unknown>[]> {
+    const rows: Record<string, unknown>[] = [];
+    const zip = zipSync({[file]: strToU8(fs.readFileSync(path.join(merged, file), "utf8"))});
 
-  it("writes a column the schema knows but the merge does not declare, after its own", () => {
-    const {header, lines} = read("transfers.txt");
+    await readFeed(zip, {[file]: (row: object) => rows.push({...row})}, {extraColumns: {[file]: extra}});
 
-    expect(header.slice(-2)).to.deep.equal(["mode", "start_time"]);
-    expect(lines.some(line => line.endsWith(",WALK,06:00:00"))).to.equal(true);
+    return rows;
+  }
+
+  it("writes a column the schema knows but the merge does not declare, after its own", async () => {
+    expect(header("transfers.txt").slice(-2)).to.deep.equal(["mode", "start_time"]);
+    expect((await rowsOf("transfers.txt", [])).find(t => t.mode === "WALK")?.start_time).to.equal("06:00:00");
   });
 
-  it("writes a column nobody here has heard of, as the feed wrote it", () => {
-    const {header, lines} = read("trips.txt");
-
-    expect(header[header.length - 1]).to.equal("vehicle_note");
-    expect(lines.filter(line => line.includes(",note "))).to.have.length.greaterThan(0);
+  it("does not pass through a route id the merge has renumbered", () => {
+    expect(header("transfers.txt")).to.not.include("from_route_id");
   });
 
-  it("leaves the column empty in the rows of the feed that does not have it", () => {
-    const {header, lines} = read("trips.txt");
-    const note = header.indexOf("vehicle_note");
-    const fromB = lines.filter(line => !line.includes(",note "));
+  it("writes a column nobody here has heard of, as the feed wrote it", async () => {
+    const trips = await rowsOf("trips.txt", ["vehicle_note"]);
+
+    expect(header("trips.txt").at(-1)).to.equal("vehicle_note");
+    expect(trips.find(t => t.trip_headsign === "Inverness, Aberdeen and Fort William")?.vehicle_note).to.equal("note 0");
+  });
+
+  it("leaves the column empty in the rows of the feed that does not have it", async () => {
+    const fromB = (await rowsOf("trips.txt", ["vehicle_note"])).filter(t => t.trip_headsign === "Town Centre");
 
     expect(fromB.length).to.be.greaterThan(0);
-    expect(fromB.every(line => line.split(",")[note] === "")).to.equal(true);
+    expect(fromB.every(t => t.vehicle_note === undefined)).to.equal(true);
   });
 
 });
