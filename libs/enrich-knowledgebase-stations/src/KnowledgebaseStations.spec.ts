@@ -53,15 +53,16 @@ describe("KnowledgebaseStationsEnricher", () => {
     expect(stop.wheelchair_boarding).to.equal(2);
   });
 
-  it("leaves an unclassified station exactly as it found it", () => {
-    // Writing the 0 that means "no information" would replace the value the
-    // override file has with an assertion that nobody knows.
+  it("says nothing about a station the Knowledgebase has not classified", () => {
+    // Keeping the 2 it arrived with would leave the station asserting no
+    // step-free access on the strength of a table that reads 2 as "partial" -
+    // the one reading this enricher exists to correct.
     const stop = station("BDS", 2);
 
     const {report} = enrich([stop], [known("BDS", undefined)]);
 
-    expect(stop.wheelchair_boarding).to.equal(2);
-    expect(report.notes).to.include("1 stations have no step-free category, so their accessibility was left alone");
+    expect(stop.wheelchair_boarding).to.equal(0);
+    expect(report.notes).to.include("1 stations have no step-free category, so they say nothing about accessibility");
   });
 
   it("points at the station's own page", () => {
@@ -105,6 +106,17 @@ describe("KnowledgebaseStationsEnricher", () => {
     enrich([station("ABW"), platform], [known("ABW", "C")]);
 
     expect(platform.wheelchair_boarding).to.equal(0);
+  });
+
+  it("records who wrote the accessibility of an unclassified station", () => {
+    // The 0 is this enricher's answer rather than an absence, so the ledger
+    // has to say so - otherwise nothing distinguishes "nobody knows" from
+    // "nobody asked".
+    const {feed} = enrich([station("BDS", 2)], [known("BDS", undefined)]);
+    const written = feed.ledger.entries().filter(entry => entry.field === "wheelchair_boarding");
+
+    expect(written.map(entry => [entry.by, entry.value]))
+      .to.deep.equal([[KNOWLEDGEBASE_STATIONS, 0]]);
   });
 
   it("records who wrote every field it wrote", () => {

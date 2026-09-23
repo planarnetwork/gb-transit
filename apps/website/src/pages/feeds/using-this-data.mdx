@@ -126,7 +126,9 @@ Five things are worth knowing before joining anything to `stops.txt`:
   position.
 - **Accessibility and station pages come from the National Rail Knowledgebase.**
   `wheelchair_boarding` is `1` wherever a step-free path to a platform exists and `2` only where no
-  platform has one; `stop_url` is the station's page on nationalrail.co.uk.
+  platform has one. It is set on the station; a boarding point is `0`, which the spec reads as
+  "inherit from the station", because no source says which of a station's platforms are reachable.
+  `stop_url` is the station's page on nationalrail.co.uk.
 - **Coordinates and station names come from NaPTAN**, which supersedes the upper case, sixteen
   character names the timetable carries. Boarding points are created before enrichment runs, so a
   platform keeps the pre-enrichment name and coordinate while its station gets NaPTAN's. Read a
@@ -389,10 +391,11 @@ These are out of scope rather than pending:
   can route through, so both wait on the other.
 - **No bank holiday variations**, as above.
 - **Accessibility is station-level only.** `wheelchair_boarding` is the step-free access category
-  the National Rail Knowledgebase publishes for the station as a whole. It is not per platform, so
-  a station with step-free access to two of its four platforms is `1` like one with access to all
-  four, and it is `0` — no information — for the 37 stations the Knowledgebase has not classified.
-  The station's own page, in `stop_url`, has the detail.
+  the National Rail Knowledgebase publishes for the station as a whole, so a station with step-free
+  access to two of its four platforms is `1` like one with access to all four. Boarding points
+  carry `0` rather than repeating their station's value, because nothing says which platforms those
+  two are. It is `0` on the station too for the stations the Knowledgebase has not classified —
+  37 of the 2,613 it lists. The station's own page, in `stop_url`, has the detail.
 
 ## Validation, and reporting a problem
 

@@ -41,11 +41,10 @@ export function stepFreeCategory(category: string | null | undefined): StepFreeC
  * platforms. In every one of those a path exists, which is what `1` claims.
  * Only C, no step-free access to any platform, is `2`.
  *
- * The hand-maintained table this replaces read `2` as "partial" and put B3 and
- * a third of B2 there, which is the opposite of what a consumer acts on: `2`
- * tells a wheelchair user not to travel. The detail that distinguishes the four
- * does not fit in a field with three values, and `stop_url` points at the page
- * that has it.
+ * `2` is not "partial". It tells a wheelchair user not to travel, so it belongs
+ * only to the category that means no platform can be reached. The detail that
+ * distinguishes A from B3 does not fit in a field with three values, and
+ * `stop_url` points at the page that has it.
  */
 export function wheelchairBoarding(category: StepFreeCategory | undefined): 0 | 1 | 2 {
   return category === undefined ? 0 : category === "C" ? 2 : 1;

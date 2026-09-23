@@ -33,10 +33,13 @@ const feed = new BuildFeed(source, output, context, [
 ```
 
 `knowledgebaseStationsFromApi(cacheDir, apiKey)` downloads the feed and caches it for a week — it is
-54MB, and a nightly that fails because the marketplace is briefly down has failed for no good
-reason. A third argument changes how long a copy is current for. `parseKnowledgebaseStations` takes
-the JSON directly if you would rather supply the file yourself, which is also how to run with a
-cache and no key.
+54MB. A third argument changes how long a copy is current for.
+
+When a refresh fails and there is a copy on disk, it warns with the date that copy was written and
+carries on with it: a step-free category moves when a lift is commissioned rather than hourly, so a
+stale answer is right about almost every station and worth more than a nightly that did not build.
+Only when there is no copy at all does it fail. `parseKnowledgebaseStations` takes the JSON directly
+if you would rather supply the file yourself.
 
 The enricher's second argument is the priority it writes at, 50 by default.
 
@@ -71,15 +74,22 @@ platform. That is coarser than the category answers, so four of the five categor
 | B2 | as B1 | `1` |
 | B3 | step-free access to some platforms only | `1` |
 | C | no step-free access to any platform | `2` |
-| — | not classified: 37 stations | left alone |
+| — | not classified: 37 stations | `0` |
 
 `2` is what tells a wheelchair user not to travel, and it belongs only to C. The distinction between
 A, B1, B2 and B3 is real and does not fit in a field with three values; `stop_url` points at the
 page that has it.
 
-A station the Knowledgebase has not classified is **left exactly as it was**, rather than being set
-to the `0` that means "no information": overwriting a value another source does have with an
-assertion that nobody knows is a loss dressed up as an enrichment.
+A station the Knowledgebase has not classified gets `0`, no information, rather than keeping
+whatever another source said. One source answers for the field, including when its answer is that
+nobody knows — otherwise a station can end up publishing `2` on the strength of a table that reads
+`2` as "partial", which is the reading this package exists to correct.
+
+**It writes the station, not the platform.** `wheelchair_boarding` on a child stop means "there is
+an accessible path from outside to this platform", and a category tells you about the station as a
+whole; a B3 station is step-free to some of its platforms and nobody publishes which. The enricher
+only ever writes stations, and `@gb-transit/gtfs` leaves a boarding point at `0`, which the spec
+reads as "inherit from the station".
 
 ## What it does not write
 

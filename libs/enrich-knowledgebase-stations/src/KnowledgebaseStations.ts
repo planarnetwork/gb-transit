@@ -29,11 +29,9 @@ const ATTRIBUTION: Attribution = {
 /**
  * Whether a wheelchair user can get to a platform, from the Knowledgebase.
  *
- * The DTD says nothing about accessibility, so `wheelchair_boarding` has been
- * coming from a hand-maintained table of 2,442 entries that nothing checked and
- * nothing refreshed. The Knowledgebase is the industry's own record of it:
- * 2,613 stations, each with the step-free category its operator declared and
- * the ORR audits, updated daily.
+ * The DTD says nothing about accessibility. The Knowledgebase is the industry's
+ * own record of it: 2,613 stations, each with the step-free category its
+ * operator declared and the ORR audits, updated daily.
  *
  * **It joins on CRS**, which is the code the feed identifies a station by and
  * the one the Knowledgebase publishes. Every record has one and no two records
@@ -83,16 +81,18 @@ export class KnowledgebaseStationsEnricher implements Enricher<readonly Knowledg
       used.add(knowledgebase.crs);
       matched++;
 
-      // A station the Knowledgebase has not classified is left exactly as it
-      // was. Writing the 0 that stands for "no information" would replace a
-      // value the override file does have with an assertion that nobody knows,
-      // which is a loss dressed up as an enrichment.
+      // A station the Knowledgebase has not classified is published as `0`,
+      // no information, rather than keeping whatever it had. The value it had
+      // comes from a table that reads `2` as "partial", and `2` is what tells
+      // a wheelchair user not to travel - so keeping it leaves stations like
+      // Ebbsfleet International asserting no step-free access on the strength
+      // of the one reading this enricher exists to correct. One source answers
+      // for the field, including when its answer is that nobody knows.
       if (knowledgebase.stepFree === undefined) {
         unclassified++;
       }
-      else {
-        feed.set(station, "wheelchair_boarding", wheelchairBoarding(knowledgebase.stepFree), this);
-      }
+
+      feed.set(station, "wheelchair_boarding", wheelchairBoarding(knowledgebase.stepFree), this);
 
       if (knowledgebase.slug !== "") {
         feed.set(station, "stop_url", stationUrl(knowledgebase.slug), this);
@@ -107,7 +107,7 @@ export class KnowledgebaseStationsEnricher implements Enricher<readonly Knowledg
     }
 
     if (unclassified > 0) {
-      notes.push(`${unclassified} stations have no step-free category, so their accessibility was left alone`);
+      notes.push(`${unclassified} stations have no step-free category, so they say nothing about accessibility`);
     }
 
     // The other direction, and the one that catches the feed shrinking rather

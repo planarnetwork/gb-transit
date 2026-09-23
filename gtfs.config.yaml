@@ -32,17 +32,17 @@ enrichers:
       # renamed; docs/station-names.md records where the two sources differ.
       - stop_name
 
-  # Whether a wheelchair user can get to a platform. The DTD says nothing about
-  # it, so this has been coming from a hand-maintained table of 2,442 entries
-  # that nothing checked and nothing refreshed; the Knowledgebase is the
-  # industry's own record of it, audited by the ORR and updated daily.
+  # Whether a wheelchair user can get to a platform, which the DTD says nothing
+  # about. The Knowledgebase is the industry's own record of it, audited by the
+  # ORR and updated daily.
   #
   # Named for the feed rather than the source: the Knowledgebase publishes
   # several and there will be more of these.
   #
   # Needs a Rail Data Marketplace subscription to the stations feed, whose key
-  # is read from KNOWLEDGEBASE_API_KEY. A stale cached copy is used in
-  # preference to failing, and only a download needs the key.
+  # is read from KNOWLEDGEBASE_API_KEY. The copy on disk is used for a week, and
+  # if a refresh then fails the build warns and carries on with the stale one
+  # rather than stopping. Only a download needs the key.
   KNOWLEDGEBASE_STATIONS:
     apply:
       # 1 wherever a step-free path to a platform exists - categories A, B1, B2
@@ -51,8 +51,7 @@ enrichers:
       # whatever it already had rather than being set to "no information".
       - wheelchair_boarding
       # The station's page, which has the lifts, the ramps and the opening
-      # times this feed has nowhere to put. Empty until now, so this adds
-      # rather than replaces.
+      # times this feed has nowhere to put.
       - stop_url
 
 extensions:
