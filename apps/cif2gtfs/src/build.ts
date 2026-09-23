@@ -10,7 +10,7 @@ import {NAPTAN, NaptanEnricher, naptanFromApi} from "@gb-transit/enrich-naptan";
 import {STATION_GROUPS, StationGroupsExtension, groupsFromFeed} from "@gb-transit/extend-station-groups";
 import {parse} from "yaml";
 import {BuildConfig, BuildContext, Enricher, EnricherConfig, Extension, NO_EXCLUSIONS, parseConfig} from "@gb-transit/gtfs";
-import {BuildFeed, buildContext, dateRange, option, options, stationCoordinates} from "@gb-transit/gtfs";
+import {BuildFeed, applyLists, buildContext, dateRange, option, options, stationCoordinates} from "@gb-transit/gtfs";
 import {CifFileSource, timetableFeeds} from "@gb-transit/dtd-source";
 import {FileOutput, OutputGTFSZipCommand} from "@gb-transit/gtfs-output";
 
@@ -68,7 +68,10 @@ export async function build(argv: string[]): Promise<void> {
     new FileOutput(),
     context,
     registered(config),
-    registeredExtensions(config, context, given)
+    registeredExtensions(config, context, given),
+    // The config's `apply:` lists, which the feed enforces rather than the
+    // enrichers being trusted to honour them.
+    applyLists(config?.enrichers ?? [])
   );
 
   if (out.endsWith(".zip")) {

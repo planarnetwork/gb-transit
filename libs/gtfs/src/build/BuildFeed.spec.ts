@@ -181,11 +181,12 @@ const context: BuildContext = {
 async function build(
   source: TimetableSource,
   enrichers: Enricher[] = [],
-  ctx: BuildContext = context
+  ctx: BuildContext = context,
+  allowed: ReadonlyMap<string, ReadonlySet<string>> = new Map()
 ): Promise<MemoryOutput> {
   const output = new MemoryOutput();
 
-  await new BuildFeed(source, output, ctx, enrichers).build(".");
+  await new BuildFeed(source, output, ctx, enrichers, [], allowed).build(".");
 
   return output;
 }
@@ -421,7 +422,7 @@ describe("BuildFeed with an enricher", () => {
     const [provenance] = files["provenance.json"];
 
     expect(provenance.enrichers).to.deep.equal([
-      {id: "TEST_NAMER", matched: 1, unmatched: 1, conflicts: 0}
+      {id: "TEST_NAMER", matched: 1, unmatched: 1, conflicts: 0, refused: 0}
     ]);
     expect(provenance.fields).to.deep.equal([
       {entity: "stop", id: "910GTONBDG", field: "stop_name", value: "910GTONBDG renamed", by: "TEST_NAMER", overruled: []}
@@ -432,6 +433,39 @@ describe("BuildFeed with an enricher", () => {
     const {files} = await build(new FakeSource(feed(), [stop("TON", "TONBDG")]));
 
     expect(files["provenance.json"]).to.equal(undefined);
+  });
+
+  /**
+   * The allowlist reaching the MutableFeed the enrichers write through, which
+   * is the whole of what makes `apply:` a setting rather than a comment.
+   * Enforcement itself is MutableFeed's, and tested there; what this covers is
+   * the wiring, which nothing else would notice the absence of.
+   */
+  it("enforces the apply list it was given", async () => {
+    const allowed = new Map([["TEST_MOVER", new Set(["stop_lat"])]]);
+    const {files} = await build(new FakeSource(feed(), [stop("TON", "TONBDG")]), [mover], context, allowed);
+    const station = files["stops.txt"].find(s => s.stop_id === "910GTONBDG");
+
+    expect(station.stop_lat).to.equal(51.5);
+    expect(station.stop_lon).to.equal(0);
+  });
+
+  it("leaves an enricher the list says nothing about alone", async () => {
+    const allowed = new Map([["SOMETHING_ELSE", new Set(["stop_lat"])]]);
+    const {files} = await build(new FakeSource(feed(), [stop("TON", "TONBDG")]), [mover], context, allowed);
+    const station = files["stops.txt"].find(s => s.stop_id === "910GTONBDG");
+
+    expect(station.stop_lon).to.equal(-0.1);
+  });
+
+  it("records what the list turned away, against the enricher it turned away", async () => {
+    const allowed = new Map([["TEST_MOVER", new Set(["stop_lat"])]]);
+    const {files} = await build(new FakeSource(feed(), [stop("TON", "TONBDG")]), [mover], context, allowed);
+    const [provenance] = files["provenance.json"];
+
+    expect(provenance.enrichers).to.deep.equal([
+      {id: "TEST_MOVER", matched: 1, unmatched: 0, conflicts: 0, refused: 1}
+    ]);
   });
 
 });

@@ -30,6 +30,7 @@ export interface EnricherSummary {
   readonly matched: number;
   readonly unmatched: number;
   readonly conflicts: number;
+  readonly refused?: number;
 }
 
 export interface ProvenanceFile {

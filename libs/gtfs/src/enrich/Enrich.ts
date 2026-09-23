@@ -36,6 +36,15 @@ export async function enrich(feed: MutableFeed, enrichers: readonly Enricher[]):
     for (const note of report.notes ?? []) {
       console.log(`  ${note}`);
     }
+
+    // A list naming a field the enricher does not write turns everything away
+    // and leaves a config that reads as enabling a source doing nothing. This
+    // count is the only way anybody finds out.
+    const refused = feed.refusedBy(enricher.key);
+
+    if (refused > 0) {
+      console.log(`  ${refused} write(s) turned away by its apply list`);
+    }
   }
 
   return reports;
@@ -116,7 +125,11 @@ export function provenanceFile(feed: MutableFeed, reports: readonly EnrichmentRe
       id: report.enricher,
       matched: report.matched,
       unmatched: report.unmatched,
-      conflicts: report.conflicts
+      conflicts: report.conflicts,
+      // Kept here as well as in the log, because a run's output expires in
+      // fourteen days and the question "why is this field not what the source
+      // says" is only ever asked later.
+      refused: feed.refusedBy(report.enricher)
     })),
     conflicts: feed.ledger.conflicts,
     fields: feed.ledger.entries()
