@@ -3,7 +3,7 @@ import {RowStream} from "./RowStream";
 import {STOPS} from "./TxcFeed";
 import {TransXChange, StopPoint} from "../transxchange/TransXChange";
 import {ATCOCode, NaPTANIndex, NaptanStopPoint} from "../reference/NaPTAN";
-import {NaptanStopArea, StopAreaIndex} from "../reference/StopAreas";
+import {areaOf, NaptanStopArea, StopAreaIndex} from "../reference/StopAreas";
 
 /**
  * A stand, where the indicator names one.
@@ -48,7 +48,7 @@ export class StopsStream extends RowStream<TransXChange, StopRow> {
   protected transform(data: TransXChange): void {
     for (const stop of data.StopPoints) {
       if (!this.seenStops[stop.StopPointRef]) {
-        const area = this.areas[stop.StopPointRef];
+        const area = areaOf(this.areas, stop.StopPointRef);
 
         // Before its stops, so a reader taking the file in order has the station
         // in hand by the time something points at it.
@@ -66,7 +66,7 @@ export class StopsStream extends RowStream<TransXChange, StopRow> {
   private getStop(stop: StopPoint, area: NaptanStopArea | undefined): StopRow {
     const known = this.naptan[stop.StopPointRef];
 
-    return known ? this.getNaPTANStop(known, area) : this.getFeedStop(stop);
+    return known ? this.getNaPTANStop(known, area) : this.getFeedStop(stop, area);
   }
 
   private getNaPTANStop(stop: NaptanStopPoint, area: NaptanStopArea | undefined): StopRow {
@@ -118,9 +118,10 @@ export class StopsStream extends RowStream<TransXChange, StopRow> {
    * A TransXChange `AnnotatedStopPointRef` need not carry a location and the
    * parser reads an absent one as 0.0, which is a real place in the Atlantic. An
    * empty coordinate says the truth instead: the feed does not know where this
-   * stop is.
+   * stop is - unless it is a platform of a station NaPTAN does know, in which case
+   * it is at the station.
    */
-  private getFeedStop(stop: StopPoint): StopRow {
+  private getFeedStop(stop: StopPoint, area: NaptanStopArea | undefined): StopRow {
     const located = stop.Location.Latitude !== 0 || stop.Location.Longitude !== 0;
 
     return {
@@ -128,12 +129,12 @@ export class StopsStream extends RowStream<TransXChange, StopRow> {
       stop_code: "",
       stop_name: stop.CommonName + ", " + stop.LocalityQualifier,
       stop_desc: "",
-      stop_lat: located ? stop.Location.Latitude : "",
-      stop_lon: located ? stop.Location.Longitude : "",
+      stop_lat: located ? stop.Location.Latitude : area?.latitude ?? "",
+      stop_lon: located ? stop.Location.Longitude : area?.longitude ?? "",
       zone_id: "",
       stop_url: "",
       location_type: null,
-      parent_station: "",
+      parent_station: area?.id ?? "",
       platform_code: null,
       stop_timezone: "",
       wheelchair_boarding: 0

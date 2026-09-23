@@ -11,7 +11,7 @@ import {TransXChangeStream} from "./transxchange/TransXChangeStream";
 import {BankHolidays, DateWindow, TransXChangeJourneyStream} from "./transxchange/TransXChangeJourneyStream";
 import {getBankHolidays} from "./reference/BankHolidays";
 import {NaPTANIndex, StopLocationIndex, naptanIndexesFrom} from "./reference/NaPTAN";
-import {stopAreas} from "./reference/StopAreas";
+import {stationAreas, stopAreas} from "./reference/StopAreas";
 import {AgencyStream} from "./gtfs/AgencyStream";
 import {CalendarDatesStream} from "./gtfs/CalendarDatesStream";
 import {CalendarStream} from "./gtfs/CalendarStream";
@@ -23,6 +23,7 @@ import {StopsStream} from "./gtfs/StopsStream";
 import {TransfersStream} from "./gtfs/TransfersStream";
 import {TripsStream} from "./gtfs/TripsStream";
 import {Converter} from "./converter/Converter";
+import {scanServices, Supersession, supersession} from "./transxchange/Supersession";
 import {LocalDate} from "@js-joda/core";
 
 /** One end of the window, named after the flag so a bad date says what to fix. */
@@ -73,10 +74,19 @@ export interface ConverterOptions {
   readonly version?: string;
   /**
    * Do not group a pair of stops either side of a street under a station of
-   * their own. See `reference/StopAreas.ts` for what the grouping is and how
-   * far it can be trusted.
+   * their own, nor a metro, tram or ferry platform under the station NaPTAN
+   * numbers it after. See `reference/StopAreas.ts` for what the grouping is and
+   * how far it can be trusted.
    */
   readonly skipStopAreas?: boolean;
+  /**
+   * Where two services of one operator and line overlap, run only the one that
+   * starts latest on the days they share. For TfL, whose engineering works
+   * timetables are separate services on top of the base timetable rather than
+   * revisions of it; see `transxchange/Supersession.ts` for why it is not the
+   * default.
+   */
+  readonly supersedeByLine?: boolean;
 }
 
 /**
@@ -84,14 +94,25 @@ export interface ConverterOptions {
  */
 export class Container {
 
-  public async getConverter(options: ConverterOptions = {}): Promise<Converter> {
+  /**
+   * `inputs` are only read here when `supersedeByLine` asks for them to be
+   * scanned before the conversion starts.
+   */
+  public async getConverter(options: ConverterOptions = {}, inputs: readonly string[] = []): Promise<Converter> {
+    // Scanning nothing finds nothing to supersede, and a conversion that quietly
+    // runs both timetables is the thing the option exists to prevent.
+    if (options.supersedeByLine && inputs.length === 0) {
+      throw new Error("supersedeByLine scans the inputs before converting them, so it needs to be given them.");
+    }
+
     const [naptanIndex, locationIndex] = await this.getNaPTANIndexes(options);
-    const areas = options.skipStopAreas ? {} : stopAreas(naptanIndex);
+    const areas = options.skipStopAreas ? {} : {...stopAreas(naptanIndex), ...stationAreas(naptanIndex)};
     const window = this.getWindow(options);
+    const superseded = options.supersedeByLine ? this.getSupersession(inputs, window) : new Map();
     const files = new FileStream();
     const xml = new XMLStream(this.getParseXML());
     const transxchange = new TransXChangeStream();
-    const journeys = new TransXChangeJourneyStream(this.getBankHolidays(), window);
+    const journeys = new TransXChangeJourneyStream(this.getBankHolidays(), window, superseded);
 
     files.pipe(xml).pipe(transxchange).pipe(journeys);
 
@@ -132,6 +153,15 @@ export class Container {
     }
 
     return {from, to};
+  }
+
+  private getSupersession(inputs: readonly string[], window: DateWindow): Supersession {
+    const superseded = supersession(scanServices(inputs), window);
+    const days = [...superseded.values()].reduce((total, dates) => total + dates.length, 0);
+
+    console.log(`${superseded.size} service(s) replaced by a newer timetable for their line on ${days} day(s)`);
+
+    return superseded;
   }
 
   public async getNaPTANIndexes(

@@ -1,23 +1,9 @@
-import AdmZip from "adm-zip";
 import {Transform, TransformCallback} from "node:stream";
-import * as fs from "node:fs";
-import {parse} from "node:path";
 import {Skipped} from "../converter/Skipped";
+import {documents} from "./Documents";
 
 /**
- * A document's bytes as text, without a byte order mark.
- *
- * Two thirds of the documents in a national Bus Open Data Service archive begin
- * with one, and an XML parser reads it as content before the first tag and
- * rejects the document. `toString("utf8")` keeps it; a `TextDecoder` drops it.
- */
-const decoder = new TextDecoder("utf-8");
-
-/**
- * Reads a set of XML or zip files and emits the contents downstream.
- *
- * A BODS download is a zip of zips of XML, so a zip entry that is itself a zip is
- * opened in turn.
+ * Reads a set of XML or zip files and emits the documents in them downstream.
  *
  * **One document at a time.** A TransXChange document runs to tens of megabytes
  * and a dataset holds hundreds of them, so pushing them all in and letting the
@@ -54,22 +40,20 @@ export class FileStream extends Transform implements Skipped {
   }
 
   /**
-   * Pop the next file off the list and emit it. If we've got no more files, close the stream
+   * Emit every document in the file. An entry that cannot be read is counted and
+   * skipped; a file that cannot be read at all fails the conversion.
    */
   public async _transform(file: string, encoding: string, callback: TransformCallback): Promise<void> {
-    const extension = parse(file).ext.toLowerCase();
-
     try {
-      if (extension === ".xml") {
-        console.log("Processing " + file);
-        await this.pushDocument(decoder.decode(fs.readFileSync(file)));
-      }
-      else if (extension === ".zip") {
-        console.log("Processing zip " + file);
-        await this.readZip(new AdmZip(file));
-      }
-      else {
-        throw new Error("Unknown file type: " + file);
+      for (const document of documents(file)) {
+        if ("error" in document) {
+          this.skipped++;
+          console.error(`Skipping ${document.name}: ${document.error.message}`);
+          continue;
+        }
+
+        console.log("Processing " + document.name);
+        await this.pushDocument(document.xml);
       }
     }
     catch (err) {
@@ -77,42 +61,6 @@ export class FileStream extends Transform implements Skipped {
     }
 
     callback();
-  }
-
-  /**
-   * Every entry, and a bad one does not take the others with it.
-   *
-   * A dataset is hundreds of documents from hundreds of registrations, and one
-   * of them being corrupt is not a reason to convert none of the rest. This is
-   * deliberate rather than incidental - see fa74ff8, "ignore errors in
-   * individual files" - so the error is reported and the loop carries on.
-   */
-  private async readZip(zip: AdmZip): Promise<void> {
-    for (const entry of zip.getEntries()) {
-      const name = entry.entryName.toLowerCase();
-
-      if (entry.isDirectory) {
-        continue;
-      }
-
-      try {
-        if (name.endsWith(".xml")) {
-          console.log("Processing " + entry.entryName);
-          await this.pushDocument(decoder.decode(entry.getData()));
-        }
-        else if (name.endsWith(".zip")) {
-          console.log("Processing " + entry.entryName);
-          await this.readZip(new AdmZip(entry.getData()));
-        }
-        else {
-          console.log("Skipping " + entry.entryName);
-        }
-      }
-      catch (err) {
-        this.skipped++;
-        console.error(`Skipping ${entry.entryName}: ${err instanceof Error ? err.message : err}`);
-      }
-    }
   }
 
   /**

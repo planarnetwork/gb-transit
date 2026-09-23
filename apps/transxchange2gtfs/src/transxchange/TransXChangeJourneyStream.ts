@@ -16,6 +16,7 @@ import {Transform, TransformCallback} from "node:stream";
 import {LocalDate, LocalTime, Duration, DateTimeFormatter} from "@js-joda/core";
 import {ATCOCode} from "../reference/NaPTAN";
 import {Skipped} from "../converter/Skipped";
+import {Supersession, supersessionKey} from "./Supersession";
 
 /**
  * The span of days a feed is built for.
@@ -56,7 +57,9 @@ export class TransXChangeJourneyStream extends Transform implements Skipped {
 
   constructor(
     private readonly holidays: BankHolidays,
-    private readonly window?: DateWindow
+    private readonly window?: DateWindow,
+    /** The days a newer timetable for the same line runs instead - see Supersession. */
+    private readonly superseded: Supersession = new Map()
   ) {
     super({ objectMode: true });
   }
@@ -189,6 +192,20 @@ export class TransXChangeJourneyStream extends Transform implements Skipped {
 
     for (const holiday of operatingProfile.BankHolidayOperation.DaysOfOperation) {
       includes.push(...this.getHoliday(holiday, startDate, endDate));
+    }
+
+    // After the bank holidays, so a service replaced on a bank holiday it would otherwise have run
+    // on is not put back by it.
+    const replaced = this.superseded.get(
+      supersessionKey(service.ServiceCode, service.OperatingPeriod.StartDate, service.OperatingPeriod.EndDate)
+    ) ?? [];
+
+    if (replaced.length > 0) {
+      const off = new Set(replaced.map(date => date.toString()));
+      const kept = includes.filter(date => !off.has(date.toString()));
+
+      includes.splice(0, includes.length, ...kept);
+      excludes.push(...replaced.filter(date => days[date.dayOfWeek().value() - 1]));
     }
 
     // Clamped before it is compared, because clamping is what makes two
