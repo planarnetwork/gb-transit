@@ -75,6 +75,22 @@ export interface ExtensionConfig {
   readonly options: {readonly [key: string]: unknown};
 }
 
+/**
+ * The `apply:` lists, in the form MutableFeed enforces them.
+ *
+ * An enricher whose config says nothing contributes no entry, because that is
+ * what "no restriction" is. An empty set would mean the opposite - every write
+ * turned away - and a config that omits `apply:` is asking for the source as it
+ * comes, not for none of it.
+ */
+export function applyLists(enrichers: readonly EnricherConfig[]): Map<string, Set<string>> {
+  return new Map(
+    enrichers
+      .filter(enricher => enricher.apply !== undefined)
+      .map(enricher => [enricher.key, new Set(enricher.apply)])
+  );
+}
+
 const LICENCES: Licence[] = ["permissive", "full"];
 const TOP_LEVEL = [
   "source", "out", "today", "range", "links", "removePassingPoints",

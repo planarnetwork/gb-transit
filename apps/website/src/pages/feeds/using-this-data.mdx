@@ -113,7 +113,7 @@ Every call gets a boarding point, whether or not it names a platform, because a 
 reference a station. A station where some calls name a platform and some do not therefore has a
 platform-less child as well, which is what NaPTAN calls the station's access node.
 
-Four things are worth knowing before joining anything to `stops.txt`:
+Five things are worth knowing before joining anything to `stops.txt`:
 
 - **`stop_desc` is not a description.** It holds the CATE interchange status as a bare number: 0 is
   not an interchange, 1 to 3 its significance, 9 a subsidiary location.
@@ -124,10 +124,16 @@ Four things are worth knowing before joining anything to `stops.txt`:
   published. One that something references is published at 0,0 and named in a warning. It is not
   given a plausible centroid, because a validator will flag 0,0 and a centroid would pass as a real
   position.
+- **Accessibility and station pages come from the National Rail Knowledgebase.**
+  `wheelchair_boarding` is `1` wherever a step-free path to a platform exists and `2` only where no
+  platform has one. It is set on the station; a boarding point is `0`, which the spec reads as
+  "inherit from the station", because no source says which of a station's platforms are reachable.
+  `stop_url` is the station's page on nationalrail.co.uk.
 - **Coordinates and station names come from NaPTAN**, which supersedes the upper case, sixteen
-  character names the timetable carries. Boarding points are created before enrichment runs, so a
-  platform keeps the pre-enrichment name and coordinate while its station gets NaPTAN's. Read a
-  station's geometry from the station.
+  character names the timetable carries. Boarding points are created after enrichment, as copies of
+  the station, so a platform carries the same surveyed coordinate and the same readable name — a
+  platform of `Newcastle Airport Metro`, never of `NEWCASTLE AIRPRT`. `wheelchair_boarding` is the
+  exception, and deliberately: see above.
 
 A station nothing calls at within the window is still published, as a childless `location_type=1`
 row, so the station list does not change with the length of the build window.
@@ -385,9 +391,12 @@ These are out of scope rather than pending:
 - **No `pathways.txt` and no station entrances.** Without pathways an entrance is a node nothing
   can route through, so both wait on the other.
 - **No bank holiday variations**, as above.
-- **Accessibility is station-level only.** `wheelchair_boarding` comes from a hand-maintained table
-  covering most stations, is not per platform, and is `0` — no information — where the table has no
-  entry.
+- **Accessibility is station-level only.** `wheelchair_boarding` is the step-free access category
+  the National Rail Knowledgebase publishes for the station as a whole, so a station with step-free
+  access to two of its four platforms is `1` like one with access to all four. Boarding points
+  carry `0` rather than repeating their station's value, because nothing says which platforms those
+  two are. It is `0` on the station too for the stations the Knowledgebase has not classified —
+  37 of the 2,613 it lists. The station's own page, in `stop_url`, has the detail.
 
 ## Validation, and reporting a problem
 

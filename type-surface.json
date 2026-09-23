@@ -17,6 +17,19 @@
     "Row",
     "timetableFeeds"
   ],
+  "enrich-knowledgebase-stations": [
+    "KNOWLEDGEBASE_STATIONS",
+    "KNOWLEDGEBASE_STATIONS_URL",
+    "KnowledgebaseStation",
+    "KnowledgebaseStationsEnricher",
+    "StepFreeCategory",
+    "knowledgebaseStationsFile",
+    "knowledgebaseStationsFromApi",
+    "parseKnowledgebaseStations",
+    "stationUrl",
+    "stepFreeCategory",
+    "wheelchairBoarding"
+  ],
   "enrich-naptan": [
     "NAPTAN",
     "NaptanEnricher",
@@ -205,6 +218,7 @@
     "agencies",
     "agencyId",
     "applyAssociations",
+    "applyLists",
     "applyOverlays",
     "buildContext",
     "buildReport",

@@ -95,7 +95,7 @@ export class MutableFeed implements FeedView {
     const permitted = this.allowed.get(by.key);
 
     if (permitted !== undefined && !permitted.has(String(field))) {
-      this.refusals++;
+      this.refusals.set(by.key, (this.refusals.get(by.key) ?? 0) + 1);
 
       return false;
     }
@@ -125,10 +125,19 @@ export class MutableFeed implements FeedView {
    * source and does nothing.
    */
   public get refused(): number {
-    return this.refusals;
+    return [...this.refusals.values()].reduce((total, count) => total + count, 0);
   }
 
-  private refusals = 0;
+  /**
+   * The same, for one enricher. The total says a config is wrong somewhere;
+   * this says which one, which is the difference between a number to
+   * investigate and a line to fix.
+   */
+  public refusedBy(key: string): number {
+    return this.refusals.get(key) ?? 0;
+  }
+
+  private readonly refusals = new Map<string, number>();
 
 }
 

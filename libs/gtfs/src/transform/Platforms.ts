@@ -90,7 +90,15 @@ export function withStopPoints(stations: Stop[], schedules: Schedule[]): Stop[] 
       stop_name: platform === null ? station.stop_name : `${station.stop_name} Platform ${platform}`,
       location_type: 0,
       parent_station: station.stop_id,
-      platform_code: platform
+      platform_code: platform,
+      // On a child stop the spec reads `1` as "there is an accessible path
+      // from outside to this platform" and `0` as "ask the station". Every
+      // source here answers for the station as a whole - a category B3 station
+      // is step-free to some of its platforms and nobody says which - so
+      // copying its value down asserts something about each platform that
+      // nothing knows. `0` points the reader at the station, which is where
+      // the answer actually is.
+      wheelchair_boarding: 0
     });
   }
 
