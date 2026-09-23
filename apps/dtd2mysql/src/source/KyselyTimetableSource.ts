@@ -28,6 +28,13 @@ import {Database} from "../database/Database";
 import {LogTableFeedCursor} from "./LogTableFeedCursor";
 
 /**
+ * How many rows a stream fetches at a time. Postgres reads a cursor in chunks of this size, so a national
+ * feed's few million stop times at Kysely's default of 100 are tens of thousands of round trips. MySQL
+ * and SQLite stream row by row whatever it is.
+ */
+const STREAM_CHUNK = 10000;
+
+/**
  * The timetable read through Kysely, so the same build runs against MySQL, Postgres or SQLite.
  *
  * The queries are standard SQL rather than any one database's dialect of it: a CASE rather than MySQL's
@@ -225,7 +232,7 @@ export class KyselyTimetableSource implements TimetableSource {
       .orderBy("schedule.stp_indicator", "desc")
       .orderBy("schedule.id")
       .orderBy("stop_time.id")
-      .stream() as AsyncIterable<ScheduleStopTimeRow>;
+      .stream(STREAM_CHUNK) as AsyncIterable<ScheduleStopTimeRow>;
   }
 
   private streamZSchedules(lastScheduleId: number): AsyncIterable<ScheduleStopTimeRow> {
@@ -265,7 +272,7 @@ export class KyselyTimetableSource implements TimetableSource {
         eb.val("S").as("train_class")
       ])
       .orderBy("z_stop_time.id")
-      .stream() as AsyncIterable<ScheduleStopTimeRow>;
+      .stream(STREAM_CHUNK) as AsyncIterable<ScheduleStopTimeRow>;
   }
 
   public async getAssociations(): Promise<Association[]> {
