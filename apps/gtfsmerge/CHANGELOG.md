@@ -1,5 +1,69 @@
 # gtfsmerge
 
+## 4.3.0
+
+### Minor Changes
+
+- 575a170: Pass through the columns a merge does not write of its own.
+
+  **gtfsmerge** writes a column a feed carries after its own columns, as the feed wrote it, rather
+  than dropping it. The rail feed's `transfers.txt` says which mode a fixed link is and when it runs,
+  and those twelve columns used to stop at the merge. Every input's header rows are read before
+  anything is written, because each file is opened with its header and a column only the last feed
+  has would otherwise arrive too late to be in it. They are read from the zip's central directory and
+  the first few kilobytes of each entry, so a national feed's stop_times.txt costs a read of its first
+  line rather than a decompression of all of it.
+
+  Columns that name something the merged feed would not have are not passed through: a transfer's
+  `from_route_id` and `to_route_id`, since the routes are renumbered and transfers are kept one per
+  pair of stops; `level_id`, `network_id` and the flexible services' locations and booking rules,
+  whose files the merge does not write; and `shape_id` in a merge without shapes.
+
+  **The rail feed's windows now reach the merged feed.** 1,578 of its 1,664 fixed links run only at
+  some times or on some days, and a planner that reads the window - raptor-journey-planner does -
+  now honours it in the merged feed as it does in the rail feed. Before, the columns were dropped and
+  every link was available all day. Where two transfers describe the same pair of stops the one kept
+  is the shorter, available whenever either is.
+
+  **@gb-transit/gtfs-loader**: `readFeed` gains an `extraColumns` option that reads named columns the
+  schema does not know onto the row as text, and `CSVParser` says the header it read. Both opt in: no
+  other caller reads anything it did not before.
+
+- 2c7f00f: Convert TfL's Journey Planner Timetables.
+
+  **`--supersede-by-line`.** TfL publishes a line's engineering works timetable as a service of its own
+  on top of the base timetable it interrupts, with a different service code and the same revision
+  number, so a conversion that reads both runs the line twice: the Circle, Hammersmith & City and
+  Metropolitan on a weekday, the Central, Jubilee and trams on a Saturday. With the flag, where two
+  services of one operator and line overlap, only the one that starts latest runs on the days they
+  share - the later start being the more specific timetable. Every document is scanned for its services
+  before the conversion. Off by default, because in a BODS dataset an operator can run two unrelated
+  services under one line name.
+
+  **A metro, tram or ferry platform is under its station.** NaPTAN numbers a platform after the stop
+  area it belongs to - `9400ZZLUKSX1` is platform 1 of `940GZZLUKSX` - and the feed now publishes that
+  station and puts its platforms under it, so changing lines at King's Cross is an interchange rather
+  than a walk between two places. A platform the timetable calls at that NaPTAN does not list, which is
+  87 of TfL's, is put under its station and stands at it rather than having no position. The platform
+  number is the last digit only, so Heathrow's Terminal 4 and Terminal 5 - `9400ZZLUHR41` and
+  `9400ZZLUHR51` - stay two stations, and a station whose platforms are named for their direction, as
+  Sheffield's tram stops are, is named without it.
+
+  A service only replaces another on the days of the week its journeys run, so a weekday timetable
+  starting later does not take the Saturdays, and a service whose `EndDate` is empty runs indefinitely
+  in the scan as it does in the conversion.
+
+  **gtfsmerge exports `readHeaders`**, which gives the columns of each file in a feed from the start
+  of each zip entry, for `scripts/combine-rail-and-tfl.mjs` to carry every column of both feeds.
+
+### Patch Changes
+
+- Updated dependencies [ee175f3]
+- Updated dependencies [3948a50]
+- Updated dependencies [575a170]
+  - @gb-transit/gtfs@3.6.0
+  - @gb-transit/gtfs-loader@1.6.0
+
 ## 4.2.0
 
 ### Minor Changes

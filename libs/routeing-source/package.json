@@ -1,6 +1,6 @@
 {
   "name": "@gb-transit/routeing-source",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Read the National Routeing Guide feed and work out which stations lie on permitted routes",
   "license": "GPL-3.0",
   "repository": {
