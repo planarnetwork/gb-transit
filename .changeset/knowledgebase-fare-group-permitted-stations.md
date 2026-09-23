@@ -20,11 +20,17 @@ them, `loadPermittedStations` takes a path and gives all of them, and
 already in memory. `inForce` says whether a record applies on a day.
 
 **The iterable is the one to reach for.** The published feed is 59MB and 308,907
-records; reading it whole into a DOM, which is what `xml2js` does and what the
-only XML parsing here does today, costs 551MB of heap. Writing a chunk to the
-parser and yielding what that chunk produced is **78MB and 1.6 seconds**,
-because the next chunk is not read until the last has been drained. Holding
-every record is 264MB, which is what `loadPermittedStations` is for.
+records; reading it whole into a DOM, which is what `xml2js` does, costs 551MB
+of heap. Writing a chunk to the parser and yielding what that chunk produced is
+**63MB and 1.4 seconds**, because the next chunk is not read until the last has
+been drained. Holding every record is 264MB, which is what
+`loadPermittedStations` is for.
+
+A record that is not the shape this feed has always had stops the read, naming
+what is wrong with it: a missing or renamed attribute, an empty `<Crs>`, a
+record permitting no stations, or a root element that is something else.
+Filling a missing attribute with an empty string would leave a consumer with
+308,907 records that match nothing and no way to find out.
 
 `sax` is a direct dependency now rather than one `xml2js` happened to bring; it
 was already in the lockfile at the same version, so only its types were

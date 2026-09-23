@@ -35,7 +35,13 @@ Three ways in, depending on what you already have and what you can afford to hol
 | `loadPermittedStations` | a path | a promise of every record |
 | `parsePermittedStations` | the XML as a string | every record |
 
-`inForce(record, "2026-09-23")` says whether a record applies on a day.
+`inForce(record, "2026-09-23")` says whether a record applies on a day. It takes `YYYY-MM-DD` and
+refuses anything else: the comparison is a string comparison, so a GTFS-style `20260902` would
+answer wrongly rather than fail — `-` sorts before `0`, which puts a record starting `2026-10-01` in
+force a month early.
+
+`permittedStations` takes an optional `{highWaterMark}` to choose how much is read at a time. The
+default is node's; the reason to set it is to choose where the chunk boundaries fall.
 
 ## What a record is
 
@@ -53,6 +59,17 @@ interface PermittedStations {
 Which stations of a fare group a journey from one location may use, on one route, over one date
 range. `stations` is the whole of the answer for that combination rather than an addition to another
 record's.
+
+## It refuses a record that changed shape
+
+A missing or renamed attribute, an empty `<Crs>`, a record permitting no stations, or the root
+element not being `FareGroupPermittedStations` all stop the read with an error naming the record.
+
+Filling a missing attribute with an empty string would be worse than failing. Every record would
+still parse, `inForce` would answer `false` for all 308,907 of them because `"" >= "2026-09-23"` is
+false, and the only sign would be somebody wondering why a join produced no rows. The published feed
+has no such record, so this costs nothing today and is only there for the day the publisher changes
+something.
 
 ## The feed, as published
 
@@ -75,9 +92,13 @@ specification:
 ## Reading it without 551MB of heap
 
 `permittedStations` writes a chunk to the parser and yields what that chunk produced, so the next
-chunk is not read until the last one has been drained. On the published feed that is **78MB and 1.6
-seconds**, against **264MB** to hold every record and **551MB** for the whole document as a DOM,
-which is what `xml2js` would cost.
+chunk is not read until the last one has been drained.
+
+| | time | peak RSS |
+|---|---|---|
+| `permittedStations`, yielded to a consumer | 1.4s | **63MB** |
+| `loadPermittedStations`, every record held | 1.6s | 264MB |
+| the whole document as a DOM, which is what `xml2js` costs | 2.9s | 551MB |
 
 So the iterable is the one to reach for, and `loadPermittedStations` is there for a consumer that
 was going to index the whole set anyway.

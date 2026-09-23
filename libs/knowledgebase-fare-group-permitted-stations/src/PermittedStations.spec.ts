@@ -31,4 +31,16 @@ describe("inForce", () => {
     expect(inForce(record("2018-05-21", "2999-12-31"), "2026-09-23")).to.equal(true);
   });
 
+  /**
+   * The comparison is a string comparison, so a date in the other convention
+   * answers wrongly rather than failing: `-` is 0x2D and `0` is 0x30, which
+   * puts a record starting in October in force in September.
+   */
+  it("refuses a date that is not YYYY-MM-DD, rather than answering wrongly", () => {
+    const october = record("2026-10-01", "2999-12-31");
+
+    expect(() => inForce(october, "20260902")).to.throw(/must be YYYY-MM-DD/);
+    expect("2026-10-01" <= "20260902").to.equal(true);
+  });
+
 });
