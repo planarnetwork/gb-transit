@@ -177,7 +177,8 @@ export const transfers = gtfsTable({
   from_trip_id: defaultTo(ascii(varchar(32)), ""),
   to_trip_id: defaultTo(ascii(varchar(32)), ""),
   transfer_type: integer(2),
-  min_transfer_time: nullable(integer(4)),
+  // seconds, and a fixed link may take up to 999 minutes: 59940 is five digits
+  min_transfer_time: nullable(integer(5)),
   mode: nullable(varchar(255)),
   start_time: nullable(time),
   end_time: nullable(time),
