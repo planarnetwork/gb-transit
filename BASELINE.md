@@ -12,6 +12,14 @@ entry here does not excuse a golden feed moving, and an entry there does not exc
 
 ## The type surface
 
+**Station accessibility from the Knowledgebase.** `@gb-transit/enrich-knowledgebase-stations` is a
+new package, so every name the snapshot gains is an addition and nothing moves: the enricher
+`KnowledgebaseStationsEnricher` and its key `KNOWLEDGEBASE_STATIONS`, the `KnowledgebaseStation` it
+reads and the `KNOWLEDGEBASE_STATIONS_URL`, `knowledgebaseStationsFromApi`,
+`knowledgebaseStationsFile` and `parseKnowledgebaseStations` that fetch and parse it, `stationUrl`,
+and the `StepFreeCategory`, `stepFreeCategory` and `wheelchairBoarding` that turn a step-free
+category into the three values GTFS has.
+
 **Reading the fares and routeing feeds without a database.** Two new packages, additions only.
 `@gb-transit/fares-source` loads a fares feed straight from its zips with the change files applied:
 `loadFares` and `LoadFaresOptions`, the feed and zip readers `FaresFeed`, `ZipFile` and
