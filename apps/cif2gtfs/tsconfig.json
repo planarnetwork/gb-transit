@@ -12,6 +12,9 @@
       "path": "../../libs/dtd-source"
     },
     {
+      "path": "../../libs/enrich-knowledgebase-stations"
+    },
+    {
       "path": "../../libs/enrich-naptan"
     },
     {

@@ -816,6 +816,15 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@gb-transit/enrich-knowledgebase-stations@workspace:^, @gb-transit/enrich-knowledgebase-stations@workspace:libs/enrich-knowledgebase-stations":
+  version: 0.0.0-use.local
+  resolution: "@gb-transit/enrich-knowledgebase-stations@workspace:libs/enrich-knowledgebase-stations"
+  dependencies:
+    "@gb-transit/gtfs": "workspace:^"
+    typescript: "npm:7.0.2"
+  languageName: unknown
+  linkType: soft
+
 "@gb-transit/enrich-naptan@workspace:^, @gb-transit/enrich-naptan@workspace:libs/enrich-naptan":
   version: 0.0.0-use.local
   resolution: "@gb-transit/enrich-naptan@workspace:libs/enrich-naptan"
@@ -2184,6 +2193,7 @@ __metadata:
   resolution: "cif2gtfs@workspace:apps/cif2gtfs"
   dependencies:
     "@gb-transit/dtd-source": "workspace:^"
+    "@gb-transit/enrich-knowledgebase-stations": "workspace:^"
     "@gb-transit/enrich-naptan": "workspace:^"
     "@gb-transit/extend-station-groups": "workspace:^"
     "@gb-transit/gtfs": "workspace:^"

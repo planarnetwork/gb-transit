@@ -1,6 +1,11 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import {
+  KNOWLEDGEBASE_STATIONS,
+  KnowledgebaseStationsEnricher,
+  knowledgebaseStationsFromApi
+} from "@gb-transit/enrich-knowledgebase-stations";
 import {NAPTAN, NaptanEnricher, naptanFromApi} from "@gb-transit/enrich-naptan";
 import {STATION_GROUPS, StationGroupsExtension, groupsFromFeed} from "@gb-transit/extend-station-groups";
 import {parse} from "yaml";
@@ -96,6 +101,17 @@ function registered(config: BuildConfig | undefined): Enricher[] {
       settings.priority ?? 50,
       settings.options.inactive !== false,
       settings.options.names === true
+    ),
+    // The key is not required here, and an absent one is an empty string
+    // rather than a failure: a current cached copy needs no subscription, and a
+    // build that has one should not be stopped from using it. Downloading
+    // without a key fails inside the enricher, naming the file it looked for.
+    [KNOWLEDGEBASE_STATIONS]: settings => new KnowledgebaseStationsEnricher(
+      knowledgebaseStationsFromApi(
+        settings.options.cache === undefined ? cache : String(settings.options.cache),
+        process.env.KNOWLEDGEBASE_API_KEY ?? ""
+      ),
+      settings.priority ?? 50
     )
   };
 
@@ -151,7 +167,7 @@ function beside(given: readonly string[]): string {
  * reads it from the build rather than from a copy of it, which would fail on
  * the day an enricher is added and blame the config for it.
  */
-export const REGISTERED = [NAPTAN];
+export const REGISTERED = [NAPTAN, KNOWLEDGEBASE_STATIONS];
 export const REGISTERED_EXTENSIONS = [STATION_GROUPS];
 
 function readConfig(path: string | undefined): BuildConfig | undefined {

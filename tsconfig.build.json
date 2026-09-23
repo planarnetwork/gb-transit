@@ -32,6 +32,9 @@
       "path": "./libs/naptan"
     },
     {
+      "path": "./libs/enrich-knowledgebase-stations"
+    },
+    {
       "path": "./libs/enrich-naptan"
     },
     {
