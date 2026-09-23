@@ -91,6 +91,28 @@ describe("CSVParser", () => {
     expect(rows[1].b).to.equal(undefined);
   });
 
+  it("refuses a short row when strict", () => {
+    const parser = new CSVParser(["a", "b", "c"], () => {}, { strict: true });
+
+    expect(() => parser.write("a,b,c\n1,2,3\n4,5\n")).to.throw("Row 2 has 2 fields where the header has 3");
+  });
+
+  it("refuses a long row when strict", () => {
+    const parser = new CSVParser(["a", "b"], () => {}, { strict: true });
+
+    expect(() => parser.write("a,b\n1,2,3\n")).to.throw("Row 1 has 3 fields where the header has 2");
+  });
+
+  it("counts a trailing empty field when strict", () => {
+    const rows: Row[] = [];
+    const parser = new CSVParser(["a", "b"], row => rows.push({ ...row }), { strict: true });
+
+    parser.write("a,b\n1,\n");
+    parser.end();
+
+    expect(rows).to.deep.equal([{ a: "1", b: undefined }]);
+  });
+
   it("drops the extra fields of a row longer than the header", () => {
     const rows = parse("a,b\n1,2,3,4\n", ["a", "b"]);
 
