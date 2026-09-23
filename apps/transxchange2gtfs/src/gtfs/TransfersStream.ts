@@ -3,7 +3,7 @@ import {RowStream} from "./RowStream";
 import {TRANSFERS} from "./TxcFeed";
 import {TransXChange} from "../transxchange/TransXChange";
 import {ATCOCode, NaPTANIndex, StopLocationIndex} from "../reference/NaPTAN";
-import {StopAreaIndex} from "../reference/StopAreas";
+import {areaOf, StopAreaIndex} from "../reference/StopAreas";
 
 /** How far apart two places can be and still be worth walking between. */
 const WALKABLE_DEGREES = 0.01;
@@ -68,12 +68,12 @@ export class TransfersStream extends RowStream<TransXChange, TransferRow> {
 
   /** The station a stop stands in, or the stop itself where it stands alone. */
   private placeOf(stop: ATCOCode): string {
-    return this.areas[stop]?.id ?? stop;
+    return areaOf(this.areas, stop)?.id ?? stop;
   }
 
   /** Where that place stands. */
   private positionOf(stop: ATCOCode): [number, number] {
-    const place = this.areas[stop] ?? this.naptan[stop];
+    const place = areaOf(this.areas, stop) ?? this.naptan[stop];
 
     return [Number(place.longitude), Number(place.latitude)];
   }

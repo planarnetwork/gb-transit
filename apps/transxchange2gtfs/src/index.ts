@@ -20,6 +20,7 @@ async function main(argv: string[]): Promise<void> {
     refreshStops: argv.includes("--update-stops"),
     skipStops: argv.includes("--skip-stops"),
     skipStopAreas: argv.includes("--skip-stop-areas"),
+    supersedeByLine: argv.includes("--supersede-by-line"),
     from: option(argv, "from"),
     to: option(argv, "to"),
     version: option(argv, "feed-version"),

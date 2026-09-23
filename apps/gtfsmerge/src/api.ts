@@ -59,3 +59,7 @@ export async function merge(options: MergeOptions): Promise<void> {
 }
 
 export {toGTFSDate};
+
+// The columns of each file in a feed, read from the start of each entry and no
+// further: scripts/combine-rail-and-tfl.mjs needs to know them too.
+export {readHeaders} from "./gtfs/ZipHeaders";

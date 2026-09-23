@@ -90,7 +90,21 @@ transxchange2gtfs --from 2026-09-18 --to 2027-12-07 transxchange.zip gtfs-output
 ```
 
 Where NaPTAN pairs the two sides of a street, both stops are put under a station of their own so a
-planner treats them as one place. `--skip-stop-areas` writes them as two.
+planner treats them as one place. A metro, tram or ferry platform is put under the station NaPTAN
+numbers it after - `9400ZZLUKSX1` under `940GZZLUKSX`, King's Cross St. Pancras - including a
+platform NaPTAN does not list, which stands at its station. `--skip-stop-areas` writes every stop on
+its own.
+
+TfL's [Journey Planner Timetables](https://tfl.gov.uk/info-for/open-data-users/our-open-data)
+publish a line's engineering works timetable as a service of its own, overlapping the base timetable
+it interrupts, and nothing in either says the one replaces the other. `--supersede-by-line` runs only
+the service that starts latest on the days two services of one operator and line share, so a works
+weekend replaces the base timetable rather than running beside it. It is not for BODS, where an
+operator can run two unrelated services under one line name:
+
+```
+transxchange2gtfs --supersede-by-line "LULDLRTRAMRIVERCABLE FULL.zip" tfl.zip
+```
 
 The output may be a directory rather than a `.zip`, which is what you want if the next thing to
 touch it is [`gtfsmerge`](../gtfsmerge) or another tool.
