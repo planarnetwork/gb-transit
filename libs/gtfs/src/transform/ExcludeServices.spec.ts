@@ -5,7 +5,7 @@ import {ScheduleCalendar} from "../model/ScheduleCalendar";
 import {Schedule} from "../model/Schedule";
 import {STP} from "../model/OverlayRecord";
 import {ScheduleIndex} from "./ApplyAssociations";
-import {excludeServices, NO_EXCLUSIONS, ServiceExclusions} from "./ExcludeServices";
+import {excludeLinks, excludeServices, NO_EXCLUSIONS, ServiceExclusions} from "./ExcludeServices";
 
 describe("excludeServices", () => {
 
@@ -106,12 +106,53 @@ describe("excludeServices", () => {
 
 });
 
+describe("excludeLinks", () => {
+
+  it("keeps every link when there is nothing to exclude", () => {
+    const links = [link("EUS", "WAT", "TUBE"), link("EUS", "STP", "WALK")];
+
+    expect(excludeLinks(links, NO_EXCLUSIONS)).to.deep.equal(links);
+  });
+
+  it("drops the links of the modes named, and only those", () => {
+    vi.spyOn(console, "log").mockImplementation(() => {});
+
+    const kept = excludeLinks(
+      [link("EUS", "WAT", "TUBE"), link("EUS", "STP", "WALK"), link("PAD", "LST", "TRANSFER")],
+      rules({links: ["TUBE"]})
+    );
+
+    expect(kept.map(l => l.mode)).to.deep.equal(["WALK", "TRANSFER"]);
+  });
+
+  it("does not exclude links for a schedule rule", () => {
+    // `modes: [metro]` is about the trains the CIF calls metro, not the METRO
+    // links to the Tyne and Wear and Manchester stations that are still in the feed.
+    const links = [link("MAN", "DGT", "METRO")];
+
+    expect(excludeLinks(links, rules({modes: [RouteType.Subway]}))).to.deep.equal(links);
+  });
+
+  it("says how many it dropped", () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    excludeLinks([link("EUS", "WAT", "TUBE"), link("KGX", "WAT", "TUBE")], rules({links: ["TUBE"]}));
+
+    expect(log).toHaveBeenCalledWith("Excluded 2 fixed link(s) by mode TUBE");
+  });
+
+});
+
 afterEach(() => {
   vi.restoreAllMocks();
 });
 
 function rules(some: Partial<ServiceExclusions>): ServiceExclusions {
   return {...NO_EXCLUSIONS, ...some};
+}
+
+function link(from: string, to: string, mode: string): {from_stop_id: string, to_stop_id: string, mode: string} {
+  return {from_stop_id: from, to_stop_id: to, mode};
 }
 
 function index(...schedules: Schedule[]): ScheduleIndex {

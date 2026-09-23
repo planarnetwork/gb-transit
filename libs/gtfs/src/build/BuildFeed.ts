@@ -6,7 +6,7 @@ import {Association} from "../model/Association";
 import {applyOverlays} from "../transform/ApplyOverlays";
 import {mergeSchedules} from "../transform/MergeSchedules";
 import {applyAssociations, AssociationIndex, ScheduleIndex} from "../transform/ApplyAssociations";
-import {excludeServices, NO_EXCLUSIONS} from "../transform/ExcludeServices";
+import {excludeLinks, excludeServices, NO_EXCLUSIONS} from "../transform/ExcludeServices";
 import {createCalendar, ServiceIdIndex} from "../transform/CreateCalendar";
 import {ScheduleResults} from "./ScheduleBuilder";
 import {FileSchema, GTFSOutput, RowWriter} from "@gb-transit/gtfs-schema";
@@ -111,7 +111,8 @@ export class BuildFeed {
     // stops.txt is written after the schedules and the links are known, because
     // whether an unlocated station is published depends on whether anything
     // references it.
-    const [sourceStops, fixedLinks] = await Promise.all([stopsQ, fixedLinksQ]);
+    const [sourceStops, allFixedLinks] = await Promise.all([stopsQ, fixedLinksQ]);
+    const fixedLinks = excludeLinks(allFixedLinks, this.context.exclude ?? NO_EXCLUSIONS);
     const located = locate(sourceStops, referenced(schedules, fixedLinks));
     // Every index the build keeps is on the CRS code, because that is what a
     // schedule, an association and a fixed link name a station by.

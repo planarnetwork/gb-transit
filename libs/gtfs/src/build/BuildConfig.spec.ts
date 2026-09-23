@@ -229,9 +229,19 @@ describe("parseConfig, reading what to exclude", () => {
       .to.throw(/exclude.operators takes two-letter ATOC codes. Got "London Underground"./);
   });
 
+  it("reads the fixed link modes however they were typed", () => {
+    expect(parseConfig({...minimal, exclude: {links: ["tube", "Metro"]}}).exclude.links)
+      .to.deep.equal(["TUBE", "METRO"]);
+  });
+
+  it("refuses a fixed link mode the ALF does not have", () => {
+    expect(() => parseConfig({...minimal, exclude: {links: ["underground"]}}))
+      .to.throw(/exclude.links does not take "underground". Expected one of: BUS, FERRY, METRO/);
+  });
+
   it("names something it was asked to exclude that is not a thing to exclude", () => {
     expect(() => parseConfig({...minimal, exclude: {operatrs: ["LT"]}}))
-      .to.throw(/exclude.operatrs is not something to exclude. Expected one of: modes, operators, replacementBuses./);
+      .to.throw(/exclude.operatrs is not something to exclude. Expected one of: modes, operators, replacementBuses, links./);
   });
 
 });

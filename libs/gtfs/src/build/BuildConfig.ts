@@ -1,4 +1,4 @@
-import {MODES, NO_EXCLUSIONS, ServiceExclusions} from "../transform/ExcludeServices";
+import {LINK_MODES, MODES, NO_EXCLUSIONS, ServiceExclusions} from "../transform/ExcludeServices";
 import {RouteType} from "@gb-transit/gtfs-schema";
 
 /**
@@ -80,7 +80,7 @@ const TOP_LEVEL = [
   "source", "out", "today", "range", "links", "removePassingPoints",
   "duplicateOvernightAssociations", "exclude", "licence", "enrichers", "extensions"
 ];
-const EXCLUDE = ["modes", "operators", "replacementBuses"];
+const EXCLUDE = ["modes", "operators", "replacementBuses", "links"];
 const ATOC_CODE = /^[A-Z]{2}$/;
 
 /**
@@ -178,7 +178,7 @@ function extensions(raw: unknown, known: readonly string[]): ExtensionConfig[] {
 }
 
 /**
- * What the build should leave out. Three lists, all optional:
+ * What the build should leave out. Four lists, all optional:
  * `exclude: {modes: [metro]}` is a whole rule.
  */
 function exclusions(raw: unknown): ServiceExclusions {
@@ -204,7 +204,10 @@ function exclusions(raw: unknown): ServiceExclusions {
     replacementBuses: configured.replacementBuses === undefined
       ? []
       : list(configured.replacementBuses, "exclude.replacementBuses")
-        .map(o => operator(o, "exclude.replacementBuses"))
+        .map(o => operator(o, "exclude.replacementBuses")),
+    links: configured.links === undefined
+      ? []
+      : list(configured.links, "exclude.links").map(m => linkMode(m, "exclude.links"))
   };
 }
 
@@ -222,6 +225,20 @@ function mode(name: string, what: string): RouteType {
   }
 
   return found;
+}
+
+/**
+ * A fixed link mode, as the ALF writes it. `links: [underground]` fails here for
+ * the same reason `modes: [underground]` does.
+ */
+function linkMode(name: string, what: string): string {
+  const upper = name.trim().toUpperCase();
+
+  if (!LINK_MODES.includes(upper)) {
+    throw new Error(`${what} does not take ${JSON.stringify(name)}. Expected one of: ${LINK_MODES.join(", ")}.`);
+  }
+
+  return upper;
 }
 
 /**
