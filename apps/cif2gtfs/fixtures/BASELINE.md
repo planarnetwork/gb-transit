@@ -13,6 +13,23 @@ before committing it** - that is the whole value of the file being text.
 
 ---
 
+## A boarding point no longer answers for its station's accessibility
+
+`golden/stops.txt` moves in one column, `wheelchair_boarding`, on 129 of its 345 rows. Every one is
+a boarding point; not one station changes, and no other column moves on any row.
+
+On a child stop the spec reads `1` as "there is an accessible path from outside to this platform"
+and `0` as "inherit from the parent station". Every source the build has answers for the station as
+a whole - a category B3 station is step-free to some of its platforms and nobody publishes which -
+so `withStopPoints` copying the station's value down asserted something per platform that nothing
+knows. A station with step-free access to two of its four platforms said `1` on all four.
+
+`0` says to read the station, which is where the answer is. The station rows are untouched, so no
+information leaves the feed: it stops being claimed in a place it was never true.
+
+The mini fixture runs no enrichers, so the values that moved came from `station-coordinates.ts`.
+This is independent of where a station's accessibility comes from.
+
 ## Every trip is drawn as a line
 
 `golden/shapes.txt` is new and `golden/trips.txt` gains a `shape_id` column. Both come from
