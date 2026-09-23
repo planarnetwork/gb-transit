@@ -64,31 +64,75 @@ function run(command, args) {
 }
 
 /**
+ * The files a package says it provides that its tarball does not hold.
+ *
+ * `files: ["dist"]` packs whatever dist holds, including nothing: a workspace
+ * packed before it was built makes a tarball of a package.json and a README,
+ * which npm publishes without complaint and nobody can require. That is how
+ * @gb-transit/knowledgebase-fare-group-permitted-stations@1.0.0 went out.
+ */
+export function missingFromPack(packed, {main, types, bin}) {
+  const provided = new Set(packed.map(file => file.replace(/^package\//, "").replace(/^\.\//, "")));
+  const promised = [
+    main,
+    types,
+    ...(typeof bin === "string" ? [bin] : Object.values(bin ?? {}))
+  ].filter(file => file !== undefined).map(file => file.replace(/^\.\//, ""));
+
+  return promised.filter(file => !provided.has(file));
+}
+
+/**
  * Pack with yarn and upload with npm.
  *
  * yarn pack resolves the workspace: ranges the packages depend on each other
  * through into the versions they were bumped to; npm publish is what supports
  * trusted publishing over OIDC. Neither tool does both.
  */
-function publish() {
+function publish(manifest, firstPublish) {
   run("yarn", ["pack", "--out", "package.tgz"]);
 
   try {
+    const packed = execFileSync("tar", ["-tzf", "package.tgz"], {encoding: "utf8"}).trim().split("\n");
+    const missing = missingFromPack(packed, manifest);
+
+    if (missing.length > 0) {
+      throw new Error(`${manifest.name}@${manifest.version} would be published without ${missing.join(", ")}. Has it been built?`);
+    }
+
     run("npm", ["publish", "package.tgz"]);
+  }
+  catch (error) {
+    // Trusted publishing can only publish to a package npm already has, and it
+    // answers a first publish with a 404 that reads like a missing package.
+    if (firstPublish) {
+      console.error(
+        `${manifest.name} has never been published, which trusted publishing cannot do. Publish the first ` +
+        "version by hand from a built checkout - yarn build, then yarn pack and npm publish package.tgz in the " +
+        "workspace - and add this repository as its trusted publisher on npmjs.com."
+      );
+    }
+
+    throw error;
   }
   finally {
     fs.rmSync("package.tgz", {force: true});
   }
 }
 
+function neverPublished(name) {
+  return registryVerdict(lookUpTolerantly(name, "latest")) === "absent";
+}
+
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const {name, version} = JSON.parse(fs.readFileSync("package.json", "utf8"));
+  const manifest = JSON.parse(fs.readFileSync("package.json", "utf8"));
+  const {name, version} = manifest;
 
   if (registryVerdict(lookUpTolerantly(name, version)) === "published") {
     console.log(`${name}@${version} is already published, skipping`);
   }
   else {
     console.log(`Publishing ${name}@${version}`);
-    publish();
+    publish(manifest, neverPublished(name));
   }
 }

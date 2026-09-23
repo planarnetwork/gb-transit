@@ -1,5 +1,5 @@
 import {describe, it, expect} from "vitest";
-import {registryVerdict} from "./publish-workspace.mjs";
+import {missingFromPack, registryVerdict} from "./publish-workspace.mjs";
 
 const npmSaid = (stderr) => ({status: 1, stdout: "", stderr});
 
@@ -35,5 +35,25 @@ describe("registryVerdict", () => {
   // of a longer message by accident, but a real one always names the code.
   it("does not mistake a version number containing 404 for a missing version", () => {
     expect(registryVerdict({status: 0, stdout: "1.404.0\n", stderr: ""})).toBe("published");
+  });
+});
+
+describe("missingFromPack", () => {
+  const library = {main: "./dist/index.js", types: "./dist/index.d.ts"};
+
+  it("finds nothing missing from a built package", () => {
+    expect(missingFromPack(["package/package.json", "package/dist/index.js", "package/dist/index.d.ts"], library))
+      .toEqual([]);
+  });
+
+  // What @gb-transit/knowledgebase-fare-group-permitted-stations@1.0.0 was.
+  it("finds the entry points missing from a package packed before it was built", () => {
+    expect(missingFromPack(["package/package.json", "package/README.md", "package/CHANGELOG.md"], library))
+      .toEqual(["dist/index.js", "dist/index.d.ts"]);
+  });
+
+  it("checks what a command line package runs", () => {
+    expect(missingFromPack(["package/package.json"], {bin: {dtd2mysql: "bin/dtd2mysql.sh"}}))
+      .toEqual(["bin/dtd2mysql.sh"]);
   });
 });
