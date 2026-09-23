@@ -1,5 +1,93 @@
 # cif2gtfs
 
+## 2.4.0
+
+### Minor Changes
+
+- ee175f3: Enforce the `apply:` lists a build config declares.
+
+  `MutableFeed` has always been able to hold an enricher to a set of fields, and
+  `parseConfig` has always read `apply:` into the config it returns. The two were
+  never connected: `BuildFeed` built its `MutableFeed` without an allowlist, so a
+  config that read as taking NaPTAN's coordinates and not its names took both.
+
+  `BuildFeed` now accepts the allowlist, `applyLists` turns the parsed config into
+  the shape it wants, and `cif2gtfs` passes it. An enricher the config says
+  nothing about stays unrestricted, which is what an absent `apply:` means; an
+  empty list would mean the opposite.
+
+  Nothing about the published feed moves. Both configured enrichers write exactly
+  the fields their lists name, so the two nightly feeds are byte identical either
+  way - which is what makes this safe to land on its own.
+
+  Refusals are counted per enricher rather than as a total, reported in the build
+  log and carried in `provenance.json`. Nothing checks the field names themselves
+
+  - `parseConfig` validates the enricher key and the option names, not the
+    contents of `apply:` - so a typo turns every write away and the count is what
+    says so. A silently ineffective source is the thing this whole seam exists to
+    prevent.
+
+- 3948a50: Leave a fixed link out of `transfers.txt` by its mode.
+
+  `exclude.links: [TUBE]` drops the DTD's tube links before they are merged into `transfers.txt`, for a
+  feed that is combined with the Underground's own timetable - where a link saying the tube takes 23
+  minutes from Euston to London Bridge competes with the trains that actually run. Only the links named
+  go: a pair that is also a `TRANSFER` or a `WALK` keeps it, at its own time, which is why this happens
+  before the links are merged rather than after, when a pair's time is already the shorter of the two.
+
+- ee175f3: Take station accessibility from the National Rail Enquiries Knowledgebase.
+
+  The DTD says nothing about whether a wheelchair user can get to a platform, so
+  `wheelchair_boarding` has been coming from a hand-maintained table of 2,442
+  entries that nothing checked and nothing refreshed. The Knowledgebase is the
+  industry's own record of it - 2,613 stations, each with the step-free category
+  its operator declared and the ORR audits, updated daily - and RSPS5050 publishes
+  it as a JSON product of the Rail Data Marketplace.
+
+  It joins on CRS. Every record has one, no two records share one, and the feed
+  already identifies a station by it, so unlike NaPTAN there is nothing to
+  reconcile.
+
+  **Four of the five categories are `1`.** GTFS asks one question of a station -
+  is there an accessible path from outside to at least one platform - which is
+  coarser than the category answers. A is step-free to every platform, B1 and B2
+  are step-free to every platform under a constraint, and B3 reaches only some; in
+  all four a path exists. Only C, no step-free access at all, is `2`. The table
+  this replaces read `2` as "partial" and put B3 and a third of B2 there, which is
+  the opposite of what a consumer acts on: `2` is what tells a wheelchair user not
+  to travel.
+
+  The 37 stations the Knowledgebase has not classified are left exactly as they
+  were rather than being set to the `0` that means "no information". Overwriting a
+  value another source does have with an assertion that nobody knows is a loss
+  dressed up as an enrichment.
+
+  `stop_url` becomes the station's page on nationalrail.co.uk, which has the
+  lifts, the ramps and the opening times the feed has nowhere to put. It was empty
+  before, so this adds rather than replaces.
+
+  The package is named for the feed rather than for the source, and the enricher
+  key is `KNOWLEDGEBASE_STATIONS`: the Knowledgebase publishes several feeds, and
+  incidents, ticket restrictions and the rest are different data arriving on
+  different terms.
+
+  Nothing goes in `stop_desc`. The feed has a paragraph of authored HTML about
+  each station's step-free access, and that column already carries the CATE
+  interchange status.
+
+  Needs a Rail Data Marketplace subscription to the stations feed, read from
+  `KNOWLEDGEBASE_API_KEY`. The 54MB response is cached for a week, and only a
+  download needs the key.
+
+### Patch Changes
+
+- Updated dependencies [ee175f3]
+- Updated dependencies [3948a50]
+- Updated dependencies [ee175f3]
+  - @gb-transit/gtfs@3.6.0
+  - @gb-transit/enrich-knowledgebase-stations@1.0.0
+
 ## 2.3.0
 
 ### Minor Changes

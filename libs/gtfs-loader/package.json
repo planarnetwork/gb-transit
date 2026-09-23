@@ -1,6 +1,6 @@
 {
   "name": "@gb-transit/gtfs-loader",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Read a GTFS feed - a zip, a stream, a Response or the bytes - as rows, or as a timetable",
   "license": "GPL-3.0",
   "repository": {

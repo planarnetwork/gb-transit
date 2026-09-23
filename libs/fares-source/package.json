@@ -1,6 +1,6 @@
 {
   "name": "@gb-transit/fares-source",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Read the DTD fares feed straight from its zips into memory, with change files applied",
   "license": "GPL-3.0",
   "repository": {

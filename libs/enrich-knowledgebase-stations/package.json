@@ -1,6 +1,6 @@
 {
   "name": "@gb-transit/enrich-knowledgebase-stations",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Station accessibility from the National Rail Enquiries Knowledgebase stations feed",
   "license": "GPL-3.0",
   "repository": {

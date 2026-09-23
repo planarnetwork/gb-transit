@@ -1,5 +1,58 @@
 # transxchange2gtfs
 
+## 2.2.0
+
+### Minor Changes
+
+- 4b47962: Draw a journey whose route links have no track.
+
+  A route link's ends are elements holding a `StopPointRef`, and were read as the element rather than
+  the stop it names. Nothing used them until now, so nothing showed it.
+
+  A route link with no track - every one of TfL's, which say which stops a train calls at and nothing
+  of the line between them - is drawn as a straight line from the stop it leaves to the stop it
+  reaches, where NaPTAN places them, and a platform NaPTAN does not list is placed at its station.
+  Before, trips.txt named a shape for the journey and shapes.txt had no points for it: all 1,791 of the
+  shapes TfL's tube, DLR, tram, river and cable car trips named were missing.
+
+  Each link of a shape is measured on its own, so `shape_dist_traveled` only ever increases: a point
+  used to be measured from the previous link's last point on top of a total that already included that
+  link. A link that gives no distance is as long as it measures, rather than scaled to nothing. A stop
+  NaPTAN does not list is placed where its document says, as it already was in stops.txt.
+
+- 2c7f00f: Convert TfL's Journey Planner Timetables.
+
+  **`--supersede-by-line`.** TfL publishes a line's engineering works timetable as a service of its own
+  on top of the base timetable it interrupts, with a different service code and the same revision
+  number, so a conversion that reads both runs the line twice: the Circle, Hammersmith & City and
+  Metropolitan on a weekday, the Central, Jubilee and trams on a Saturday. With the flag, where two
+  services of one operator and line overlap, only the one that starts latest runs on the days they
+  share - the later start being the more specific timetable. Every document is scanned for its services
+  before the conversion. Off by default, because in a BODS dataset an operator can run two unrelated
+  services under one line name.
+
+  **A metro, tram or ferry platform is under its station.** NaPTAN numbers a platform after the stop
+  area it belongs to - `9400ZZLUKSX1` is platform 1 of `940GZZLUKSX` - and the feed now publishes that
+  station and puts its platforms under it, so changing lines at King's Cross is an interchange rather
+  than a walk between two places. A platform the timetable calls at that NaPTAN does not list, which is
+  87 of TfL's, is put under its station and stands at it rather than having no position. The platform
+  number is the last digit only, so Heathrow's Terminal 4 and Terminal 5 - `9400ZZLUHR41` and
+  `9400ZZLUHR51` - stay two stations, and a station whose platforms are named for their direction, as
+  Sheffield's tram stops are, is named without it.
+
+  A service only replaces another on the days of the week its journeys run, so a weekday timetable
+  starting later does not take the Saturdays, and a service whose `EndDate` is empty runs indefinitely
+  in the scan as it does in the conversion.
+
+  **gtfsmerge exports `readHeaders`**, which gives the columns of each file in a feed from the start
+  of each zip entry, for `scripts/combine-rail-and-tfl.mjs` to carry every column of both feeds.
+
+### Patch Changes
+
+- Updated dependencies [ee175f3]
+- Updated dependencies [3948a50]
+  - @gb-transit/gtfs@3.6.0
+
 ## 2.1.0
 
 ### Minor Changes
