@@ -430,6 +430,16 @@
     "parseDuration",
     "toYYYYMMDD"
   ],
+  "knowledgebase-fare-group-permitted-stations": [
+    "CRS",
+    "NLC",
+    "PermittedStations",
+    "RouteCode",
+    "inForce",
+    "loadPermittedStations",
+    "parsePermittedStations",
+    "permittedStations"
+  ],
   "naptan": [
     "NAPTAN_CSV_URL",
     "NaptanRow",
