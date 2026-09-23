@@ -53,8 +53,8 @@ export function consumerOptions(): Record<string, unknown> {
  * The database the CLI is pointed at.
  *
  * Taken from the URL's scheme when there is one, so a consumer who gives a URL does not also have to
- * say which database it is for. DATABASE_DIALECT still wins, and is still what an install without a
- * URL sets.
+ * say which database it is for. DATABASE_DIALECT is what an install without a URL sets, and naming a
+ * different database from the URL's scheme is an error.
  */
 export function dialectName(): DialectName {
   // read whether or not DATABASE_DIALECT is set, so an unreadable scheme is reported rather than

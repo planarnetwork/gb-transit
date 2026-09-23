@@ -14,8 +14,9 @@ beyond those six was unreachable. A unix socket was the example: `socketPath` is
 a host naming a directory is a pg one, and neither could be asked for.
 
 The dialect comes from the URL's scheme, so `postgresql://` needs no `DATABASE_DIALECT` beside it.
-A scheme with no dialect is an error rather than a fall back to MySQL. The named variables still
-work unchanged, and `DATABASE_DIALECT` still wins, so an existing install is unaffected.
+A scheme with no dialect is an error rather than a fall back to MySQL, and so is a `DATABASE_DIALECT`
+that contradicts the scheme. The named variables still work unchanged, so an existing install is
+unaffected.
 
 SQLite has no server to address, so a URL only names its file; `DATABASE_OPTIONS` carries the
 options `node:sqlite` itself takes, such as `readOnly` and `timeout`.
