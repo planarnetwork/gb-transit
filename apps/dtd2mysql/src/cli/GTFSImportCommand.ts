@@ -4,9 +4,10 @@ import * as path from "path";
 import {Kysely} from "kysely";
 import {CSVParser, Row} from "@gb-transit/gtfs-loader";
 import {CLICommand} from "./CLICommand";
-import {GTFSSchema, GTFSSchemaBuilder, GTFSTable} from "../database/GTFSSchema";
+import {GTFSSchema} from "../database/GTFSSchema";
+import {SchemaBuilder} from "../database/SchemaBuilder";
 import {SchemaDialect} from "../database/SchemaDialect";
-import {Column} from "../database/Schema";
+import {Column, Table} from "../database/Schema";
 import {chunks} from "../database/parameters";
 
 /**
@@ -46,7 +47,11 @@ export class GTFSImportCommand implements CLICommand {
    */
   public async doImport(directory: string): Promise<void> {
     for (const [name, table] of Object.entries(this.schema)) {
-      await new GTFSSchemaBuilder(this.db, this.schemaDialect, name, table).createSchema();
+      const schema = new SchemaBuilder(this.db, this.schemaDialect, name, table);
+
+      // the table is a copy of the file rather than something added to, so it is replaced outright
+      await schema.dropSchema();
+      await schema.createSchema();
       await this.load(directory, name, table);
     }
   }
@@ -59,7 +64,7 @@ export class GTFSImportCommand implements CLICommand {
    * table is as empty as it was. It is a little quicker as well - 500,000 rows in 9.6s rather than
    * 10.3s - but that is not the reason.
    */
-  private async load(directory: string, name: string, table: GTFSTable): Promise<void> {
+  private async load(directory: string, name: string, table: Table): Promise<void> {
     const filename = path.join(directory, `${name}.txt`);
 
     if (!fs.existsSync(filename)) {
@@ -81,7 +86,7 @@ export class GTFSImportCommand implements CLICommand {
   /**
    * Write the rows of the file to the table, returning how many there were
    */
-  private async write(db: Kysely<any>, filename: string, name: string, table: GTFSTable): Promise<number> {
+  private async write(db: Kysely<any>, filename: string, name: string, table: Table): Promise<number> {
     let rows: object[] = [];
     let header: readonly string[] | undefined;
     let written = 0;
@@ -122,7 +127,7 @@ export class GTFSImportCommand implements CLICommand {
    * The columns the file has. One the table does not have is a file and a declaration that have drifted
    * apart, which is worth stopping for rather than dropping the value.
    */
-  private checkHeader(name: string, table: GTFSTable, header: readonly string[]): readonly string[] {
+  private checkHeader(name: string, table: Table, header: readonly string[]): readonly string[] {
     for (const column of header) {
       if (!table.columns[column]) {
         throw new Error(`a ${column} column, which the ${name} table does not have`);
@@ -151,7 +156,7 @@ export class GTFSImportCommand implements CLICommand {
  * Read each value the file has as the column it is going into. A column the file leaves out is left out
  * of the row as well, so the database gives it its default.
  */
-function values(table: GTFSTable, header: readonly string[], row: Row): object {
+function values(table: Table, header: readonly string[], row: Row): object {
   const values: { [column: string]: unknown } = {};
 
   for (const column of header) {

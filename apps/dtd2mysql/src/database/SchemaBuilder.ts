@@ -49,6 +49,10 @@ export class SchemaBuilder {
       );
     }
 
+    if (this.table.primaryKey.length > 0) {
+      table = table.addPrimaryKeyConstraint(`${this.name}_pk`, [...this.table.primaryKey]);
+    }
+
     if (this.table.key.length > 0) {
       table = table.addUniqueConstraint(`${this.name}_key`, [...this.table.key]);
     }

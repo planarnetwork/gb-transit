@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import {Kysely} from "kysely";
 import gtfsSchema from "./schema";
-import {GTFSSchemaBuilder} from "../database/GTFSSchema";
+import {SchemaBuilder} from "../database/SchemaBuilder";
 import {mysqlSchemaDialect, postgresSchemaDialect, sqliteSchemaDialect} from "../database/dialect";
 import {nodeSqliteDialect} from "../database/NodeSqliteDatabase";
 import {Column} from "../database/Schema";
@@ -84,12 +84,12 @@ describe("the GTFS import schema", () => {
     const sqlite = new Kysely<any>({ dialect: nodeSqliteDialect(":memory:") });
 
     for (const [name, table] of Object.entries(gtfsSchema)) {
-      await new GTFSSchemaBuilder(sqlite, sqliteSchemaDialect, name, table).createSchema();
+      await new SchemaBuilder(sqlite, sqliteSchemaDialect, name, table).createSchema();
 
       for (const dialect of [mysqlSchemaDialect, postgresSchemaDialect]) {
         const { db, statements } = recording(dialect.name);
 
-        await new GTFSSchemaBuilder(db, dialect, name, table).createSchema();
+        await new SchemaBuilder(db, dialect, name, table).createSchema();
 
         expect(statements.some(sql => sql.startsWith("create table")), `${dialect.name} ${name}`).to.equal(true);
 

@@ -14,6 +14,11 @@ export interface Table<C extends Columns = Columns, I extends boolean = boolean>
   // these name columns, which is enforced where a table is declared rather than here. Naming C in a
   // keyof would make Table invariant in it, and no declaration would be assignable to a plain Table
   readonly key: readonly string[];
+  /**
+   * The key of a table with no generated id, as the GTFS specification keys its files. A table with a
+   * generated id is keyed by that, and says the key the feed identifies a row by as a unique constraint.
+   */
+  readonly primaryKey: readonly string[];
   readonly indexes: readonly string[];
   /**
    * Whether the schema builder adds the generated id every imported table is keyed by. A table worked
@@ -139,6 +144,7 @@ export function table<C extends Columns, I extends boolean = true>(
   return {
     columns,
     key: options.key ?? [],
+    primaryKey: [],
     indexes: options.indexes ?? [],
     generatedId: options.generatedId ?? true as I
   };

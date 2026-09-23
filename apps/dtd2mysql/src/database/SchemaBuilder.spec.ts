@@ -7,6 +7,7 @@ import {nodeSqliteDialect} from "./NodeSqliteDatabase";
 import {recording} from "./testing/recording";
 import {ascii, defaultTo, Table, table, varchar} from "./Schema";
 import {feedTables, intTable, testTable} from "./testing/records";
+import {gtfsTable} from "./GTFSSchema";
 
 describe("SchemaBuilder", () => {
   const test = testTable();
@@ -103,7 +104,7 @@ describe("SchemaBuilder", () => {
     expect(mysql).to.contain("`code` varchar(32) default '' not null");
   });
 
-  // it had five columns and no surrogate key before it was declared here, and adding one shifts them
+  // network_flow_restriction has no surrogate key, and adding one would shift every column of a SELECT *
   it("leaves out the generated id where a table is declared without one", async () => {
     const keyless = table({ code: varchar(32) }, { generatedId: false });
 
@@ -111,6 +112,17 @@ describe("SchemaBuilder", () => {
 
     expect(mysql).to.equal(
       "create table if not exists `t` (`code` varchar(32) not null) engine=InnoDB default charset=utf8mb4"
+    );
+  });
+
+  it("keys a table with no generated id by its primary key", async () => {
+    const keyed = gtfsTable({ stop_id: varchar(32), stop_name: varchar(32) }, { primaryKey: ["stop_id"] });
+
+    const [mysql] = await compile(mysqlSchemaDialect, "t", keyed, schema => schema.createSchema());
+
+    expect(mysql).to.equal(
+      "create table if not exists `t` (`stop_id` varchar(32) not null, `stop_name` varchar(32) not null, " +
+      "constraint `t_pk` primary key (`stop_id`)) engine=InnoDB default charset=utf8mb4"
     );
   });
 
