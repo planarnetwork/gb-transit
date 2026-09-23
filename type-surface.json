@@ -17,6 +17,19 @@
     "Row",
     "timetableFeeds"
   ],
+  "enrich-knowledgebase-stations": [
+    "KNOWLEDGEBASE_STATIONS",
+    "KNOWLEDGEBASE_STATIONS_URL",
+    "KnowledgebaseStation",
+    "KnowledgebaseStationsEnricher",
+    "StepFreeCategory",
+    "knowledgebaseStationsFile",
+    "knowledgebaseStationsFromApi",
+    "parseKnowledgebaseStations",
+    "stationUrl",
+    "stepFreeCategory",
+    "wheelchairBoarding"
+  ],
   "enrich-naptan": [
     "NAPTAN",
     "NaptanEnricher",
@@ -37,6 +50,26 @@
     "groupsFromFeed",
     "membersOf",
     "nlc"
+  ],
+  "fares-source": [
+    "CodeTable",
+    "DateNumber",
+    "Fares",
+    "FaresCodes",
+    "FaresData",
+    "FaresFeed",
+    "Flows",
+    "LoadFaresOptions",
+    "Location",
+    "LocationGroup",
+    "LocationGroupMember",
+    "NO_RESTRICTION",
+    "NonDerivableFare",
+    "StationCluster",
+    "TicketType",
+    "ZipFile",
+    "ZipFileEntry",
+    "loadFares"
   ],
   "feed-parser": [
     "ActionMap",
@@ -185,6 +218,7 @@
     "agencies",
     "agencyId",
     "applyAssociations",
+    "applyLists",
     "applyOverlays",
     "buildContext",
     "buildReport",
@@ -403,5 +437,17 @@
     "naptanCsv",
     "naptanFile",
     "parseNaptanRows"
+  ],
+  "routeing-source": [
+    "LOCAL_MARGIN_MILES",
+    "LONDON",
+    "MapLink",
+    "PermittedRoute",
+    "RouteingArrays",
+    "RouteingData",
+    "RouteingNetwork",
+    "RouteingStation",
+    "StationLink",
+    "loadRouteing"
   ]
 }

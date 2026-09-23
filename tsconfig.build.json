@@ -32,10 +32,19 @@
       "path": "./libs/naptan"
     },
     {
+      "path": "./libs/enrich-knowledgebase-stations"
+    },
+    {
       "path": "./libs/enrich-naptan"
     },
     {
       "path": "./libs/extend-station-groups"
+    },
+    {
+      "path": "./libs/fares-source"
+    },
+    {
+      "path": "./libs/routeing-source"
     },
     {
       "path": "./apps/dtd2mysql"

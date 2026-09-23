@@ -32,7 +32,7 @@ const ROOT = path.resolve(import.meta.dirname, "..");
  */
 const LIBRARIES = [
   "gtfs-schema", "feed-parser", "dtd-schema", "dtd-source", "gtfs", "gtfs-output", "gtfs-loader",
-  "naptan", "enrich-naptan", "extend-station-groups"
+  "naptan", "enrich-naptan", "enrich-knowledgebase-stations", "extend-station-groups"
 ];
 
 const APPLICATIONS = ["dtd2mysql", "cif2gtfs", "transxchange2gtfs", "gtfsmerge"];

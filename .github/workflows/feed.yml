@@ -47,6 +47,9 @@ jobs:
       SFTP_HOSTNAME: ${{ secrets.DTD_HOSTNAME }}
       SFTP_USERNAME: ${{ secrets.DTD_USERNAME }}
       SFTP_PASSWORD: ${{ secrets.DTD_PASSWORD }}
+      # The Knowledgebase is an HTTP product of the same marketplace rather
+      # than an SFTP one, and the enricher reads the key straight from here.
+      KNOWLEDGEBASE_API_KEY: ${{ secrets.KNOWLEDGEBASE_API_KEY }}
       GTFS_RANGE: ${{ inputs.range || '3 months' }}
     steps:
       - uses: actions/checkout@v5
@@ -70,6 +73,17 @@ jobs:
           if [ -z "$SFTP_USERNAME" ] || [ -z "$SFTP_PASSWORD" ]; then
             echo "The DTD_USERNAME and DTD_PASSWORD secrets are not set for this repository."
             echo "They come from a Rail Data Marketplace subscription - raildata.org.uk."
+            exit 1
+          fi
+
+          # Checked here rather than left to fail mid-build: gtfs.config.yaml
+          # enables the KNOWLEDGEBASE enricher, and a runner has no cached
+          # copy to fall back on, so without this the failure arrives forty
+          # minutes in with the timetable already downloaded.
+          if [ -z "$KNOWLEDGEBASE_API_KEY" ]; then
+            echo "The KNOWLEDGEBASE_API_KEY secret is not set for this repository."
+            echo "It is the subscription key for the National Rail Knowledgebase stations"
+            echo "feed on the Rail Data Marketplace, and gtfs.config.yaml asks for it."
             exit 1
           fi
 

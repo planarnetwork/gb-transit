@@ -57,7 +57,13 @@ export class BuildFeed {
      * Sources of files the core build has no concept of. Empty produces the
      * same feed as a build with no extensions at all.
      */
-    private readonly extensions: readonly Extension[] = []
+    private readonly extensions: readonly Extension[] = [],
+    /**
+     * Per enricher, the only fields it may write - the config's `apply:`, which
+     * `applyLists` puts in this shape. An enricher with no entry is
+     * unrestricted, which is what a build that passes nothing gets.
+     */
+    private readonly allowed: ReadonlyMap<string, ReadonlySet<string>> = new Map()
   ) {
     checkKeys(extensions);
   }
@@ -123,7 +129,7 @@ export class BuildFeed {
     // Only the stops are offered to an enricher. Trips and routes are streamed
     // straight to their files rather than held, and materialising 276,000 trips
     // to enrich a handful is the wrong trade until something needs it.
-    const feed = new MutableFeed(located, [], []);
+    const feed = new MutableFeed(located, [], [], undefined, this.allowed);
     const reports = this.enrichers.length > 0 ? await enrich(feed, this.enrichers) : [];
     // Everything a station decides is decided here, once it is final: what a
     // train is named after, and the boarding points that carry its position.

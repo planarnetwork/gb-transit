@@ -12,6 +12,32 @@ entry here does not excuse a golden feed moving, and an entry there does not exc
 
 ## The type surface
 
+**Enforcing the apply lists a config declares.** `@gb-transit/gtfs` gains `applyLists`, which turns
+a parsed config's `apply:` lists into the map `MutableFeed` holds an enricher to. An addition only.
+
+`BuildFeed`'s constructor gains a sixth argument for that map and `MutableFeed` gains `refusedBy`,
+neither of which this snapshot records: it pins the names a library exports and not their shapes.
+The argument is optional, so a caller that passes nothing gets the unrestricted feed it got before.
+
+**Station accessibility from the Knowledgebase.** `@gb-transit/enrich-knowledgebase-stations` is a
+new package, so every name the snapshot gains is an addition and nothing moves: the enricher
+`KnowledgebaseStationsEnricher` and its key `KNOWLEDGEBASE_STATIONS`, the `KnowledgebaseStation` it
+reads and the `KNOWLEDGEBASE_STATIONS_URL`, `knowledgebaseStationsFromApi`,
+`knowledgebaseStationsFile` and `parseKnowledgebaseStations` that fetch and parse it, `stationUrl`,
+and the `StepFreeCategory`, `stepFreeCategory` and `wheelchairBoarding` that turn a step-free
+category into the three values GTFS has.
+
+**Reading the fares and routeing feeds without a database.** Two new packages, additions only.
+`@gb-transit/fares-source` loads a fares feed straight from its zips with the change files applied:
+`loadFares` and `LoadFaresOptions`, the feed and zip readers `FaresFeed`, `ZipFile` and
+`ZipFileEntry` (named apart from `@gb-transit/gtfs-loader`'s `ZipEntry`, which has a different shape),
+the `CodeTable` its typed columns intern codes through, `NO_RESTRICTION`,
+and the record types `DateNumber`, `Fares`, `FaresCodes`, `FaresData`, `Flows`, `Location`,
+`LocationGroup`, `LocationGroupMember`, `NonDerivableFare`, `StationCluster` and `TicketType`.
+`@gb-transit/routeing-source` reads the routeing guide and works out which stations lie on permitted
+routes: `loadRouteing`, `RouteingNetwork`, `RouteingArrays`, `LONDON`, `LOCAL_MARGIN_MILES` and the
+record types `MapLink`, `PermittedRoute`, `RouteingData`, `RouteingStation` and `StationLink`.
+
 **Leaving a fixed link out by its mode.** `@gb-transit/gtfs` gains `excludeLinks`, which drops the
 fixed links of the modes a build's `exclude.links` names before they are merged into
 `transfers.txt`, and `LINK_MODES`, the eight modes the ALF and FLF describe a link by, which the

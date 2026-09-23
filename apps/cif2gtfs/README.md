@@ -30,6 +30,8 @@ cif2gtfs build [OPTIONS]
                        else a directory of text files (defaults to ./gtfs.zip)
   --range RANGE        how far ahead to build, e.g. "3 months" (defaults to '3 MONTH')
   --today YYYY-MM-DD   the date to build for (defaults to the current date)
+  --config PATH        read the build from a YAML file. Any flag given as well
+                       takes precedence
   --remove-passing-points BOOL
                        whether to drop the locations a service runs through
                        without stopping (defaults to true)
@@ -64,6 +66,47 @@ and cannot be compared to yesterday's.
 
 `GTFS_RANGE` and `GTFS_TODAY` are read as well, for compatibility with `dtd2mysql`; `--range` and
 `--today` override them. `GTFS_REMOVE_PASSING_POINTS` does the same for `--remove-passing-points`.
+
+## Enrichment
+
+The DTD carries a timetable and little else: station positions are grid references rounded to 100
+metres, names are upper case and truncated to sixteen characters, and there is nothing at all about
+whether a wheelchair user can reach a platform. A `--config` file names the outside sources that
+fill those in.
+
+```yaml
+source:
+  - ./feeds
+out: gtfs.zip
+enrichers:
+  NAPTAN:
+    options: {names: true}
+    apply: [stop_lat, stop_lon, located, stop_name]
+  KNOWLEDGEBASE_STATIONS:
+    apply: [wheelchair_boarding, stop_url]
+```
+
+| enricher | supplies | needs |
+|---|---|---|
+| `NAPTAN` | surveyed coordinates, and readable station names with `options: {names: true}` | nothing; the DfT's dataset is open |
+| `KNOWLEDGEBASE_STATIONS` | `wheelchair_boarding` from the step-free access category, and `stop_url` | `KNOWLEDGEBASE_API_KEY` |
+
+`apply:` limits an enricher to the fields listed, so a source can be taken for the one thing it is
+good at. Omit it to accept everything the enricher writes. A field an enricher is not allowed to
+write is counted and reported, both in the build log and in `provenance.json` — worth reading, as
+nothing checks the field names themselves and a typo turns every write away.
+
+`KNOWLEDGEBASE_API_KEY` comes from a [Rail Data Marketplace](https://raildata.org.uk/) subscription
+to the National Rail Knowledgebase stations feed. The 54MB response is cached for a week beside the
+other downloads; if a refresh then fails, the build warns and carries on with the copy it has.
+
+Both sources write stations. A boarding point is created afterwards as a copy of its station, so it
+carries the same coordinate and name — but `wheelchair_boarding` is deliberately `0` on it, which
+the spec reads as "inherit from the station", because no source says which of a station's platforms
+are step-free.
+
+Every run writes `provenance.json` beside the feed: each field an enricher set, who set it, and any
+write that lost to a higher priority.
 
 ## Passing points
 

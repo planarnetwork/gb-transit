@@ -37,6 +37,7 @@
   },
   "dependencies": {
     "@gb-transit/dtd-source": "workspace:^",
+    "@gb-transit/enrich-knowledgebase-stations": "workspace:^",
     "@gb-transit/enrich-naptan": "workspace:^",
     "@gb-transit/extend-station-groups": "workspace:^",
     "@gb-transit/gtfs": "workspace:^",

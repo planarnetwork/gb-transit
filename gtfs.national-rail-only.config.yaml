@@ -19,6 +19,10 @@ enrichers:
       - stop_lon
       - located
       - stop_name
+  KNOWLEDGEBASE_STATIONS:
+    apply:
+      - wheelchair_boarding
+      - stop_url
 
 extensions:
   - STATION_GROUPS
