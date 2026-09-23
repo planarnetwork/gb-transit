@@ -130,9 +130,10 @@ Five things are worth knowing before joining anything to `stops.txt`:
   "inherit from the station", because no source says which of a station's platforms are reachable.
   `stop_url` is the station's page on nationalrail.co.uk.
 - **Coordinates and station names come from NaPTAN**, which supersedes the upper case, sixteen
-  character names the timetable carries. Boarding points are created before enrichment runs, so a
-  platform keeps the pre-enrichment name and coordinate while its station gets NaPTAN's. Read a
-  station's geometry from the station.
+  character names the timetable carries. Boarding points are created after enrichment, as copies of
+  the station, so a platform carries the same surveyed coordinate and the same readable name — a
+  platform of `Newcastle Airport Metro`, never of `NEWCASTLE AIRPRT`. `wheelchair_boarding` is the
+  exception, and deliberately: see above.
 
 A station nothing calls at within the window is still published, as a childless `location_type=1`
 row, so the station list does not change with the length of the build window.

@@ -117,7 +117,7 @@ libs/
   gtfs/
   gtfs-output/
   enrich-naptan/
-  enrich-knowledgebase/
+  enrich-knowledgebase-stations/
   enrich-osm/
   enrich-corpus/
   enrich-darwin/
@@ -212,7 +212,7 @@ extensions: [pathways, shapes, station_groups, translations]
 enrich:
   - naptan:        { path: ./naptan.xml, apply: [rail_replacement_stops, stop_code] }
   - corpus:        { apply: [tiploc_crs_mapping, station_hierarchy] }
-  - knowledgebase: { token: env:RDM_TOKEN, apply: [wheelchair_boarding, stop_url] }
+  - knowledgebase-stations: { apply: [wheelchair_boarding, stop_url] }   # key from the environment
   - darwin:        { apply: [trip_headsign_via] }
   - osm-platforms: { pbf: ./osm-rail.pbf, apply: [pathways, platform_coords] }
 ```
@@ -1529,13 +1529,31 @@ two are, a location reference dataset is not where the answer is.
 So the ticket would have added a package, a bucket dependency and a nightly failure mode to deliver
 one heritage railway's STANOX. F3 depended on this for the mapping and does not need it either.
 
-**D5 · `@gb-transit/enrich-knowledgebase`** *(depends D1, C5)*
-`wheelchair_boarding` from step-free access data, `stop_url`, `stop_desc`. Token via RDM. Responses
-cached to disk so the nightly is not at the mercy of the API.
+**D5 · `@gb-transit/enrich-knowledgebase-stations`** - **built**
+
+`wheelchair_boarding` and `stop_url` from the step-free access category, keyed on CRS, from RSPS5050
+by way of a Rail Data Marketplace subscription. 2,609 of 3,056 stations match; the rest are the
+Underground, the Metro, trams, ferries and buses, which the Knowledgebase does not cover. The 54MB
+response is cached for a week, and a failed refresh warns and carries on with the copy on disk.
+
+**Named for the feed, not the publisher.** The Knowledgebase publishes several - incidents, ticket
+restrictions - on different terms, so the package is `enrich-knowledgebase-stations` and the
+enricher key is `KNOWLEDGEBASE_STATIONS`.
+
+**No `stop_desc`.** The feed carries a paragraph of authored HTML per station, and that column
+already holds the CATE interchange status. Worth revisiting when the interchange status has
+somewhere else to live.
+
+**Four of the five categories are `1`.** GTFS asks whether an accessible path exists to at least one
+platform, which is coarser than the category answers: A, B1, B2 and B3 all have one, and only C does
+not. `station-coordinates.ts` read `2` as "partial" and put B3 and a third of B2 there, which is the
+reading this replaces - `2` tells a wheelchair user not to travel. A station the Knowledgebase has
+not classified is published as `0` rather than keeping the file's value, so one source answers for
+the field.
 
 **Not "replacing B7's `0`", as this ticket used to say.** B7 set `trips.wheelchair_accessible` to
 `0`; `stops.wheelchair_boarding` was never `0` for a station in `station-coordinates.ts`, which is
-2,442 of them. D5 replaces a hand-maintained source with a live one and covers the stations the file
+2,442 of them. It replaces a hand-maintained source with a live one and covers the stations the file
 misses - a smaller and better-defined job than the ticket claimed, and the thing that unblocks D7.
 
 **D6 · `@gb-transit/enrich-osm`** *(depends D1, F3)*
@@ -1557,7 +1575,7 @@ The ticket assumed the file is a coordinates file that NaPTAN now makes redundan
 |---|---|---|
 | `stop_lat` / `stop_lon` | 2,594 | **NaPTAN**, covering 2,580 |
 | `stop_name`, readable | **2,593** | **NaPTAN**, 95% identical once the suffix is stripped |
-| `wheelchair_boarding` | **2,442** — 1,648 accessible, 794 partial | nothing. D5, waiting on RDM |
+| `wheelchair_boarding` | **2,442** — 1,648 accessible, 794 partial | **D5**, which now supersedes it |
 
 `toStop` hardcodes `wheelchair_boarding: 0` and this file is what puts real values back, so deleting
 it would take the accessibility data for 2,442 stations with it. B7's note that
@@ -1605,7 +1623,7 @@ describe the same organisation and taking the last would make the published cred
 order enrichers were configured in.
 
 **D9 · `@gb-transit/enrich-darwin` — via locations** *(depends D1, B8)*
-New package; Push Port / Darwin Timetable XML, distinct from the Knowledgebase API in D5.
+New package; Push Port / Darwin Timetable XML, distinct from the Knowledgebase stations feed in D5.
 `trip_headsign` becomes "Brighton via Gatwick Airport" where Darwin supplies via text. Matching on
 TUID/RSID with an unmatched-rate report. Falls back to B8's plain destination on no match.
 

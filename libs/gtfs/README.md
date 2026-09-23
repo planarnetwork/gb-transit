@@ -89,7 +89,8 @@ Enrichment records provenance rather than overwriting. Every write carries the e
 it and its priority; the higher priority wins and the loser is kept, so a field can always be traced
 to the source that set it.  `EnrichmentReport` — matched, unmatched and conflict counts — is a
 first-class output rather than a log line, because it is the best signal that an upstream source has
-changed under you. `@gb-transit/enrich-naptan` is an implementation.
+changed under you. `@gb-transit/enrich-naptan` and `@gb-transit/enrich-knowledgebase-stations` are the
+implementations.
 
 An `Extension` is the other seam: whole files the core build has no concept of, such as the Fares v2
 `areas.txt` written by `@gb-transit/extend-station-groups`.
