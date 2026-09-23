@@ -1,7 +1,8 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import {readFeed, readHeaders} from "@gb-transit/gtfs-loader";
+import {readFeed} from "@gb-transit/gtfs-loader";
 import {deliverFeed, field, workingDirectory} from "@gb-transit/gtfs-output";
+import {readHeaders} from "gtfsmerge";
 
 /**
  * The National Rail only feed and TfL's tube, DLR, tram, river and cable car, as one feed.
@@ -66,7 +67,7 @@ if (outPath === undefined) {
 
 const source = file => fs.createReadStream(file);
 // every column of both feeds is carried through, the ones the loader does not know included
-const [railHeaders, tflHeaders] = await Promise.all([readHeaders(source(railPath)), readHeaders(source(tflPath))]);
+const [railHeaders, tflHeaders] = await Promise.all([readHeaders(railPath), readHeaders(tflPath)]);
 
 async function read(file, headers, files) {
   const result = Object.fromEntries(files.map(f => [f, []]));

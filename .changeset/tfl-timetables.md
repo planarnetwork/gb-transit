@@ -1,5 +1,6 @@
 ---
 "transxchange2gtfs": minor
+"gtfsmerge": minor
 ---
 
 Convert TfL's Journey Planner Timetables.
@@ -18,3 +19,6 @@ area it belongs to - `9400ZZLUKSX1` is platform 1 of `940GZZLUKSX` - and the fee
 station and puts its platforms under it, so changing lines at King's Cross is an interchange rather
 than a walk between two places. A platform the timetable calls at that NaPTAN does not list, which is
 87 of TfL's, is put under its station and stands at it rather than having no position.
+
+**gtfsmerge exports `readHeaders`**, which gives the columns of each file in a feed from the start
+of each zip entry, for `scripts/combine-rail-and-tfl.mjs` to carry every column of both feeds.
