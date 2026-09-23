@@ -4,6 +4,7 @@ import {
   TransferType, TripRow
 } from "@gb-transit/gtfs-schema";
 import {readFeed} from "@gb-transit/gtfs-loader";
+import type {ReadFeedOptions} from "@gb-transit/gtfs-loader";
 import * as fs from "fs";
 
 /**
@@ -167,6 +168,11 @@ export class FeedIndex {
 
   /**
    * One transfer per pair, the shortest of them.
+   *
+   * Where the rows say when they apply - the rail feed's fixed links carry a
+   * window, days and a mode - the one kept says when either does, as the rail
+   * build's own mergeTransfers does. Keeping the shorter row's window alone would
+   * take away the hours only the longer one covered.
    */
   public transfer(row: TransferRow): void {
     // A coupling is between two named trips, so it is not the same row as an
@@ -176,8 +182,14 @@ export class FeedIndex {
       : `${row.from_stop_id}_${row.to_stop_id}`;
     const seen = this.transfers[key];
 
-    if (!seen || (seen.min_transfer_time ?? Infinity) > (row.min_transfer_time ?? Infinity)) {
+    if (!seen) {
       this.transfers[key] = row;
+    }
+    else if ((seen.min_transfer_time ?? Infinity) > (row.min_transfer_time ?? Infinity)) {
+      this.transfers[key] = envelope(row, seen);
+    }
+    else {
+      this.transfers[key] = envelope(seen, row);
     }
   }
 
@@ -185,6 +197,36 @@ export class FeedIndex {
     return {...this.result, transfers: Object.values(this.transfers)};
   }
 
+}
+
+const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
+
+/**
+ * `kept`, available whenever either it or `other` is. A window or a day either
+ * leaves unsaid is no restriction, so the envelope leaves it unsaid too.
+ */
+function envelope(kept: TransferRow, other: TransferRow): TransferRow {
+  const earliest = (a?: string | null, b?: string | null) => (a && b ? (a < b ? a : b) : undefined);
+  const latest = (a?: string | null, b?: string | null) => (a && b ? (a > b ? a : b) : undefined);
+  const modes = [kept.mode, other.mode].filter(mode => mode).flatMap(mode => String(mode).split("|"));
+  const widened: TransferRow = {
+    ...kept,
+    start_time: earliest(kept.start_time, other.start_time),
+    end_time: latest(kept.end_time, other.end_time),
+    start_date: earliest(kept.start_date, other.start_date),
+    end_date: latest(kept.end_date, other.end_date),
+    mode: modes.length > 0 ? [...new Set(modes)].sort().join("|") : kept.mode
+  };
+
+  for (const day of DAYS) {
+    const [a, b] = [kept[day], other[day]];
+
+    widened[day] = a === undefined || a === null || b === undefined || b === null
+      ? undefined
+      : (Number(a) === 1 || Number(b) === 1 ? 1 : 0);
+  }
+
+  return widened;
 }
 
 /**
@@ -201,7 +243,8 @@ export class FeedIndex {
  */
 export async function readMergeInput(
   file: string,
-  filterBefore?: string
+  filterBefore?: string,
+  extraColumns: ReadFeedOptions["extraColumns"] = {}
 ): Promise<GTFSZip> {
   const index = new FeedIndex(filterBefore);
 
@@ -219,7 +262,7 @@ export async function readMergeInput(
     "calendar_dates.txt": row => index.calendarDate({...row}),
     "transfers.txt": row => index.transfer({...row}),
     "links.txt": row => index.link({...row})
-  });
+  }, {extraColumns});
 
   return index.results();
 }
@@ -237,7 +280,11 @@ export async function readMergeInput(
  * A merge carrying no shapes asks for no shapes, so a national bus feed's 2.5GB
  * of them is read past rather than inflated and parsed.
  */
-export function streamOf(file: string, shapes = true): FeedStream {
+export function streamOf(
+  file: string,
+  shapes = true,
+  extraColumns: ReadFeedOptions["extraColumns"] = {}
+): FeedStream {
   return async (rows, betweenChunks) => {
     await readFeed(pausing(file, betweenChunks), {
       "stop_times.txt": row => {
@@ -246,7 +293,7 @@ export function streamOf(file: string, shapes = true): FeedStream {
         }
       },
       ...(shapes ? {"shapes.txt": (row: ShapeRow) => rows.shape(row)} : {})
-    });
+    }, {extraColumns});
   };
 }
 

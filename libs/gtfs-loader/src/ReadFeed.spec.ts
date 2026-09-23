@@ -106,6 +106,17 @@ describe("readFeed", () => {
     expect(Object.keys(rows["agency.txt"][0])).to.not.include("something_else");
   });
 
+  it("reads a column the schema does not know when asked for it, as the text the file held", async () => {
+    const rows: Record<string, unknown>[] = [];
+
+    await readFeed(feed({
+      "agency.txt": "agency_id,agency_name,something_else\na1,Agency,42\n"
+    }), {"agency.txt": row => rows.push({...row})}, {extraColumns: {"agency.txt": ["something_else"]}});
+
+    expect(rows[0].agency_id).to.equal("a1");
+    expect(rows[0].something_else).to.equal("42");
+  });
+
   it("does not inflate a file with no handler", async () => {
     const seen: string[] = [];
 
