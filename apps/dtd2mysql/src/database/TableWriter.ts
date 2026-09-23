@@ -230,7 +230,11 @@ function lastPerKey(rows: ParsedRecord[]): ParsedRecord[] {
  * Postgres rejects one.
  */
 function insertable(row: ParsedRecord): { [column: string]: unknown } {
+  if (row.values.id !== null && row.values.id !== undefined) {
+    return row.values;
+  }
+
   const { id, ...rest } = row.values;
 
-  return id === null || id === undefined ? rest : { id, ...rest };
+  return rest;
 }
