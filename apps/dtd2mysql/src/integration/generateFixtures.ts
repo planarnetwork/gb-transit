@@ -169,9 +169,9 @@ function valueFor(field: Field, record: string, name: string): string {
     return override;
   }
 
-  // VariableLengthText extends TextField, everything else here extends Field directly
-  if (field instanceof TextField) return "A".repeat(field.length);
+  // before TextField, which it extends: a zero filled int is text, but the text of a number
   if (field instanceof ZeroFillIntField) return "1".repeat(field.length);
+  if (field instanceof TextField) return "A".repeat(field.length);
   if (field instanceof BooleanField) return field.truthyChars[0];
   if (field instanceof ShortDateField) return "250101";
   if (field instanceof NullDateField) return "";
