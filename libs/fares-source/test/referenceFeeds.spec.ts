@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import {describe, expect, it} from "vitest";
-import {loadFares} from "../src/loadFares";
+import {loadFares} from "../src/LoadFares";
 
 const repository = path.resolve(__dirname, "../../..");
 const feeds = path.join(repository, "data/feeds");

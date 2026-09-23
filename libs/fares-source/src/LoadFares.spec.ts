@@ -2,8 +2,8 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vitest";
-import {loadFares} from "./loadFares";
-import {feedFile, writeZip} from "../test/writeZip";
+import {loadFares} from "./LoadFares";
+import {feedFile, writeZip} from "../test/WriteZip";
 
 function flow(origin: string, destination: string, route: string, id: number, end: string, start: string, direction = "R"): string {
   return `RF${origin}${destination}${route}000A${direction}${end}${start}ATO000${String(id).padStart(7, "0")}`;

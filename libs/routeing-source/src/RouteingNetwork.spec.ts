@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vitest";
-import {RouteingData} from "./loadRouteing";
+import {RouteingData} from "./LoadRouteing";
 import {RouteingNetwork} from "./RouteingNetwork";
 
 /**
@@ -17,9 +17,12 @@ function network(): RouteingNetwork {
   ];
   const data: RouteingData = {
     stations: [
-      ...["A", "B", "C", "D", "E", "F"].map(crs => ({crs, routeingPoints: [], group: null})),
+      ...["A", "B", "D", "E", "F"].map(crs => ({crs, routeingPoints: [], group: null})),
+      {crs: "C", routeingPoints: ["A"], group: null},
       {crs: "X", routeingPoints: ["A", "B"], group: null},
       {crs: "Y", routeingPoints: ["A"], group: null},
+      {crs: "W", routeingPoints: ["A"], group: null},
+      {crs: "V", routeingPoints: ["NOPE"], group: null},
       {crs: "L1", routeingPoints: [], group: "G01"},
       {crs: "L2", routeingPoints: [], group: "G01"}
     ],
@@ -81,11 +84,32 @@ describe("RouteingNetwork", () => {
     expect(net.arrays.miles[net.station("L1")! * net.stationCount + l2]).toBe(0);
   });
 
-  it("gives other stations their listed routeing points, or themselves", () => {
+  it("gives other stations their listed routeing points", () => {
     const net = network();
 
     expect(Array.from(net.routeingPointsOf(net.station("X")!), p => net.arrays.routeingPoints[p])).toEqual(["A", "B"]);
+  });
+
+  it("gives a station that is a routeing point only itself, whatever is listed for it", () => {
+    const net = network();
+
     expect(Array.from(net.routeingPointsOf(net.station("C")!), p => net.arrays.routeingPoints[p])).toEqual(["C"]);
+  });
+
+  it("gives a station none when none of its listed routeing points exist", () => {
+    const net = network();
+
+    expect(net.routeingPointsOf(net.station("V")!).length).toBe(0);
+  });
+
+  it("gives a station the links do not connect no local journey, and leaves it out of the catchment", () => {
+    const net = network();
+    const local = new Uint32Array(net.words);
+
+    net.addLocal(net.station("W")!, net.routeingPoint("A")!, local);
+
+    expect(stations(net, local)).toEqual([]);
+    expect(stations(net, net.catchment(net.routeingPoint("A")!))).toEqual(["A", "B", "X", "Y"]);
   });
 
   it("permits local journeys no more than three miles longer than the shortest", () => {

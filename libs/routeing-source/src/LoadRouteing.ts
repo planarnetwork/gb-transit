@@ -1,5 +1,5 @@
 import * as path from "node:path";
-import {eachLine, ZipFile} from "@gb-transit/fares-source";
+import {ZipFile} from "@gb-transit/fares-source";
 
 /**
  * A station and the routeing points it is associated with. A station that is a routeing point, or a member of a
@@ -60,7 +60,7 @@ export async function loadRouteing(zipPath: string): Promise<RouteingData> {
       throw new Error(`${zipPath} has no ${extension} file`);
     }
 
-    await eachLine(zip.stream(entry), line => onRow(line.split(",")));
+    await zip.eachLine(entry, line => onRow(line.split(",")));
   };
 
   const stations: RouteingStation[] = [];

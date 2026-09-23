@@ -1,4 +1,4 @@
-import {RouteingData} from "./loadRouteing";
+import {RouteingData} from "./LoadRouteing";
 
 /**
  * The code of the London station group, the group a route of LO ("via London") passes through
@@ -66,7 +66,11 @@ export class RouteingNetwork {
   }
 
   public static build(data: RouteingData): RouteingNetwork {
-    return new RouteingNetwork(new NetworkBuilder(data).build());
+    const network = new RouteingNetwork(new NetworkBuilder(data).build());
+
+    network.fillCatchments();
+
+    return network;
   }
 
   public station(crs: string): number | undefined {
@@ -112,21 +116,44 @@ export class RouteingNetwork {
    * than three miles longer than the shortest
    */
   public addLocal(station: number, routeingPoint: number, into: Uint32Array): void {
-    addLocal(this.arrays, this.stationCount, station, routeingPoint, into);
-  }
+    const {miles, routeingPointMiles} = this.arrays;
+    const count = this.stationCount;
+    const toPoint = routeingPointMiles.subarray(routeingPoint * count, (routeingPoint + 1) * count);
+    const limit = toPoint[station] + LOCAL_MARGIN_MILES;
+    const fromStation = station * count;
 
-}
+    // a station the links do not connect to its routeing point has no local journey to it
+    if (!Number.isFinite(limit)) {
+      return;
+    }
 
-function addLocal(arrays: Pick<RouteingArrays, "miles" | "routeingPointMiles">, stationCount: number, station: number, routeingPoint: number, into: Uint32Array): void {
-  const toPoint = arrays.routeingPointMiles.subarray(routeingPoint * stationCount, (routeingPoint + 1) * stationCount);
-  const limit = toPoint[station] + LOCAL_MARGIN_MILES;
-  const fromStation = station * stationCount;
-
-  for (let x = 0; x < stationCount; x++) {
-    if (arrays.miles[fromStation + x] + toPoint[x] <= limit) {
-      into[x >>> 5] |= 1 << (x & 31);
+    for (let x = 0; x < count; x++) {
+      if (miles[fromStation + x] + toPoint[x] <= limit) {
+        into[x >>> 5] |= 1 << (x & 31);
+      }
     }
   }
+
+  /**
+   * Fill each routeing point's catchment with its own stations and the local journeys of the stations related to it
+   */
+  private fillCatchments(): void {
+    const {catchment} = this.arrays;
+
+    for (let point = 0; point < this.arrays.routeingPoints.length; point++) {
+      const into = catchment.subarray(point * this.words, (point + 1) * this.words);
+
+      for (const station of this.stationsOf(point)) {
+        into[station >>> 5] |= 1 << (station & 31);
+      }
+    }
+    for (let station = 0; station < this.stationCount; station++) {
+      for (const point of this.routeingPointsOf(station)) {
+        this.addLocal(station, point, catchment.subarray(point * this.words, (point + 1) * this.words));
+      }
+    }
+  }
+
 }
 
 interface MapBlocks {
@@ -187,18 +214,8 @@ class NetworkBuilder {
     const permitted = this.permittedStations(routeingPoints);
     const stationRps = csr(stationRouteingPoints);
     const rpStations = csr(routeingPointStations);
+    // filled by the network, which works out local journeys
     const catchment = new Uint32Array(routeingPoints.length * this.words);
-
-    stationRouteingPoints.forEach((points, station) => {
-      for (const point of points) {
-        addLocal({miles, routeingPointMiles}, this.stations.length, station, point, catchment.subarray(point * this.words, (point + 1) * this.words));
-      }
-    });
-    routeingPointStations.forEach((members, point) => {
-      for (const station of members) {
-        catchment[point * this.words + (station >>> 5)] |= 1 << (station & 31);
-      }
-    });
 
     return {
       stations: this.stations,
@@ -299,8 +316,9 @@ class NetworkBuilder {
   }
 
   /**
-   * A station in a group has the group as its routeing point. A station that is a routeing point has only itself.
-   * Any other station has the routeing points listed for it.
+   * A station that is a routeing point has only itself, whatever else is listed for it. A station in a group has the
+   * group as its routeing point. Any other station has the routeing points listed for it, leaving out any that are not
+   * in the list of routeing points; a station left with none cannot be routed.
    */
   private stationRouteingPoints(routeingPoints: string[]): number[][] {
     const pointIds = new Map(routeingPoints.map((code, id) => [code, id]));
@@ -308,10 +326,9 @@ class NetworkBuilder {
 
     for (const station of this.data.stations) {
       const id = this.stationIds.get(station.crs)!;
-      const codes = station.group !== null ? [station.group]
-        : station.routeingPoints.length > 0 ? station.routeingPoints
-        : [station.crs];
-
+      const codes = pointIds.has(station.crs) ? [station.crs]
+        : station.group !== null ? [station.group]
+        : station.routeingPoints;
       result[id] = codes.map(code => pointIds.get(code)).filter(point => point !== undefined);
     }
 

@@ -4,8 +4,8 @@ import * as path from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vitest";
 import schema from "@gb-transit/dtd-schema";
 import {FeedFile} from "@gb-transit/feed-parser";
-import {FaresFeed, faresFeeds} from "./FaresFeed";
-import {feedFile, writeZip} from "../test/writeZip";
+import {FaresFeed} from "./FaresFeed";
+import {feedFile, writeZip} from "../test/WriteZip";
 
 const {FSC, FFL} = schema.fares as {[extension: string]: FeedFile};
 
@@ -21,7 +21,7 @@ function fare(action: string, id: number, ticket: string, price: number): string
   return `${action}T${String(id).padStart(7, "0")}${ticket}${String(price).padStart(8, "0")}  `;
 }
 
-describe("faresFeeds", () => {
+describe("FaresFeed.files", () => {
   let directory: string;
 
   beforeEach(() => {
@@ -37,14 +37,14 @@ describe("faresFeeds", () => {
       fs.writeFileSync(path.join(directory, name), "");
     }
 
-    expect(faresFeeds(directory).map(f => path.basename(f))).toEqual(["RJFAF847.ZIP", "RJFAC848.ZIP", "RJFAC849.ZIP"]);
+    expect(FaresFeed.files(directory).map(f => path.basename(f))).toEqual(["RJFAF847.ZIP", "RJFAC848.ZIP", "RJFAC849.ZIP"]);
   });
 
   it("rejects files that are not fares feeds", () => {
     const file = path.join(directory, "RJTTF918.ZIP");
     fs.writeFileSync(file, "");
 
-    expect(() => faresFeeds(file)).toThrow("not a fares feed");
+    expect(() => FaresFeed.files(file)).toThrow("not a fares feed");
   });
 });
 
@@ -113,6 +113,13 @@ describe("FaresFeed", () => {
       fare("I", 1, "SDS", 2200),
       fare("I", 2, "CDS", 500)
     ]);
+  });
+
+  it("writes a changed key once when the full file repeats it", async () => {
+    writeZip(path.join(directory, "RJFAF001.ZIP"), {"RJFAF001.FSC": feedFile([cluster("R", "Q001", "1111"), cluster("R", "Q001", "1111")])});
+    writeZip(path.join(directory, "RJFAC002.ZIP"), {"RJFAC002.FSC": feedFile([cluster("A", "Q001", "1111")])});
+
+    expect(await lines("FSC", FSC)).toEqual([cluster("A", "Q001", "1111")]);
   });
 
   it("ignores an insert of a key the full file already has", async () => {

@@ -54,10 +54,8 @@
     "NonDerivableFare",
     "StationCluster",
     "TicketType",
-    "ZipEntry",
     "ZipFile",
-    "eachLine",
-    "faresFeeds",
+    "ZipFileEntry",
     "loadFares"
   ],
   "feed-parser": [

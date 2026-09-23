@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import {FeedFile, FixedWidthRecord, Record, RecordAction} from "@gb-transit/feed-parser";
-import {eachLine, ZipEntry, ZipFile} from "./ZipFile";
+import {ZipFile, ZipFileEntry} from "./ZipFile";
 
 /**
  * A fares feed zip: RJFAF847.ZIP is a full refresh, RJFAC848.ZIP a change file.
@@ -15,62 +15,68 @@ const FARES_FEED = /^RJFA([FC])(\d+)\.zip$/i;
 const FEED_ENTRY = /^RJFA([FC])\d+\.(\w+)$/i;
 
 /**
- * Expand what was given into the fares feeds to apply, in the order to apply them.
- *
- * A path to a zip is taken as given. A directory contributes every fares feed in it, ordered by sequence number and
- * starting at the most recent full refresh - anything before that refresh is superseded by it.
- */
-export function faresFeeds(sources: string | string[]): string[] {
-  return (Array.isArray(sources) ? sources : [sources]).flatMap(source => {
-    if (!fs.existsSync(source)) {
-      throw new Error(`Source ${source} does not exist.`);
-    }
-
-    if (fs.statSync(source).isDirectory()) {
-      return feedsIn(source);
-    }
-
-    if (!FARES_FEED.test(path.basename(source))) {
-      throw new Error(`${source} is not a fares feed. Expected a file named RJFAFxxx.ZIP or RJFACxxx.ZIP.`);
-    }
-
-    return [source];
-  });
-}
-
-function feedsIn(directory: string): string[] {
-  const feeds = fs.readdirSync(directory)
-    .map(entry => ({entry, parsed: FARES_FEED.exec(entry)}))
-    .filter(({parsed}) => parsed !== null)
-    .map(({entry, parsed}) => ({
-      path: path.join(directory, entry),
-      sequence: parseInt(parsed![2], 10),
-      refresh: parsed![1].toUpperCase() === "F"
-    }))
-    .sort((a, b) => a.sequence - b.sequence || a.path.localeCompare(b.path));
-
-  if (feeds.length === 0) {
-    throw new Error(`No fares feeds in ${directory}.`);
-  }
-
-  const lastRefresh = feeds.findLastIndex(feed => feed.refresh);
-
-  return feeds.slice(lastRefresh === -1 ? 0 : lastRefresh).map(feed => feed.path);
-}
-
-/**
  * The lines of a fares feed file as they stand once every change has been applied.
  *
  * Changes follow the importer: I is an insert that is ignored if the key exists, A replaces the row with that key and
  * D deletes it. The changes are small, so they are folded into a final state per key first, then the full file is
- * streamed once with each changed key substituted as it passes.
+ * streamed once with each changed key substituted as it passes. A key the changes touch is only written once, however
+ * often the full file repeats it.
+ *
+ * A key the changes do not touch is passed through each time the full file has it. A full file is taken to have
+ * unique keys, as the reference feeds do: holding every key to check costs more than reading the file does (half a
+ * gigabyte and four seconds for the fares alone). This is also why the rows are not applied to a MemoryTable, which
+ * holds one object per row.
  */
 export class FaresFeed {
 
   private readonly zips: ZipFile[];
 
   constructor(sources: string | string[]) {
-    this.zips = faresFeeds(sources).map(ZipFile.open);
+    this.zips = FaresFeed.files(sources).map(ZipFile.open);
+  }
+
+  /**
+   * Expand what was given into the fares feeds to apply, in the order to apply them.
+   *
+   * A path to a zip is taken as given. A directory contributes every fares feed in it, ordered by sequence number and
+   * starting at the most recent full refresh - anything before that refresh is superseded by it.
+   */
+  public static files(sources: string | string[]): string[] {
+    return (Array.isArray(sources) ? sources : [sources]).flatMap(source => {
+      if (!fs.existsSync(source)) {
+        throw new Error(`Source ${source} does not exist.`);
+      }
+
+      if (fs.statSync(source).isDirectory()) {
+        return FaresFeed.filesIn(source);
+      }
+
+      if (!FARES_FEED.test(path.basename(source))) {
+        throw new Error(`${source} is not a fares feed. Expected a file named RJFAFxxx.ZIP or RJFACxxx.ZIP.`);
+      }
+
+      return [source];
+    });
+  }
+
+  private static filesIn(directory: string): string[] {
+    const feeds = fs.readdirSync(directory)
+      .map(entry => ({entry, parsed: FARES_FEED.exec(entry)}))
+      .filter(({parsed}) => parsed !== null)
+      .map(({entry, parsed}) => ({
+        path: path.join(directory, entry),
+        sequence: parseInt(parsed![2], 10),
+        refresh: parsed![1].toUpperCase() === "F"
+      }))
+      .sort((a, b) => a.sequence - b.sequence || a.path.localeCompare(b.path));
+
+    if (feeds.length === 0) {
+      throw new Error(`No fares feeds in ${directory}.`);
+    }
+
+    const lastRefresh = feeds.findLastIndex(feed => feed.refresh);
+
+    return feeds.slice(lastRefresh === -1 ? 0 : lastRefresh).map(feed => feed.path);
   }
 
   /**
@@ -83,7 +89,7 @@ export class FaresFeed {
     const pending = new Map<string, Change>();
 
     for (const change of changes) {
-      await eachLine(change.zip.stream(change.entry), line => {
+      await change.zip.eachLine(change.entry, line => {
         const key = keys.read(line);
 
         if (key !== null) {
@@ -92,19 +98,21 @@ export class FaresFeed {
       });
     }
 
-    await eachLine(full.zip.stream(full.entry), line => {
+    await full.zip.eachLine(full.entry, line => {
       if (pending.size > 0) {
         const key = keys.read(line);
         const change = key === null ? undefined : pending.get(key);
 
         if (change !== undefined) {
-          pending.delete(key!);
+          if (!change.written) {
+            change.written = true;
 
-          if (change.ifAbsent) {
-            onLine(line);
-          }
-          else if (change.line !== null) {
-            onLine(change.line);
+            if (change.ifAbsent) {
+              onLine(line);
+            }
+            else if (change.line !== null) {
+              onLine(change.line);
+            }
           }
 
           return;
@@ -115,7 +123,7 @@ export class FaresFeed {
     });
 
     for (const change of pending.values()) {
-      if (change.line !== null) {
+      if (!change.written && change.line !== null) {
         onLine(change.line);
       }
     }
@@ -155,30 +163,31 @@ export class FaresFeed {
 
 interface FeedEntry {
   zip: ZipFile;
-  entry: ZipEntry;
+  entry: ZipFileEntry;
 }
 
 /**
  * The net effect of a key's changes. With ifAbsent set the line only applies if the full file does not have the key.
- * A null line is a deletion.
+ * A null line is a deletion. Written is set once the key has been dealt with in the full file.
  */
 interface Change {
   line: string | null;
   ifAbsent: boolean;
+  written: boolean;
 }
 
 function apply(previous: Change | undefined, line: string, action: RecordAction): Change {
   switch (action) {
     case RecordAction.Delete:
-      return {line: null, ifAbsent: false};
+      return {line: null, ifAbsent: false, written: false};
     case RecordAction.Update:
-      return {line, ifAbsent: false};
+      return {line, ifAbsent: false, written: false};
     case RecordAction.Insert:
       if (previous === undefined) {
-        return {line, ifAbsent: true};
+        return {line, ifAbsent: true, written: false};
       }
 
-      return previous.line === null && !previous.ifAbsent ? {line, ifAbsent: false} : previous;
+      return previous.line === null && !previous.ifAbsent ? {line, ifAbsent: false, written: false} : previous;
     default:
       throw new Error(`Unsupported action ${action} for line ${line}`);
   }

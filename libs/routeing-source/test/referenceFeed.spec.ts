@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import {describe, expect, it} from "vitest";
-import {loadRouteing} from "../src/loadRouteing";
+import {loadRouteing} from "../src/LoadRouteing";
 import {RouteingNetwork} from "../src/RouteingNetwork";
 
 const feeds = path.resolve(__dirname, "../../../data/feeds");
