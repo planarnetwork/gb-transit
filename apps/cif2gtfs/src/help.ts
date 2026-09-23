@@ -54,6 +54,7 @@ A config file looks like this. Only source is required:
     modes: [metro, bus, ship]  # replacement buses are their own mode and stay
     operators: [ES, LT, TW, ZZ]     # every service these operators run
     replacementBuses: [LO, XR]      # only their buses; their trains stay
+    links: [TUBE]                   # fixed links of these modes stay out of transfers.txt
   enrichers:
     NAPTAN:                  # on, with its own defaults
     KNOWLEDGEBASE:
