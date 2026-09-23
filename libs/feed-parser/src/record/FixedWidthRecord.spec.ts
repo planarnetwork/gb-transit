@@ -54,6 +54,30 @@ describe("FixedWidthRecord", () => {
     });
   });
 
+  /**
+   * The null values are the field's full width, so the part of a field a short line does reach is padded
+   * out to it before it is read
+   */
+  it("reads a field a short line stops part way through as blank", () => {
+    const record = new FixedWidthRecord("test", [], {
+      "code": new TextField(0, 2),
+      "suffix": new TextField(2, 3, true)
+    });
+
+    expect(record.extractValues("AB  ").values).to.deep.equal({ id: null, code: "AB", suffix: null });
+    expect(record.extractValues("AB").values).to.deep.equal({ id: null, code: "AB", suffix: null });
+    expect(record.extractValues("ABx").values).to.deep.equal({ id: null, code: "AB", suffix: "x" });
+  });
+
+  it("refuses a field a short line leaves blank when it cannot be null", () => {
+    const record = new FixedWidthRecord("test", [], {
+      "code": new TextField(0, 2),
+      "name": new TextField(2, 3)
+    });
+
+    expect(() => record.extractValues("AB  ")).to.throw("Non-nullable field received null value");
+  });
+
   it("picks the correct action", () => {
     const field = new IntField(1, 4);
     const field2 = new TextField(5, 3);

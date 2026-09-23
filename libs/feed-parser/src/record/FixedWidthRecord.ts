@@ -1,5 +1,5 @@
 
-import {FieldMap, ParsedRecord, Record, RecordAction} from "./Record";
+import {FieldMap, fixedWidthText, ParsedRecord, Record, RecordAction} from "./Record";
 import {FieldValue} from "../field/Field";
 
 /**
@@ -25,7 +25,7 @@ export class FixedWidthRecord implements Record {
     const values: { [field: string]: FieldValue } = { id: null };
 
     for (const key of Object.keys(this.fields)) {
-      values[key] = this.fields[key].extract(line.substr(this.fields[key].position, this.fields[key].length));
+      values[key] = this.fields[key].extract(fixedWidthText(line, this.fields[key]));
     }
 
     const keysValues = this.key.reduce((vals: { [field: string]: FieldValue }, key) => {
@@ -58,7 +58,7 @@ export class RecordWithManualIdentifier extends FixedWidthRecord {
     const values: { [field: string]: FieldValue } = action === RecordAction.Delete ? {} : { id: ++this.lastId };
 
     for (const key in this.fields) {
-      values[key] = this.fields[key].extract(line.substr(this.fields[key].position, this.fields[key].length));
+      values[key] = this.fields[key].extract(fixedWidthText(line, this.fields[key]));
     }
 
     const keysValues = this.key.reduce((vals: { [field: string]: FieldValue }, key) => {
