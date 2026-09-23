@@ -84,8 +84,8 @@ export class CleanFaresCommand implements CLICommand {
   constructor(
     private readonly db: Kysely<Database>,
     private readonly schemaDialect: SchemaDialect,
-    // the cut off is worked out here rather than by the database, as CURDATE() made the result depend on
-    // which machine ran the clean up and could not be pinned in a test
+    // the cut off is worked out here rather than by the database's CURDATE(), so the result does not
+    // depend on which machine runs the clean up, and a test can pin it
     private readonly today: Temporal.PlainDate = Temporal.Now.plainDateISO()
   ) {}
 

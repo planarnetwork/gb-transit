@@ -26,8 +26,8 @@ import * as path from "node:path";
  *   the risk, and a collision only shows on the second import.
  *
  *   The feed it just wrote loads back in. --gtfs-import creates its own tables
- *   from their own declarations, so nothing above it touches them, and until
- *   this ran them a column type only one database refuses was invisible.
+ *   from their own declarations, so nothing above it touches them, and a
+ *   column type only one database refuses shows up nowhere else.
  */
 const ROOT = path.resolve(import.meta.dirname, "..");
 const FIXTURE = path.join(ROOT, "apps/cif2gtfs/fixtures/mini/RJTTF001.ZIP");

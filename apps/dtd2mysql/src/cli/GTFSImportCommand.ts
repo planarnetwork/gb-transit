@@ -61,8 +61,7 @@ export class GTFSImportCommand implements CLICommand {
    *
    * The table was dropped and recreated a moment ago, so a failure part way through the load leaves
    * it holding part of a file and nothing saying which part. Either the file is in the table or the
-   * table is as empty as it was. It is a little quicker as well - 500,000 rows in 9.6s rather than
-   * 10.3s - but that is not the reason.
+   * table is as empty as it was.
    */
   private async load(directory: string, name: string, table: Table): Promise<void> {
     const filename = path.join(directory, `${name}.txt`);

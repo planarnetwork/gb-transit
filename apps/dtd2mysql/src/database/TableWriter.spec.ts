@@ -206,8 +206,8 @@ describe("TableWriter", () => {
   });
 
   /**
-   * REPLACE INTO took the last of the rows it was given. Deleting by key and inserting takes the
-   * first, because the insert leaves the row it has just written alone - so the flush has to.
+   * Deleting by key and inserting would keep the first, because the insert leaves the row it has just
+   * written alone, so the flush keeps the last itself - as REPLACE does.
    */
   it("keeps the last revision of a key in one flush", async () => {
     const db = await keyedTable();

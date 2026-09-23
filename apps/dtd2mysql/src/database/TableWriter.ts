@@ -211,9 +211,9 @@ function width(values: object | undefined): number {
 /**
  * The last row of each key.
  *
- * REPLACE took the last of the rows it was given, so where one flush holds two revisions of a key the
- * second is the one that survives. Spelled out as a delete and an insert it would be the first: the
- * delete takes out whatever was stored and the insert then leaves the row it just wrote alone.
+ * Where one flush holds two revisions of a key the second is the one that survives, as it would under
+ * REPLACE. A delete and an insert of both would keep the first: the delete takes out whatever was
+ * stored and the insert then leaves the row it just wrote alone.
  */
 function lastPerKey(rows: ParsedRecord[]): ParsedRecord[] {
   const latest = new Map<string, ParsedRecord>();

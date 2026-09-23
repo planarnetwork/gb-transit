@@ -16,9 +16,9 @@ import {Database} from "../database/Database";
  * source builds is dialect neutral, so a query that runs here compiles for the other two as well - the
  * integration suite is what runs the same expectations against MySQL and Postgres.
  *
- * The point of these is the SQL rather than the shaping: the queries that did not translate were a
- * MySQL-only null safe equals, an IF, a bare GROUP BY and a pair of codes compared glued together, and
- * each of them is exercised below.
+ * The point of these is the SQL rather than the shaping: the ranking that chooses a station, the CASE
+ * that maps a ship to a ferry and the fixed links matched on their pair of codes are each exercised
+ * below.
  */
 describe("KyselyTimetableSource", () => {
   let db: Kysely<Database>;
@@ -85,9 +85,8 @@ describe("KyselyTimetableSource", () => {
   });
 
   /**
-   * The rating is what a transfer time comes from, so a TIPLOC without one cannot supply it. Applied
-   * after the ranking rather than before, the unrated TIPLOC won its CRS and was then dropped, and
-   * the station had no transfer time at all - where the rated TIPLOC beside it had one all along.
+   * The rating is what a transfer time comes from, so a TIPLOC without one cannot supply it. The
+   * unrated TIPLOC here ranks first, and the station still takes its time from the rated one beside it.
    */
   it("takes the transfer time from a rated tiploc, not from the one that ranks first", async () => {
     await db.insertInto("physical_station").values([

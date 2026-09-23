@@ -72,7 +72,7 @@ describe("the database connection", () => {
       expect(() => dialectName()).to.throw(/says mysql, but DATABASE_URL is a postgres URL/);
     });
 
-    // the scheme was only read where DATABASE_DIALECT was unset, so setting it skipped the check
+    // setting the dialect does not skip the check on the scheme
     it("reads the scheme even when the dialect is named", () => {
       process.env.DATABASE_URL = "oracle://localhost/feed";
       process.env.DATABASE_DIALECT = "mysql";
@@ -101,7 +101,7 @@ describe("the database connection", () => {
 
     /**
      * Handed the URL as a uri, mysql2 merges it over the options on truthiness, so a false or an
-     * empty string lost to the URL - the opposite of the order the README promises.
+     * empty string would lose to the URL - the opposite of the order the README promises.
      */
     it("lets the consumer override what the URL says, including with a falsy value", () => {
       process.env.DATABASE_URL = "mysql://root:secret@localhost/feed?multipleStatements=true";
@@ -203,9 +203,9 @@ describe("the database connection", () => {
   });
 
   /**
-   * Downloading needs no database, and the feed cursor is the one thing that does: asked of
-   * DATABASE_NAME alone, a URL-only install had no cursor and re-took the most recent full refresh
-   * every run, skipping every changes file between.
+   * Downloading needs no database, and the feed cursor is the one thing that does: an install
+   * configured by URL alone with no cursor would take the most recent full refresh every run,
+   * skipping every changes file between.
    */
   it("knows whether a database has been named, by either of the ways of naming one", () => {
     expect(databaseConfigured()).to.equal(false);

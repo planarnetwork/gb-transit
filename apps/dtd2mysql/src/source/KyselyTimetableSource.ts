@@ -116,13 +116,11 @@ export class KyselyTimetableSource implements TimetableSource {
    * junction or an approach that shares the station's CRS without being the place a passenger stands.
    * Reading has `RDNGSTN` rated 2 and `RDNGORJ` rated 9.
    *
-   * Grouping alone keeps whichever row came first, which published the subsidiary TIPLOC as `stop_code`
-   * for 75 stations, so the row is chosen explicitly. The TIPLOC itself breaks the remaining tie,
+   * The row is chosen explicitly rather than by grouping, which keeps whichever row comes first and
+   * would publish a subsidiary TIPLOC as `stop_code`. The TIPLOC itself breaks the remaining tie,
    * because some stations have nothing else to separate them: Westbury's TIPLOCs are all rated 9.
    *
-   * ROW_NUMBER is standard SQL and all three databases have it. The ranking is the one thing MySQL
-   * spells its own way - `cate_interchange_status <=> 9` is its null safe equals - so a CASE says the
-   * same thing, including for the null the operator quietly treats as "not 9".
+   * ROW_NUMBER is standard SQL and all three databases have it. A null rating ranks as "not 9".
    */
   private preferred(options: { rated?: boolean } = {}) {
     const stations = this.db

@@ -22,8 +22,8 @@ export interface Table<C extends Columns = Columns, I extends boolean = boolean>
   readonly indexes: readonly string[];
   /**
    * Whether the schema builder adds the generated id every imported table is keyed by. A table worked
-   * out from a feed rather than imported from one may have had no surrogate key before this described
-   * it, and adding one shifts every column of a SELECT *.
+   * out from a feed rather than imported from one may be read positionally, and adding one shifts every
+   * column of a SELECT *.
    */
   readonly generatedId: I;
 }

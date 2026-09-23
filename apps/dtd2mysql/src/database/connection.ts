@@ -82,8 +82,8 @@ export function dialectName(): DialectName {
  * Whether the consumer has named a database at all.
  *
  * What a command asks before deciding there is one to read: downloading does not need a database,
- * and it is answered here because this is what reads the environment. Asking for one of the three
- * ways in - DATABASE_NAME - is how an install configured by URL ended up with no feed cursor.
+ * and it is answered here because this is what reads the environment. Either a URL or a name counts,
+ * so an install configured by URL alone still has a feed cursor.
  */
 export function databaseConfigured(): boolean {
   return databaseUrl() !== undefined || process.env.DATABASE_NAME !== undefined;
@@ -128,7 +128,7 @@ function dialectFromUrl(): DialectName | undefined {
  * The URL is read by mysql2's own parser, which copies every query parameter into its options, so
  * the whole driver surface is reachable through DATABASE_URL. It is parsed here rather than handed
  * over as a uri because mysql2 merges a uri over its options on truthiness - `if (options[key])
- * continue` - so a false or an empty string in DATABASE_OPTIONS lost to the URL, which is the
+ * continue` - so a false or an empty string in DATABASE_OPTIONS would lose to the URL, which is the
  * opposite of what this file and the README promise. Parsed first and spread over, the ordering is
  * the ordering.
  */

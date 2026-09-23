@@ -27,10 +27,8 @@ export class IntField extends Field {
 }
 
 /**
- * A zero filled int is stored as padded text, so it is a text field that pads rather than an int.
- *
- * Extending Field instead left it as the one text value in the feed that keeps the blanks a short
- * line pads it with, where every sibling column has them removed.
+ * A zero filled int is stored as padded text, so it is a text field that pads rather than an int, and
+ * drops the blanks that fill the field out like every other text value.
  */
 export class ZeroFillIntField extends TextField {
 
