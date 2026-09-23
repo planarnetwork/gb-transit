@@ -52,6 +52,14 @@ function problems(files: FeedConfig, tables: FeedSchema): string[] {
     if ([...table.key].join() !== [...record.key].join()) {
       found.push(`${record.name} declares the key [${table.key}] but the feed deletes by [${record.key}]`);
     }
+
+    // the declaration is what creates the indexes, so one the feed asks for and the table leaves out
+    // would never exist
+    const missing = record.indexes.filter(index => !table.indexes.includes(index));
+
+    if (missing.length > 0) {
+      found.push(`${record.name} is indexed on [${missing}] by the feed but not by its declaration`);
+    }
   }
 
   return found;
