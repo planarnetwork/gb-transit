@@ -122,6 +122,13 @@ differently now, beyond `readFeedRows` with no argument returning one more key.
 
 ## The validator baselines
 
+**A baseline for the rail and TfL feed.**
+[`.github/validator-baseline-rail-and-tfl.json`](.github/validator-baseline-rail-and-tfl.json) is new,
+for `gtfs-rail-and-tfl.zip`. Seeded from the National Rail only feed's, which its rail half is: the
+two stops at 0,0 and the one z-train that arrives before it leaves. The TfL half raised no errors
+when it was built from TfL's Journey Planner Timetables of 21 September 2026, so it accepts none of
+its own.
+
 **No passing points feed.** `.github/validator-baseline-passing-points.json` is gone, because the
 nightly no longer builds or publishes `gtfs-passing-points.zip`. Its baseline accepted 25
 `stop_time_with_arrival_before_previous_departure_time` by count — passes on the working clock

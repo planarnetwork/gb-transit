@@ -46,26 +46,29 @@ describe("the feeds", () => {
 
   it("has one platform per zip the nightly build publishes", () => {
     expect(FEEDS.map(f => f.file)).to.deep.equal([
-      "gtfs.zip", "gtfs-national-rail-only.zip"
+      "gtfs.zip", "gtfs-national-rail-only.zip", "gtfs-rail-and-tfl.zip"
     ]);
   });
 
   // The whole reason the catalogue asks the release rather than being told. A
   // download link to an asset the release does not carry is a 404 with a button
-  // on it, and platform two is in exactly that state until the build that
+  // on it, and platform three is in exactly that state until the build that
   // produces it reaches master.
   it("does not offer a feed the latest release does not carry", () => {
-    const release = feed({stop_times: 2840000});
+    const release = feed({stop_times: 2840000, trips_national_rail_only: 240000});
 
     expect(platform(1).published(release)).to.equal(true);
-    expect(platform(2).published(release)).to.equal(false);
+    expect(platform(2).published(release)).to.equal(true);
+    expect(platform(3).published(release)).to.equal(false);
   });
 
   it("offers each feed as soon as the release describes it", () => {
     const release = feed({
       stop_times: 2840000,
       trips_national_rail_only: 240000,
-      stop_times_national_rail_only: 2400000
+      stop_times_national_rail_only: 2400000,
+      trips_rail_and_tfl: 330000,
+      stop_times_rail_and_tfl: 4300000
     });
 
     expect(FEEDS.every(f => f.published(release))).to.equal(true);
@@ -88,6 +91,15 @@ describe("the feeds", () => {
     const release = feed({trips_national_rail_only: 240000});
 
     expect(platform(2).figures(release)).to.deep.equal([{label: "Trips", value: "240,000"}]);
+  });
+
+  it("counts the rail and TfL feed's own trips and stop times", () => {
+    const release = feed({trips_rail_and_tfl: 330000, stop_times_rail_and_tfl: 4300000});
+
+    expect(platform(3).figures(release)).to.deep.equal([
+      {label: "Trips", value: "330,000"},
+      {label: "Stop times", value: "4,300,000"}
+    ]);
   });
 });
 

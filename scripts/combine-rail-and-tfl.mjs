@@ -48,7 +48,84 @@ const NOISE = new Set(["london", "underground", "station", "dlr", "tram", "stop"
 
 const HELD = ["agency.txt", "routes.txt", "trips.txt", "calendar.txt", "calendar_dates.txt", "stops.txt", "transfers.txt"];
 /** What the rail feed has and TfL's has nothing to add to. */
-const COPIED = ["feed_info.txt", "attributions.txt", "areas.txt", "stop_areas.txt"];
+const COPIED = ["feed_info.txt", "areas.txt", "stop_areas.txt"];
+
+/**
+ * TfL's lines, by the code TfL's timetables file them under - `BAK` in `1-BAK-_-y05-635201`. Each is
+ * published as a file per timetable, a base one and one per engineering works, so a line is a route
+ * per file until they are put back together here, under an id that does not change when TfL issues
+ * the next file.
+ *
+ * The colours are the RGB references of TfL's Colour Standard, Issue 11: the Underground's line
+ * colours, and the mode colours of the DLR, London Trams, London Cable Car and London River Services.
+ */
+const TFL_LINES = {
+  BAK: {colour: "B26300", url: "https://tfl.gov.uk/tube/route/bakerloo/"},
+  CEN: {colour: "DC241F", url: "https://tfl.gov.uk/tube/route/central/"},
+  CIR: {colour: "FFC80A", url: "https://tfl.gov.uk/tube/route/circle/"},
+  DIS: {colour: "007D32", url: "https://tfl.gov.uk/tube/route/district/"},
+  HAM: {colour: "F589A6", url: "https://tfl.gov.uk/tube/route/hammersmith-city/"},
+  JUB: {colour: "838D93", url: "https://tfl.gov.uk/tube/route/jubilee/"},
+  MET: {colour: "9B0058", url: "https://tfl.gov.uk/tube/route/metropolitan/"},
+  NTN: {colour: "000000", url: "https://tfl.gov.uk/tube/route/northern/"},
+  PIC: {colour: "0019A8", url: "https://tfl.gov.uk/tube/route/piccadilly/"},
+  VIC: {colour: "039BE5", url: "https://tfl.gov.uk/tube/route/victoria/"},
+  WAC: {colour: "76D0BD", url: "https://tfl.gov.uk/tube/route/waterloo-city/"},
+  DLR: {colour: "00AFAD", url: "https://tfl.gov.uk/dlr/route/dlr/"},
+  TR: {colour: "5FB526", url: "https://tfl.gov.uk/tram/route/tram/"},
+  // An aerial lift, which TfL's timetables call rail
+  CAB: {colour: "DC241F", url: "https://tfl.gov.uk/cable-car/route/london-cable-car/", type: 6},
+  RB1: {colour: "039BE5", url: "https://tfl.gov.uk/river-bus/route/rb1/"},
+  RB4: {colour: "039BE5", url: "https://tfl.gov.uk/river-bus/route/rb4/"},
+  B6C: {colour: "039BE5", url: "https://tfl.gov.uk/river-bus/route/rb6/"},
+  WFF: {colour: "039BE5", url: "https://tfl.gov.uk/river-bus/route/woolwich-ferry/"}
+};
+
+/**
+ * TfL's operators, by National Operator Code. TransXChange names an operator and gives nothing
+ * else - no website, no phone - and Thames Clippers still under a sponsor it has not had since 2020.
+ */
+const TFL_AGENCIES = {
+  LUL: {agency_name: "London Underground", agency_url: "https://tfl.gov.uk/modes/tube/", agency_phone: "0343 222 1234"},
+  DLR: {agency_name: "Docklands Light Railway", agency_url: "https://tfl.gov.uk/modes/dlr/", agency_phone: "0343 222 1234"},
+  TCL: {agency_name: "London Trams", agency_url: "https://tfl.gov.uk/modes/trams/", agency_phone: "0343 222 1234"},
+  CAB: {agency_name: "London Cable Car", agency_url: "https://tfl.gov.uk/cable-car/route/london-cable-car/", agency_phone: "0343 222 1234"},
+  WFF: {agency_name: "Woolwich Ferry", agency_url: "https://tfl.gov.uk/river-bus/route/woolwich-ferry/", agency_phone: "0343 222 1234"},
+  CV: {agency_name: "Uber Boat by Thames Clippers", agency_url: "https://www.thamesclippers.com/"}
+};
+
+/** The lines a complete download always has: the Underground's, the DLR and the trams. */
+const REQUIRED = /^(BAK|CEN|CIR|DIS|HAM|JUB|MET|NTN|PIC|VIC|WAC|DLR|TR)$/;
+
+/** The line code of a TfL route: `1-BAK-_-y05-635201|1-BAK-_-y05-635201` is `BAK`. */
+const lineOf = routeId => routeId.split("-")[1];
+
+/** Black or white, whichever reads better on a line's colour - black on the Circle's yellow. */
+function textOn(colour) {
+  const [r, g, b] = [0, 2, 4].map(i => parseInt(colour.slice(i, i + 2), 16) / 255)
+    .map(c => c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+
+  return (luminance + 0.05) / 0.05 > 1.05 / (luminance + 0.05) ? "000000" : "FFFFFF";
+}
+
+/**
+ * TfL's open data licence makes this statement a condition of using the timetables, and
+ * attributions.txt is where a feed says who it is built from. One row per agency TfL's timetables
+ * describe, because a row naming no agency, route or trip is about the whole feed - and TfL is not
+ * the producer of the National Rail half, nor the authority for it. TfL produces these timetables
+ * and is the authority the operators run under; it is not the operator of all of them.
+ */
+const tflAttribution = agencyId => ({
+  agency_id: agencyId,
+  organization_name: "Transport for London",
+  is_producer: 1,
+  is_operator: 0,
+  is_authority: 1,
+  attribution_url: "https://tfl.gov.uk/corporate/terms-and-conditions/transport-data-service",
+  attribution_licence: "Powered by TfL Open Data. Contains OS data © Crown copyright and database rights 2016 " +
+    "and Geomni UK Map data © and database rights [2019]"
+});
 
 const [railPath, tflPath, outPath, interchangePath = path.join(import.meta.dirname, "tfl-interchange.csv")] = process.argv.slice(2);
 
@@ -70,7 +147,10 @@ async function read(file, headers, files) {
   return result;
 }
 
-const [rail, tfl] = await Promise.all([read(railPath, railHeaders, [...HELD, ...COPIED]), read(tflPath, tflHeaders, HELD)]);
+const [rail, tfl] = await Promise.all([
+  read(railPath, railHeaders, [...HELD, ...COPIED, "attributions.txt"]),
+  read(tflPath, tflHeaders, HELD)
+]);
 
 const work = workingDirectory(outPath);
 
@@ -99,24 +179,30 @@ function open(file, columns) {
   };
 }
 
-// The calls and the rail feed's shapes, written as they are read. Which rail stations have trains is
+// The calls and the shapes of both feeds, written as they are read. Which rail stations have trains is
 // worked out from the same pass, since the calls are the only place that says.
 const railParent = new Map(rail["stops.txt"].map(s => [s.stop_id, s.parent_station || s.stop_id]));
 const served = new Set();
 const stopTimes = open("stop_times.txt", columnsOf("stop_times.txt"));
-const shapes = railHeaders["shapes.txt"] === undefined ? undefined : open("shapes.txt", railHeaders["shapes.txt"]);
+const shapes = columnsOf("shapes.txt").length === 0 ? undefined : open("shapes.txt", columnsOf("shapes.txt"));
+// A TfL journey none of whose stops can be placed is named a shape that has no points, and a trip
+// pointing at a shape that is not there fails validation, so only the ones written are kept.
+const drawn = new Set();
 
 await readFeed(source(railPath), {
   "stop_times.txt": row => {
     served.add(railParent.get(row.stop_id) ?? row.stop_id);
     stopTimes.write(row);
   },
-  ...(shapes === undefined ? {} : {"shapes.txt": row => shapes.write(row)})
+  "shapes.txt": row => shapes?.write(row)
 }, {extraColumns: railHeaders});
-// TfL's shapes are not carried: transxchange2gtfs names a shape for a trip whose route links have no
-// track, and writes none, so a shape_id would point at nothing
-await readFeed(source(tflPath), {"stop_times.txt": row => stopTimes.write({...row, trip_id: "tfl_" + row.trip_id})},
-  {extraColumns: tflHeaders});
+await readFeed(source(tflPath), {
+  "stop_times.txt": row => stopTimes.write({...row, trip_id: "tfl_" + row.trip_id}),
+  "shapes.txt": row => {
+    drawn.add(row.shape_id);
+    shapes?.write({...row, shape_id: "tfl_" + row.shape_id});
+  }
+}, {extraColumns: tflHeaders});
 stopTimes.end();
 shapes?.end();
 
@@ -226,19 +312,103 @@ const tflStops = tfl["stops.txt"]
   .filter(s => !folded.has(s.stop_id))
   .map(s => folded.has(s.parent_station) ? {...s, parent_station: folded.get(s.parent_station).stop_id} : s);
 
+// A route per line rather than per file, named for the base timetable: the file whose trips run on
+// the most days. Not the one with the most trips, which a week of engineering works can have.
+const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+const ymd = date => date.toISOString().slice(0, 10).replace(/-/g, "");
+const daysOf = new Map();
+
+for (const calendar of tfl["calendar.txt"]) {
+  const days = new Set();
+  const end = String(calendar.end_date);
+
+  for (let date = new Date(`${String(calendar.start_date).replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3")}T00:00:00Z`);
+    ymd(date) <= end; date.setUTCDate(date.getUTCDate() + 1)) {
+    if (Number(calendar[DAYS[(date.getUTCDay() + 6) % 7]]) === 1) {
+      days.add(ymd(date));
+    }
+  }
+
+  daysOf.set(calendar.service_id, days);
+}
+
+for (const change of tfl["calendar_dates.txt"]) {
+  const days = daysOf.get(change.service_id) ?? daysOf.set(change.service_id, new Set()).get(change.service_id);
+
+  if (Number(change.exception_type) === 1) {
+    days.add(String(change.date));
+  }
+  else {
+    days.delete(String(change.date));
+  }
+}
+
+const runsOn = new Map();
+
+for (const trip of tfl["trips.txt"]) {
+  runsOn.set(trip.route_id, (runsOn.get(trip.route_id) ?? 0) + (daysOf.get(trip.service_id)?.size ?? 0));
+}
+
+const lines = new Map();
+
+for (const route of [...tfl["routes.txt"]].sort((a, b) => (runsOn.get(b.route_id) ?? 0) - (runsOn.get(a.route_id) ?? 0))) {
+  const line = lineOf(route.route_id);
+
+  if (!lines.has(line)) {
+    const known = TFL_LINES[line];
+
+    if (known === undefined) {
+      console.warn(`TfL line ${line} (${route.route_short_name}) has no colour or page here`);
+    }
+
+    lines.set(line, {
+      ...route,
+      route_id: "tfl_" + line,
+      route_type: known?.type ?? route.route_type,
+      route_color: known?.colour ?? route.route_color,
+      route_text_color: known === undefined ? route.route_text_color : textOn(known.colour),
+      route_url: known?.url ?? route.route_url,
+      // transxchange2gtfs writes the service's description as both, and it is the long name
+      route_desc: undefined
+    });
+  }
+}
+
+const tflAgencies = tfl["agency.txt"].map(agency => ({...agency, ...TFL_AGENCIES[agency.agency_id]}));
+const tflTrips = prefix(tfl["trips.txt"], "trip_id", "service_id")
+  .map(trip => ({
+    ...trip,
+    route_id: "tfl_" + lineOf(trip.route_id),
+    shape_id: drawn.has(trip.shape_id) ? "tfl_" + trip.shape_id : undefined
+  }));
+
+// A download that came back short is a feed missing a line, which nothing downstream can tell from a
+// quiet night on it. Every tube line, the DLR and the trams run every day.
+const running = new Set(tflTrips.map(trip => trip.route_id));
+const missing = Object.keys(TFL_LINES).filter(line => REQUIRED.test(line) && !running.has("tfl_" + line));
+
+if (missing.length > 0) {
+  console.error(`TfL's timetables have no trips on ${missing.join(", ")}, so the download is incomplete.`);
+  process.exit(1);
+}
+
 const combined = {
-  "agency.txt": [rail["agency.txt"], tfl["agency.txt"]],
-  "routes.txt": [rail["routes.txt"], prefix(tfl["routes.txt"], "route_id")],
-  "trips.txt": [rail["trips.txt"], prefix(tfl["trips.txt"], "trip_id", "route_id", "service_id").map(t => ({...t, shape_id: undefined}))],
+  "agency.txt": [rail["agency.txt"], tflAgencies],
+  "routes.txt": [rail["routes.txt"], [...lines.values()]],
+  "trips.txt": [rail["trips.txt"], tflTrips],
   "calendar.txt": [rail["calendar.txt"], prefix(tfl["calendar.txt"], "service_id")],
   "calendar_dates.txt": [rail["calendar_dates.txt"], prefix(tfl["calendar_dates.txt"], "service_id")],
   "stops.txt": [rail["stops.txt"], tflStops],
   "transfers.txt": [rail["transfers.txt"], transfers],
+  "attributions.txt": [rail["attributions.txt"], tfl["agency.txt"].map(agency => tflAttribution(agency.agency_id))],
   ...Object.fromEntries(COPIED.filter(file => railHeaders[file] !== undefined).map(file => [file, [rail[file]]]))
 };
 
+/** Columns the script writes whether or not either feed had them. */
+const WRITTEN = {"transfers.txt": ["mode"], "attributions.txt": Object.keys(tflAttribution(""))};
+
 for (const [file, parts] of Object.entries(combined)) {
-  const columns = [...new Set([...columnsOf(file), ...(file === "transfers.txt" ? ["mode"] : [])])];
+  const columns = [...new Set([...columnsOf(file), ...WRITTEN[file] ?? []])];
   const out = open(file, columns);
 
   for (const part of parts) {

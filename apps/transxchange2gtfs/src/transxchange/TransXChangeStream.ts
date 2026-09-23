@@ -99,9 +99,10 @@ export class TransXChangeStream extends Transform {
   }
 
   private getRouteLinks = (index: RouteLinks, link: any): RouteLinks => {
+    // A route link's ends are elements holding a StopPointRef, not the ref itself
     index[link.$.id] = {
-      From: link?.From?.[0] ?? "",
-      To: link?.To?.[0] ?? "",
+      From: link?.From?.[0]?.StopPointRef?.[0] ?? "",
+      To: link?.To?.[0]?.StopPointRef?.[0] ?? "",
       Distance: link?.Distance ? Number(link.Distance[0]) : 0,
       Locations: link?.Track?.flatMap((t: any) => t.Mapping[0].Location.map(this.getLocation)) ?? []
     };

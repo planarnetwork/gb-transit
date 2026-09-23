@@ -27,6 +27,12 @@ export interface FeedMeta {
   trips_national_rail_only?: number;
   stop_times_national_rail_only?: number;
   /**
+   * The rail and TfL feed, absent from a release built before it existed, for
+   * the same reason: platform three waits rather than linking a 404.
+   */
+  trips_rail_and_tfl?: number;
+  stop_times_rail_and_tfl?: number;
+  /**
    * Who the feed was built from, as the build itself credited them. Older
    * releases predate this and have none, which is why the page falls back to
    * naming the timetable rather than showing an empty list.
@@ -121,6 +127,22 @@ export const FEEDS: Feed[] = [
         && number(feed.stop_times_national_rail_only)]
     ]),
     published: feed => feed?.trips_national_rail_only !== undefined
+  },
+  {
+    platform: 3,
+    file: "gtfs-rail-and-tfl.zip",
+    summary: "The National Rail only feed with TfL's tube, DLR, trams, river boats and cable car " +
+      "beside it — journeys across London on the trains that run, not on fixed tube links.",
+    points: [
+      "For journeys that cross London",
+      "Tube stations inside a rail station are its platforms",
+      "Powered by TfL Open Data"
+    ],
+    figures: feed => rows([
+      ["Trips", feed?.trips_rail_and_tfl !== undefined && number(feed.trips_rail_and_tfl)],
+      ["Stop times", feed?.stop_times_rail_and_tfl !== undefined && number(feed.stop_times_rail_and_tfl)]
+    ]),
+    published: feed => feed?.trips_rail_and_tfl !== undefined
   }
 ];
 

@@ -4,6 +4,7 @@ import {STOPS} from "./TxcFeed";
 import {TransXChange, StopPoint} from "../transxchange/TransXChange";
 import {ATCOCode, NaPTANIndex, NaptanStopPoint} from "../reference/NaPTAN";
 import {areaOf, NaptanStopArea, StopAreaIndex} from "../reference/StopAreas";
+import {stopPosition} from "../reference/StopPosition";
 
 /**
  * A stand, where the indicator names one.
@@ -122,15 +123,15 @@ export class StopsStream extends RowStream<TransXChange, StopRow> {
    * it is at the station.
    */
   private getFeedStop(stop: StopPoint, area: NaptanStopArea | undefined): StopRow {
-    const located = stop.Location.Latitude !== 0 || stop.Location.Longitude !== 0;
+    const position = stopPosition(stop.StopPointRef, this.naptan, this.areas, stop.Location);
 
     return {
       stop_id: stop.StopPointRef,
       stop_code: "",
       stop_name: stop.CommonName + ", " + stop.LocalityQualifier,
       stop_desc: "",
-      stop_lat: located ? stop.Location.Latitude : area?.latitude ?? "",
-      stop_lon: located ? stop.Location.Longitude : area?.longitude ?? "",
+      stop_lat: position?.Latitude ?? "",
+      stop_lon: position?.Longitude ?? "",
       zone_id: "",
       stop_url: "",
       location_type: null,
