@@ -65,7 +65,7 @@ export class KyselyTimetableSource implements TimetableSource {
       .execute();
 
     // Through interchange() rather than returned as they come back: the rows have the four standard
-    // columns and Transfer now has twelve more, and the CSV writer takes its header from the first row.
+    // columns and Transfer has twelve more, and the CSV writer takes its header from the first row.
     return results.map((row: any) => interchange(row.crs_code as CRS, Number(row.minimum_change_time) * 60));
   }
 

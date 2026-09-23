@@ -50,7 +50,7 @@ export class GTFSSchemaBuilder {
    * Drop whatever is there and create the table and its indexes.
    *
    * The tables are a copy of the files being loaded rather than something added to, so they are replaced
-   * outright. That is what the TRUNCATE before each load used to say.
+   * outright.
    */
   public async createSchema(): Promise<void> {
     await this.dropSchema();

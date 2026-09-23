@@ -5,7 +5,7 @@ import {ColumnType, FieldType} from "./SchemaDialect";
  * The declared shape of a table.
  *
  * This is the source of truth for what the database holds. The feed definitions say where a value sits in
- * a record and how to read it, which is not something a schema can express, but they no longer decide what
+ * a record and how to read it, which is not something a schema can express, but they do not decide what
  * the column is. A feed change that would not fit the column it writes to is a test failure rather than a
  * silent change to everyone's database, see the schema consistency test.
  */

@@ -9,11 +9,8 @@ import {sqliteSchemaDialect} from "../database/dialect";
 import gtfsSchema from "../gtfs/schema";
 
 /**
- * The import against a real database, loading the golden feed cif2gtfs commits.
- *
- * This used to shell out to the mysql client with LOAD DATA LOCAL INFILE, so there was no way to run it
- * without a MySQL server and the mysql binary on the path. Reading the files here means the whole path -
- * create the tables, read the CSV, write the rows - is exercised by a test.
+ * The import against a real database, loading the golden feed cif2gtfs commits: the whole path - create
+ * the tables, read the CSV, write the rows - with no server needed.
  */
 const golden = path.join(__dirname, "..", "..", "..", "cif2gtfs", "fixtures", "mini", "golden");
 

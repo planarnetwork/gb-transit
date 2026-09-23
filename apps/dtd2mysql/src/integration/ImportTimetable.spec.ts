@@ -19,8 +19,8 @@ import {expectedRows, importFeed, lastProcessedFile, miniFixture, readTable, tab
  *
  * It carries the header and trailer lines the real feeds do, so the record count and the row count do
  * not match: the MSN holds 205 A records and 204 stations arrive. The extra one is the FILE-SPEC header,
- * whose S lands on the interchange status field and which used to be imported as a station with a CRS
- * code of 0/1. MSN.isRecord excludes it now, and 204 is what says so.
+ * whose S lands on the interchange status field and which would read as a station with a CRS code of
+ * 0/1. MSN.isRecord excludes it, and 204 is what says so.
  */
 describe("importing the timetable feed", () => {
 

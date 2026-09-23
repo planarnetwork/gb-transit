@@ -39,8 +39,7 @@ export abstract class Field {
    *
    * A run of one of the null characters, of any length, rather than only one the width of the field:
    * a line that stops short pads with the same character and reaches neither the field's width nor
-   * its null values, so two spaces in a three character field used to be a value, and a text field
-   * parsed it to the empty string it is declared to refuse.
+   * its null values, and two spaces in a three character field are as much nothing as three.
    *
    * A field with no null characters has no such value - a blank suffix is a suffix - so it keeps
    * whatever it was given.

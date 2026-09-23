@@ -23,10 +23,9 @@ const FLUSH_LIMIT = 5000;
 /**
  * Load the GTFS files back into the database.
  *
- * This used to shell out to the mysql client with LOAD DATA LOCAL INFILE, which meant a MySQL server, the
- * mysql binary on the path, the password on a command line and a mapping between file and column that had
- * drifted from what the output writes. The files are read here instead, so the same command works against
- * all three databases.
+ * The files are read here and written through the query builder, so the same command works against all
+ * three databases and needs no database client on the path. A column is matched by the name in the file's
+ * header, so the mapping cannot drift from what the output writes.
  */
 export class GTFSImportCommand implements CLICommand {
 

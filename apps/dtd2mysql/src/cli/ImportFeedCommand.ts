@@ -137,9 +137,8 @@ export class ImportFeedCommand implements CLICommand {
    * withdraws.
    *
    * Only the timetable feed holds these tables, and only the feed being imported
-   * has had its tables created. Importing fares into a database that has never
-   * had a timetable feed used to fail here on a table that was never created -
-   * invisible where all four feeds share one database, which is why it was.
+   * has had its tables created, so any other feed skips this: importing fares
+   * into a database that has never held a timetable has no stop_time to clean.
    */
   private async removeOrphanStopTimes(): Promise<void> {
     if (!this.schema["stop_time"]) {

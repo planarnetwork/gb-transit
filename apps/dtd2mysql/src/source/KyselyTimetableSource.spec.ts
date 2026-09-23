@@ -145,7 +145,7 @@ describe("KyselyTimetableSource", () => {
 
   /**
    * train_status "S" is published as train_category "SS", which the builder reads as a ferry rather
-   * than the rail the "OO" category would have given. That mapping was an IF, which only MySQL has.
+   * than the rail an "OO" category means. The mapping is a CASE, so every database makes it.
    */
   it("reads a schedule and its stop times, mapping a ship to a ferry", async () => {
     await db.insertInto("physical_station").values([

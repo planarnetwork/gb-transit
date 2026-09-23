@@ -64,8 +64,8 @@ const isBuffer = (value: object): boolean => ArrayBuffer.isView(value) || value 
  * Kysely's SQLite dialect, over the SQLite built in to Node.
  *
  * The database is opened when the first query runs rather than when the dialect is built, which is
- * the form the dialect documents and the reason a command that never queries - a download writes
- * files and imports nothing - no longer creates an empty database file to go with it.
+ * the form the dialect documents, so a command that never queries - a download writes files and
+ * imports nothing - creates no database file.
  */
 export function nodeSqliteDialect(filename: string, options: DatabaseSyncOptions = {}): Dialect {
   return new SqliteDialect({ database: async () => nodeSqliteDatabase(filename, options) });

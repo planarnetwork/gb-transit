@@ -104,9 +104,8 @@ export class CleanFaresCommand implements CLICommand {
    * Clean out expired data, work out the network area restrictions and turn the short form restriction
    * dates into real ones.
    *
-   * These used to run at the same time as each other, which left it open whether a fare had been removed
-   * before or after the restrictions were worked out from it. They are run in order instead, which also
-   * takes away the deadlocks they used to retry through.
+   * They run in order rather than at once, so the restrictions are always worked out from the fares
+   * that survive the clean up, and no two of them hold locks on the same table at the same time.
    */
   public async doClean(): Promise<void> {
     await this.setNetworkAreaRestrictionCodes();
@@ -164,9 +163,9 @@ export class CleanFaresCommand implements CLICommand {
   /**
    * Record which restriction applies to each origin, destination and route.
    *
-   * This used to be a GROUP BY that left direction and restriction_code off it, which MySQL allows and
-   * answers by picking a row of its choosing. Postgres rejects it outright, so the fare each group takes
-   * its values from is chosen here rather than left to the database.
+   * The fare each group takes its values from is chosen here rather than left to the database. A GROUP BY
+   * that leaves direction and restriction_code off it is one MySQL answers by picking a row of its
+   * choosing and Postgres rejects outright.
    */
   private async setNetworkAreaRestrictionCodes(): Promise<void> {
     await this.db

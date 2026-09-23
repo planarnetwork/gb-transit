@@ -9,8 +9,7 @@ export interface CSVRow {
  * Read a GTFS file a row at a time, keyed by the column names in its header.
  *
  * The files are written by csv-write-stream, which quotes any value containing a comma, a quote or a
- * newline and doubles the quotes inside it. LOAD DATA was told about the comma and nothing else, so a
- * station name with one in it used to arrive split in two.
+ * newline and doubles the quotes inside it, so a station name with a comma in it is one value.
  */
 export async function* readCSV(filename: string): AsyncGenerator<CSVRow> {
   const input = readline.createInterface({

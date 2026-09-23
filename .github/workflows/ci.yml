@@ -150,10 +150,9 @@ jobs:
       - name: The importer round trips
         run: node scripts/check-database.mjs "$RUNNER_TEMP/database"
 
-  # A matrix job only ever reports under its leg names, so turning database into
-  # one renamed the check that master requires out of existence and every pull
-  # request waits for a status nothing produces. This is that check: one name,
-  # green only when all three legs are.
+  # A matrix job only ever reports under its leg names, and master requires a
+  # check called database. This is that check: one name, green only when all
+  # three legs are.
   database:
     runs-on: ubuntu-latest
     needs: databases
