@@ -43,6 +43,16 @@ describe("CSVParser", () => {
     expect(rows[1].b).to.equal("4");
   });
 
+  it("says every column the header names, wanted or not, once it has read it", () => {
+    const parser = new CSVParser(["stop_id"], () => {});
+
+    parser.write("\n﻿stop_id,\"odd, name\",stop");
+    expect(parser.header).to.equal(undefined);
+
+    parser.write("_name\ns1,x,One\n");
+    expect(parser.header).to.deep.equal(["stop_id", "odd, name", "stop_name"]);
+  });
+
   it("only takes the columns it was asked for", () => {
     const rows = parse("a,b,c\n1,2,3\n", ["b"]);
 

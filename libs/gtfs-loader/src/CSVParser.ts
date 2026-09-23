@@ -25,7 +25,16 @@ export class CSVParser {
   private quoteAt: number | undefined;
   /** For each column of the file, the row key to store it under, or undefined to skip it */
   private keys: (string | undefined)[] | undefined;
+  private columnNames: string[] | undefined;
   private readonly row: Row = {};
+
+  /**
+   * Every column the file's header names, wanted or not, once the header has been read. For a
+   * caller that needs to know what a file carries, read by the same rules as its rows.
+   */
+  public get header(): readonly string[] | undefined {
+    return this.columnNames;
+  }
 
   /**
    * @param columns the fields to take. A column the file does not have stays undefined, and a column
@@ -181,6 +190,7 @@ export class CSVParser {
       throw new Error("CSV with bare carriage return line endings is not supported, use \\n or \\r\\n");
     }
 
+    this.columnNames = header;
     this.keys = header.map(name => this.columns.includes(name) ? name : undefined);
   }
 

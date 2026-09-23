@@ -34,7 +34,7 @@ describe("the published configs", () => {
   });
 
   it("leave the standard feed with everything in it", () => {
-    expect(feed.exclude).to.deep.equal({modes: [], operators: [], replacementBuses: []});
+    expect(feed.exclude).to.deep.equal({modes: [], operators: [], replacementBuses: [], links: []});
   });
 
   it("leave both of #176's rules on in the other", () => {

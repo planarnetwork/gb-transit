@@ -7,6 +7,7 @@ import {
   TransXChangeJourney,
   TransXChangeJourneyStream
 } from "../transxchange/TransXChangeJourneyStream";
+import {supersessionKey} from "./Supersession";
 
 
 describe("TransXChangeJourneyStream", () => {
@@ -402,6 +403,35 @@ describe("TransXChangeJourneyStream", () => {
       expect(rows[6].calendar.excludes[3].toString()).to.equal("2019-12-26");
     });
 
+  });
+
+  it("does not run a service on the days a newer timetable for its line replaces it", async () => {
+    const key = supersessionKey("M6_MEGA", LocalDate.parse("2018-06-24"), LocalDate.parse("2099-12-31"));
+    // a Saturday and a Sunday: the first journey runs every day, the second on neither
+    const replaced = new Map([[key, [LocalDate.parse("2026-10-03"), LocalDate.parse("2026-10-04")]]]);
+    const stream = new TransXChangeJourneyStream({} as BankHolidays, undefined, replaced);
+
+    stream.write(transxchange);
+    stream.end();
+
+    return awaitStream(stream, (rows: TransXChangeJourney[]) => {
+      expect(rows[0].calendar.excludes.map(d => d.toString())).to.deep.equal(["2026-10-03", "2026-10-04"]);
+      expect(rows[1].calendar.excludes).to.deep.equal([]);
+    });
+  });
+
+  it("does not put back a replaced day because it is a bank holiday the service runs on", async () => {
+    const dates = {ChristmasDay: [LocalDate.parse("2018-12-25"), LocalDate.parse("2019-12-25")]};
+    const key = supersessionKey("M6_MEGA", LocalDate.parse("2018-06-24"), LocalDate.parse("2099-12-31"));
+    const replaced = new Map([[key, [LocalDate.parse("2018-12-25")]]]);
+    const stream = new TransXChangeJourneyStream(dates as BankHolidays, undefined, replaced);
+
+    stream.write(transxchange);
+    stream.end();
+
+    return awaitStream(stream, (rows: TransXChangeJourney[]) => {
+      expect(rows[7].calendar.includes.map(d => d.toString())).to.deep.equal(["2019-12-25"]);
+    });
   });
 
   it("adds include days for bank holiday only services", async () => {

@@ -30,10 +30,48 @@ export interface ServiceExclusions {
   readonly operators: readonly AgencyID[];
   /** Operators whose replacement buses to leave out, keeping their trains. */
   readonly replacementBuses: readonly AgencyID[];
+  /**
+   * Fixed link modes to leave out of transfers.txt - `TUBE` for a feed that is
+   * combined with the Underground's own timetable, where a link saying the tube
+   * takes 25 minutes from Euston to Waterloo competes with the trains that
+   * actually run.
+   *
+   * Optional so a rule written before it existed still compiles; absent means
+   * none. Only the links named go: a pair that is also a `WALK` keeps the walk,
+   * at the walk's time.
+   */
+  readonly links?: readonly string[];
 }
 
 /** Everything published, which is what a build saying nothing about this gets. */
-export const NO_EXCLUSIONS: ServiceExclusions = {modes: [], operators: [], replacementBuses: []};
+export const NO_EXCLUSIONS: ServiceExclusions = {modes: [], operators: [], replacementBuses: [], links: []};
+
+/**
+ * The modes the ALF and FLF describe a fixed link by, as the DTD specification
+ * lists them. `TRAM` is not in the specification and is in the data.
+ */
+export const LINK_MODES: readonly string[] = ["BUS", "FERRY", "METRO", "TAXI", "TRAM", "TRANSFER", "TUBE", "WALK"];
+
+/**
+ * Drop the fixed links whose mode the rules name, before they are merged into
+ * transfers.txt - after merging, a pair described as both `TRANSFER` and `TUBE`
+ * carries the shorter of the two times and there is no taking the tube back
+ * out of it.
+ */
+export function excludeLinks<T extends {readonly mode: string}>(links: readonly T[], rules: ServiceExclusions): T[] {
+  const modes = new Set(rules.links ?? []);
+
+  if (modes.size === 0) {
+    return [...links];
+  }
+
+  const kept = links.filter(link => !modes.has(link.mode));
+  const dropped = links.length - kept.length;
+
+  console.log(`Excluded ${dropped} fixed link(s) by mode ${[...modes].sort().join(", ")}`);
+
+  return kept;
+}
 
 /**
  * The modes by the name a config writes them under. Words rather than the GTFS

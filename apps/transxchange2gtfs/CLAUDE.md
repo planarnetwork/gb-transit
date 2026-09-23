@@ -64,6 +64,14 @@ it, and agrees with the DfT's own feed to within a metre.
 as a GPBS stop area and does not publish in the CSV. The stops of a group get a `parent_station`, the
 group gets a row of its own, and `TransfersStream` walks between groups rather than between their
 stops. The rule and what it was measured against are in that file; `--skip-stop-areas` turns it off.
+The same file puts a metro, tram or ferry platform under the station NaPTAN numbers it after
+(`stationAreas`), and `areaOf` finds the station of a platform NaPTAN does not list.
+
+## Overlapping timetables
+
+`--supersede-by-line` scans every document for its services before the conversion
+(`transxchange/Supersession.ts`) and, where two services of one operator and line overlap, takes the
+days the later-starting one covers off the other's calendars. TfL needs it; BODS must not have it.
 
 ## Bank holidays
 
