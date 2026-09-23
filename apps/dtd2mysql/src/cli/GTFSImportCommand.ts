@@ -2,12 +2,12 @@
 import * as fs from "fs";
 import * as path from "path";
 import {Kysely} from "kysely";
+import {CSVParser, Row} from "@gb-transit/gtfs-loader";
 import {CLICommand} from "./CLICommand";
 import {GTFSSchema, GTFSSchemaBuilder, GTFSTable} from "../database/GTFSSchema";
 import {SchemaDialect} from "../database/SchemaDialect";
 import {Column} from "../database/Schema";
 import {chunks} from "../database/parameters";
-import {CSVRow, readCSV} from "../gtfs/CSVReader";
 
 /**
  * GTFS writes a date as YYYYMMDD. The fixed link columns in transfers.txt take theirs from a date column
@@ -68,51 +68,68 @@ export class GTFSImportCommand implements CLICommand {
       return;
     }
 
-    const loaded = await this.db.transaction().execute(async transaction => {
-      let rows: object[] = [];
-      let written = 0;
-
-      for await (const row of readCSV(filename)) {
-        rows.push(this.values(name, table, row));
-
-        if (rows.length >= FLUSH_LIMIT) {
-          await this.insert(transaction, name, rows);
-
-          written += rows.length;
-          rows = [];
-        }
-      }
-
-      if (rows.length > 0) {
-        await this.insert(transaction, name, rows);
-
-        written += rows.length;
-      }
-
-      return written;
-    });
+    const loaded = await this.db
+      .transaction()
+      .execute(transaction => this.write(transaction, filename, name, table))
+      .catch(err => {
+        throw new Error(`${name}.txt: ${err.message}`, { cause: err });
+      });
 
     console.log(`Loaded ${loaded} rows into ${name}`);
   }
 
   /**
-   * Read each value as the column it is going into. A column the table does not have is a file and a
-   * declaration that have drifted apart, which is worth stopping for rather than dropping the value.
+   * Write the rows of the file to the table, returning how many there were
    */
-  private values(name: string, table: GTFSTable, row: CSVRow): object {
-    const values: { [column: string]: unknown } = {};
+  private async write(db: Kysely<any>, filename: string, name: string, table: GTFSTable): Promise<number> {
+    let rows: object[] = [];
+    let header: readonly string[] | undefined;
+    let written = 0;
 
-    for (const [column, text] of Object.entries(row)) {
-      const declared = table.columns[column];
+    // a row that does not have the header's columns is a file that is not what it says it is
+    const parser: CSVParser = new CSVParser(
+      Object.keys(table.columns),
+      row => {
+        header ??= this.checkHeader(name, table, parser.header!);
+        rows.push(values(table, header, row));
+      },
+      { strict: true }
+    );
 
-      if (!declared) {
-        throw new Error(`${name}.txt has a ${column} column, which ${name} does not.`);
+    for await (const chunk of fs.createReadStream(filename, "utf8")) {
+      parser.write(chunk);
+
+      if (rows.length >= FLUSH_LIMIT) {
+        await this.insert(db, name, rows);
+
+        written += rows.length;
+        rows = [];
       }
-
-      values[column] = value(declared, text);
     }
 
-    return values;
+    parser.end();
+
+    if (rows.length > 0) {
+      await this.insert(db, name, rows);
+
+      written += rows.length;
+    }
+
+    return written;
+  }
+
+  /**
+   * The columns the file has. One the table does not have is a file and a declaration that have drifted
+   * apart, which is worth stopping for rather than dropping the value.
+   */
+  private checkHeader(name: string, table: GTFSTable, header: readonly string[]): readonly string[] {
+    for (const column of header) {
+      if (!table.columns[column]) {
+        throw new Error(`a ${column} column, which the ${name} table does not have`);
+      }
+    }
+
+    return header;
   }
 
   private async insert(db: Kysely<any>, name: string, rows: object[]): Promise<void> {
@@ -131,13 +148,27 @@ export class GTFSImportCommand implements CLICommand {
 }
 
 /**
+ * Read each value the file has as the column it is going into. A column the file leaves out is left out
+ * of the row as well, so the database gives it its default.
+ */
+function values(table: GTFSTable, header: readonly string[], row: Row): object {
+  const values: { [column: string]: unknown } = {};
+
+  for (const column of header) {
+    values[column] = value(table.columns[column], row[column] ?? "");
+  }
+
+  return values;
+}
+
+/**
  * A CSV file is all text, so each value is read as whatever its column holds. An empty value is nothing
  * at all rather than a zero or a blank date.
  *
  * Only a text column can hold the empty string, and only where it is not nullable - everywhere else an
- * empty cell is a null, which a column that refuses one refuses loudly. A number column given "" is
- * the version of this that went unnoticed: MySQL stored a zero, Postgres raised on the syntax and
- * SQLite stored the empty string, all for a coordinate the feed simply did not write.
+ * empty cell is a null, which a column that refuses one refuses loudly. A number column given "" would
+ * otherwise be a zero on MySQL, a syntax error on Postgres and the empty string on SQLite, all for a
+ * coordinate the feed did not write.
  */
 function value(column: Column, text: string): string | number | null {
   if (text === "") {

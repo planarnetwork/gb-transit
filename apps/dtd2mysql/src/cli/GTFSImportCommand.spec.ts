@@ -2,7 +2,9 @@ import {describe, it, expect, beforeEach, afterEach} from "vitest";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import {finished} from "node:stream/promises";
 import {Kysely} from "kysely";
+import {CSVRowWriter} from "@gb-transit/gtfs-output";
 import {GTFSImportCommand} from "./GTFSImportCommand";
 import {nodeSqliteDialect} from "../database/NodeSqliteDatabase";
 import {sqliteSchemaDialect} from "../database/dialect";
@@ -116,10 +118,8 @@ describe("GTFSImportCommand", () => {
   });
 
   /**
-   * A cell the feed leaves empty is nothing at all, whatever the column holds. An empty decimal fell
-   * through to the text default and was written as "", which MySQL stored as zero, Postgres refused
-   * on the syntax and SQLite stored as the empty string - three answers to a coordinate nobody
-   * wrote. It is a null now, and a column that cannot hold one says so.
+   * A cell the feed leaves empty is nothing at all, whatever the column holds, and a column that cannot
+   * hold nothing says so rather than storing a zero or an empty string for a coordinate nobody wrote.
    */
   it("refuses a coordinate the feed did not write, rather than storing a zero", async () => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), "dtd-gtfs"));
@@ -133,6 +133,59 @@ describe("GTFSImportCommand", () => {
       .rejects.toThrow(/NOT NULL|constraint/i);
   });
 
+  it("reads back the values the GTFS output quotes", async () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "dtd-gtfs"));
+    const file = fs.createWriteStream(path.join(directory, "stops.txt"));
+    const writer = new CSVRowWriter<{ stop_id: string, stop_name: string, stop_desc: string | null }>(["stop_id", "stop_name", "stop_desc"], file);
+
+    writer.write({ stop_id: "LDS", stop_name: "Leeds, City", stop_desc: 'the "main" one' });
+    writer.write({ stop_id: "MAN", stop_name: "Manchester\nPiccadilly", stop_desc: null });
+    writer.end();
+
+    // the writer finishing only means it has handed everything to the pipe, see FileOutput
+    await finished(file);
+    await importFrom(directory);
+
+    expect(await stops()).to.deep.equal([
+      { stop_id: "LDS", stop_name: "Leeds, City", stop_desc: 'the "main" one' },
+      { stop_id: "MAN", stop_name: "Manchester\nPiccadilly", stop_desc: null }
+    ]);
+  });
+
+  /**
+   * The specification permits one, and left on it would be part of the first column's name - a column
+   * no table has.
+   */
+  it("reads a file that starts with a byte order mark", async () => {
+    await importFrom(files({ "stops.txt": "\ufeffstop_id,stop_name\nBTN,Brighton\n" }));
+
+    expect(await stops()).to.deep.equal([{ stop_id: "BTN", stop_name: "Brighton", stop_desc: null }]);
+  });
+
+  it("refuses a row that does not have the header's columns", async () => {
+    await expect(importFrom(files({ "stops.txt": "stop_id,stop_name\nBTN\n" })))
+      .rejects.toThrow("stops.txt: Row 1 has 1 fields where the header has 2");
+    await expect(importFrom(files({ "stops.txt": "stop_id,stop_name\nBTN,Brighton,EXTRA\n" })))
+      .rejects.toThrow("stops.txt: Row 1 has 3 fields where the header has 2");
+  });
+
+  it("refuses a column the table does not have", async () => {
+    await expect(importFrom(files({ "stops.txt": "stop_id,platform_colour\nBTN,red\n" })))
+      .rejects.toThrow("stops.txt: a platform_colour column, which the stops table does not have");
+  });
+
+  /**
+   * from_trip_id and to_trip_id are part of the primary key, so a transfers.txt without them relies on
+   * the table's default rather than a null
+   */
+  it("gives a column the file leaves out its default", async () => {
+    await importFrom(files({ "transfers.txt": "from_stop_id,to_stop_id,transfer_type\nBTN,BTN,2\n" }));
+
+    const [transfer] = await db.selectFrom("transfers").select(["from_trip_id", "to_trip_id"]).execute();
+
+    expect(transfer).to.deep.equal({ from_trip_id: "", to_trip_id: "" });
+  });
+
   it("replaces what an earlier import left behind", async () => {
     const before = await count("stops");
 
@@ -140,6 +193,14 @@ describe("GTFSImportCommand", () => {
 
     expect(await count("stops")).to.equal(before);
   });
+
+  function importFrom(directory: string): Promise<void> {
+    return new GTFSImportCommand(db, sqliteSchemaDialect, gtfsSchema).doImport(directory);
+  }
+
+  function stops() {
+    return db.selectFrom("stops").select(["stop_id", "stop_name", "stop_desc"]).orderBy("stop_id").execute();
+  }
 
   async function count(table: string): Promise<number> {
     const [{count}] = await db
@@ -151,3 +212,17 @@ describe("GTFSImportCommand", () => {
   }
 
 });
+
+/**
+ * A directory holding the given files, written as they are given rather than through the GTFS writer
+ * so that they can be malformed
+ */
+function files(contents: { [name: string]: string }): string {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "dtd-gtfs"));
+
+  for (const [name, text] of Object.entries(contents)) {
+    fs.writeFileSync(path.join(directory, name), text);
+  }
+
+  return directory;
+}

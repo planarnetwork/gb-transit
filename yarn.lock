@@ -2588,6 +2588,7 @@ __metadata:
     "@gb-transit/dtd-source": "workspace:^"
     "@gb-transit/feed-parser": "workspace:^"
     "@gb-transit/gtfs": "workspace:^"
+    "@gb-transit/gtfs-loader": "workspace:^"
     "@gb-transit/gtfs-output": "workspace:^"
     "@types/adm-zip": "npm:0.5.8"
     "@types/byline": "npm:4.2.36"

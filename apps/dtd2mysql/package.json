@@ -44,6 +44,7 @@
     "@gb-transit/dtd-source": "workspace:^",
     "@gb-transit/feed-parser": "workspace:^",
     "@gb-transit/gtfs": "workspace:^",
+    "@gb-transit/gtfs-loader": "workspace:^",
     "@gb-transit/gtfs-output": "workspace:^",
     "adm-zip": "0.6.0",
     "byline": "5.0.0",
