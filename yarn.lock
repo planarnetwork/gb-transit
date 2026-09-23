@@ -838,6 +838,16 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@gb-transit/fares-source@workspace:^, @gb-transit/fares-source@workspace:libs/fares-source":
+  version: 0.0.0-use.local
+  resolution: "@gb-transit/fares-source@workspace:libs/fares-source"
+  dependencies:
+    "@gb-transit/dtd-schema": "workspace:^"
+    "@gb-transit/feed-parser": "workspace:^"
+    typescript: "npm:7.0.2"
+  languageName: unknown
+  linkType: soft
+
 "@gb-transit/feed-parser@workspace:^, @gb-transit/feed-parser@workspace:libs/feed-parser":
   version: 0.0.0-use.local
   resolution: "@gb-transit/feed-parser@workspace:libs/feed-parser"
@@ -894,6 +904,15 @@ __metadata:
   resolution: "@gb-transit/naptan@workspace:libs/naptan"
   dependencies:
     csv-parse: "npm:^7.0.2"
+    typescript: "npm:7.0.2"
+  languageName: unknown
+  linkType: soft
+
+"@gb-transit/routeing-source@workspace:libs/routeing-source":
+  version: 0.0.0-use.local
+  resolution: "@gb-transit/routeing-source@workspace:libs/routeing-source"
+  dependencies:
+    "@gb-transit/fares-source": "workspace:^"
     typescript: "npm:7.0.2"
   languageName: unknown
   linkType: soft

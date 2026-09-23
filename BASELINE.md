@@ -12,6 +12,16 @@ entry here does not excuse a golden feed moving, and an entry there does not exc
 
 ## The type surface
 
+**Reading the fares and routeing feeds without a database.** Two new packages, additions only.
+`@gb-transit/fares-source` loads a fares feed straight from its zips with the change files applied:
+`loadFares` and `LoadFaresOptions`, the feed and zip readers `FaresFeed`, `faresFeeds`, `ZipFile`,
+`ZipEntry` and `eachLine`, the `CodeTable` its typed columns intern codes through, `NO_RESTRICTION`,
+and the record types `DateNumber`, `Fares`, `FaresCodes`, `FaresData`, `Flows`, `Location`,
+`LocationGroup`, `LocationGroupMember`, `NonDerivableFare`, `StationCluster` and `TicketType`.
+`@gb-transit/routeing-source` reads the routeing guide and works out which stations lie on permitted
+routes: `loadRouteing`, `RouteingNetwork`, `RouteingArrays`, `LONDON`, `LOCAL_MARGIN_MILES` and the
+record types `MapLink`, `PermittedRoute`, `RouteingData`, `RouteingStation` and `StationLink`.
+
 **Naming and drawing the trips couplings make.** `@gb-transit/gtfs-loader` gains `linkShapes`, which
 makes the shapes of the trips `linkTrips` makes out of joins and splits. An addition only: `Trip` is
 unchanged, and the through trip now fills the optional `routeId`, `shortName`, `headsign` and

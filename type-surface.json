@@ -38,6 +38,28 @@
     "membersOf",
     "nlc"
   ],
+  "fares-source": [
+    "CodeTable",
+    "DateNumber",
+    "Fares",
+    "FaresCodes",
+    "FaresData",
+    "FaresFeed",
+    "Flows",
+    "LoadFaresOptions",
+    "Location",
+    "LocationGroup",
+    "LocationGroupMember",
+    "NO_RESTRICTION",
+    "NonDerivableFare",
+    "StationCluster",
+    "TicketType",
+    "ZipEntry",
+    "ZipFile",
+    "eachLine",
+    "faresFeeds",
+    "loadFares"
+  ],
   "feed-parser": [
     "ActionMap",
     "BooleanField",
@@ -401,5 +423,17 @@
     "naptanCsv",
     "naptanFile",
     "parseNaptanRows"
+  ],
+  "routeing-source": [
+    "LOCAL_MARGIN_MILES",
+    "LONDON",
+    "MapLink",
+    "PermittedRoute",
+    "RouteingArrays",
+    "RouteingData",
+    "RouteingNetwork",
+    "RouteingStation",
+    "StationLink",
+    "loadRouteing"
   ]
 }

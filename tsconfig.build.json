@@ -38,6 +38,12 @@
       "path": "./libs/extend-station-groups"
     },
     {
+      "path": "./libs/fares-source"
+    },
+    {
+      "path": "./libs/routeing-source"
+    },
+    {
       "path": "./apps/dtd2mysql"
     },
     {
