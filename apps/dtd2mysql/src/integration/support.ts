@@ -5,6 +5,7 @@ import * as path from "node:path";
 import {Kysely} from "kysely";
 import {FeedConfig} from "@gb-transit/dtd-schema";
 import {FeedSchema} from "../database/Schema";
+import {LogTableFeedCursor} from "../source/LogTableFeedCursor";
 import {ImportFeedCommand} from "../cli/ImportFeedCommand";
 import {kysely, schemaDialect} from "../container";
 
@@ -119,10 +120,8 @@ function cell(value: unknown): string {
 /**
  * The most recent file the import recorded, which is appended to rather than reset
  */
-export async function lastProcessedFile(db: Kysely<any>): Promise<string | undefined> {
-  const [row] = await db.selectFrom("log").select("filename").orderBy("id", "desc").limit(1).execute();
-
-  return row?.filename ?? undefined;
+export function lastProcessedFile(db: Kysely<any>): Promise<string | undefined> {
+  return new LogTableFeedCursor(db).getLastProcessedFile();
 }
 
 /**

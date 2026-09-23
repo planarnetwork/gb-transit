@@ -1,6 +1,7 @@
 import {Kysely} from "kysely";
 import {FeedCursor} from "@gb-transit/dtd-source";
 import {Database} from "../database/Database";
+import {LOG_TABLE} from "../database/SchemaBuilder";
 
 /**
  * The last processed file as recorded by ImportFeedCommand in the log table.
@@ -15,7 +16,7 @@ export class LogTableFeedCursor implements FeedCursor {
   public async getLastProcessedFile(): Promise<string | undefined> {
     try {
       const [log] = await this.db
-        .selectFrom("log")
+        .selectFrom(LOG_TABLE)
         .select("filename")
         .orderBy("id", "desc")
         .limit(1)

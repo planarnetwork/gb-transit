@@ -25,6 +25,7 @@ import {
   withoutPlaceholders
 } from "@gb-transit/gtfs";
 import {Database} from "../database/Database";
+import {LogTableFeedCursor} from "./LogTableFeedCursor";
 
 /**
  * The timetable read through Kysely, so the same build runs against MySQL, Postgres or SQLite.
@@ -69,23 +70,10 @@ export class KyselyTimetableSource implements TimetableSource {
   }
 
   /**
-   * The last file ImportFeedCommand recorded. A missing table or an empty log both mean the same thing:
-   * nothing is known, so say nothing rather than guess.
+   * The last file ImportFeedCommand recorded, or nothing where it has recorded none
    */
   public async getFeedVersion(): Promise<string | null> {
-    try {
-      const [log] = await this.db
-        .selectFrom("log")
-        .select("filename")
-        .orderBy("id", "desc")
-        .limit(1)
-        .execute();
-
-      return log?.filename ?? null;
-    }
-    catch (err) {
-      return null;
-    }
+    return await new LogTableFeedCursor(this.db).getLastProcessedFile() ?? null;
   }
 
   public async getStops(): Promise<Stop[]> {

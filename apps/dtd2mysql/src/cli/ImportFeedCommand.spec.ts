@@ -9,6 +9,7 @@ import {ImportFeedCommand} from "./ImportFeedCommand";
 import {nodeSqliteDialect} from "../database/NodeSqliteDatabase";
 import {getSchemaDialect} from "../database/dialect";
 import {char, FeedSchema, table} from "../database/Schema";
+import {LOG_TABLE} from "../database/SchemaBuilder";
 
 /**
  * The log table is what says an archive has been imported: the next download starts from the file it
@@ -43,7 +44,7 @@ describe("importing a feed", () => {
 const database = () => new Kysely<any>({ dialect: nodeSqliteDialect(":memory:") });
 
 const filenames = (db: Kysely<any>) =>
-  db.selectFrom("log").select("filename").execute().then(rows => rows.map(row => row.filename));
+  db.selectFrom(LOG_TABLE).select("filename").execute().then(rows => rows.map(row => row.filename));
 
 const codes = (db: Kysely<any>) =>
   db.selectFrom("thing").select("code").orderBy("code").execute().then(rows => rows.map(row => row.code));
