@@ -1,4 +1,4 @@
-import {DatabaseSync, DatabaseSyncOptions, SQLInputValue} from "node:sqlite";
+import type {DatabaseSyncOptions, SQLInputValue} from "node:sqlite";
 import {Dialect, SqliteDatabase, SqliteDialect, SqliteStatement} from "kysely";
 
 /**
@@ -11,8 +11,13 @@ import {Dialect, SqliteDatabase, SqliteDialect, SqliteStatement} from "kysely";
  *   better-sqlite3 takes bound parameters as an array, node:sqlite as arguments
  *   better-sqlite3 says whether a statement returns rows with reader, node:sqlite with columns()
  *   node:sqlite binds a narrower set of values than the query builder produces
+ *
+ * node:sqlite is loaded here rather than imported, so a command against MySQL or Postgres does not load
+ * it at all: before Node 22.13 it is behind a flag and fails to load, and until 24.19 loading it prints
+ * an experimental warning.
  */
 export function nodeSqliteDatabase(filename: string, options: DatabaseSyncOptions = {}): SqliteDatabase {
+  const {DatabaseSync} = require("node:sqlite") as typeof import("node:sqlite");
   const database = new DatabaseSync(filename, options);
 
   return {
