@@ -120,6 +120,7 @@ README describing what it is for and how to use it.
 | [`libs/naptan`](libs/naptan/README.md) | `@gb-transit/naptan` | Download, cache and read the NaPTAN national stop dataset |
 | [`libs/enrich-naptan`](libs/enrich-naptan/README.md) | `@gb-transit/enrich-naptan` | Station coordinates and names from NaPTAN |
 | [`libs/enrich-knowledgebase-stations`](libs/enrich-knowledgebase-stations/README.md) | `@gb-transit/enrich-knowledgebase-stations` | Station accessibility from the National Rail Enquiries Knowledgebase |
+| [`libs/knowledgebase-fare-group-permitted-stations`](libs/knowledgebase-fare-group-permitted-stations/README.md) | `@gb-transit/knowledgebase-fare-group-permitted-stations` | Read the Knowledgebase fare group permitted stations reference data |
 | [`libs/extend-station-groups`](libs/extend-station-groups/README.md) | `@gb-transit/extend-station-groups` | Group stations as GTFS Fares v2 areas |
 
 `libs/gtfs` carries two extension points, so a source of data this repository does not know about

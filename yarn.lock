@@ -908,6 +908,16 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@gb-transit/knowledgebase-fare-group-permitted-stations@workspace:libs/knowledgebase-fare-group-permitted-stations":
+  version: 0.0.0-use.local
+  resolution: "@gb-transit/knowledgebase-fare-group-permitted-stations@workspace:libs/knowledgebase-fare-group-permitted-stations"
+  dependencies:
+    "@types/sax": "npm:1.2.7"
+    sax: "npm:1.6.1"
+    typescript: "npm:7.0.2"
+  languageName: unknown
+  linkType: soft
+
 "@gb-transit/naptan@workspace:^, @gb-transit/naptan@workspace:libs/naptan":
   version: 0.0.0-use.local
   resolution: "@gb-transit/naptan@workspace:libs/naptan"
@@ -1633,6 +1643,15 @@ __metadata:
   dependencies:
     undici-types: "npm:~5.26.4"
   checksum: 10c0/22ba2bc9f8863101a7e90a56aaeba1eb3ebdc51e847cef4a6d188967ab1acbce9b4f92251372fd0329ecb924bbf610509e122c3dfe346c04dbad04013d4ad7d0
+  languageName: node
+  linkType: hard
+
+"@types/sax@npm:1.2.7":
+  version: 1.2.7
+  resolution: "@types/sax@npm:1.2.7"
+  dependencies:
+    "@types/node": "npm:*"
+  checksum: 10c0/d077a761a0753b079bf8279b3993948030ca86ed9125437b9b29c1de40db9b2deb7fddc369f014b58861d450e8b8cc75f163aa29dc8cea81952efbfd859168cf
   languageName: node
   linkType: hard
 

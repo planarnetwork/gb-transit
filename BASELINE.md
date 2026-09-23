@@ -12,6 +12,13 @@ entry here does not excuse a golden feed moving, and an entry there does not exc
 
 ## The type surface
 
+**Reading the fare group permitted stations feed.**
+`@gb-transit/knowledgebase-fare-group-permitted-stations` is a new package, so every name the
+snapshot gains is an addition and nothing moves: the three ways in - `permittedStations`,
+`loadPermittedStations` and `parsePermittedStations` - the `PermittedStations` record they produce,
+the `inForce` that says whether one applies on a day, and the `NLC`, `RouteCode` and `CRS` its
+fields are written in.
+
 **Enforcing the apply lists a config declares.** `@gb-transit/gtfs` gains `applyLists`, which turns
 a parsed config's `apply:` lists into the map `MutableFeed` holds an enricher to. An addition only.
 

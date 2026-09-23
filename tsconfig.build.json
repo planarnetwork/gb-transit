@@ -32,6 +32,9 @@
       "path": "./libs/naptan"
     },
     {
+      "path": "./libs/knowledgebase-fare-group-permitted-stations"
+    },
+    {
       "path": "./libs/enrich-knowledgebase-stations"
     },
     {
