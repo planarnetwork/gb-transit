@@ -86,6 +86,80 @@ export function stopAreas(naptan: NaPTANIndex): StopAreaIndex {
   return areas;
 }
 
+/**
+ * A metro, tram or ferry platform's ATCO code, and the stop area NaPTAN files it
+ * under: `9400ZZLUKSX1` is platform 1 of `940GZZLUKSX`, King's Cross St. Pancras,
+ * and `9300SWK3` a berth of `930GSWK`, Bankside Pier.
+ */
+const PLATFORM = /^(9[34])00(.+?)\d+$/;
+
+/**
+ * The stop area a metro, tram or ferry platform belongs to, by NaPTAN's own
+ * numbering. Undefined for any other stop.
+ */
+export function platformStation(atcoCode: ATCOCode): string | undefined {
+  const match = PLATFORM.exec(atcoCode);
+
+  return match === null ? undefined : `${match[1]}0G${match[2]}`;
+}
+
+/**
+ * The platforms of a station, under it.
+ *
+ * NaPTAN numbers a metro, tram or ferry platform after the station it is part of,
+ * so unlike the two sides of a street the grouping is NaPTAN's rather than ours,
+ * and the station keeps NaPTAN's code. Without it every platform is a station of
+ * its own, and changing between the Victoria and Piccadilly lines at King's Cross
+ * is a walk between two places a planner has to be told about.
+ *
+ * Keyed by each platform and by the station itself, because a timetable can
+ * call at a platform NaPTAN does not list - 87 of TfL's - and `areaOf` finds its
+ * station by the code alone.
+ */
+export function stationAreas(naptan: NaPTANIndex): StopAreaIndex {
+  const platforms: Record<string, NaptanStopPoint[]> = {};
+
+  for (const stop of Object.values(naptan)) {
+    const station = platformStation(stop.atcoCode);
+
+    if (station !== undefined && stop.latitude !== "" && stop.longitude !== "") {
+      (platforms[station] ||= []).push(stop);
+    }
+  }
+
+  const areas: StopAreaIndex = {};
+
+  for (const [station, stops] of Object.entries(platforms)) {
+    const [first] = [...stops].sort((a, b) => a.atcoCode < b.atcoCode ? -1 : 1);
+    const mean = (of: (stop: NaptanStopPoint) => number) =>
+      stops.reduce((total, stop) => total + of(stop), 0) / stops.length;
+    const area = {
+      id: station,
+      name: first.name,
+      longitude: String(mean(stop => Number(stop.longitude))),
+      latitude: String(mean(stop => Number(stop.latitude)))
+    };
+
+    areas[station] = area;
+
+    for (const stop of stops) {
+      areas[stop.atcoCode] = area;
+    }
+  }
+
+  return areas;
+}
+
+/**
+ * The area a stop stands in, if any - including a platform NaPTAN does not list,
+ * found through the station its code names.
+ */
+export function areaOf(areas: StopAreaIndex, atcoCode: ATCOCode): NaptanStopArea | undefined {
+  const station = platformStation(atcoCode);
+
+  return areas[atcoCode] ?? (station === undefined ? undefined : areas[station]);
+}
+
 function isOnePlace(stops: NaptanStopPoint[]): boolean {
   const bearings = new Set(stops.map(stop => stop.bearing).filter(bearing => bearing !== ""));
 
