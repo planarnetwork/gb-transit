@@ -48,7 +48,21 @@ const NOISE = new Set(["london", "underground", "station", "dlr", "tram", "stop"
 
 const HELD = ["agency.txt", "routes.txt", "trips.txt", "calendar.txt", "calendar_dates.txt", "stops.txt", "transfers.txt"];
 /** What the rail feed has and TfL's has nothing to add to. */
-const COPIED = ["feed_info.txt", "attributions.txt", "areas.txt", "stop_areas.txt"];
+const COPIED = ["feed_info.txt", "areas.txt", "stop_areas.txt"];
+
+/**
+ * TfL's open data licence makes this statement a condition of using the timetables, and
+ * attributions.txt is where a feed says who it is built from.
+ */
+const TFL = {
+  organization_name: "Transport for London",
+  is_producer: 0,
+  is_operator: 1,
+  is_authority: 1,
+  attribution_url: "https://tfl.gov.uk/corporate/terms-and-conditions/transport-data-service",
+  attribution_licence: "Powered by TfL Open Data. Contains OS data © Crown copyright and database rights 2016 " +
+    "and Geomni UK Map data © and database rights [2019]"
+};
 
 const [railPath, tflPath, outPath, interchangePath = path.join(import.meta.dirname, "tfl-interchange.csv")] = process.argv.slice(2);
 
@@ -70,7 +84,10 @@ async function read(file, headers, files) {
   return result;
 }
 
-const [rail, tfl] = await Promise.all([read(railPath, railHeaders, [...HELD, ...COPIED]), read(tflPath, tflHeaders, HELD)]);
+const [rail, tfl] = await Promise.all([
+  read(railPath, railHeaders, [...HELD, ...COPIED, "attributions.txt"]),
+  read(tflPath, tflHeaders, HELD)
+]);
 
 const work = workingDirectory(outPath);
 
@@ -234,11 +251,15 @@ const combined = {
   "calendar_dates.txt": [rail["calendar_dates.txt"], prefix(tfl["calendar_dates.txt"], "service_id")],
   "stops.txt": [rail["stops.txt"], tflStops],
   "transfers.txt": [rail["transfers.txt"], transfers],
+  "attributions.txt": [rail["attributions.txt"], [TFL]],
   ...Object.fromEntries(COPIED.filter(file => railHeaders[file] !== undefined).map(file => [file, [rail[file]]]))
 };
 
+/** Columns the script writes whether or not either feed had them. */
+const WRITTEN = {"transfers.txt": ["mode"], "attributions.txt": Object.keys(TFL)};
+
 for (const [file, parts] of Object.entries(combined)) {
-  const columns = [...new Set([...columnsOf(file), ...(file === "transfers.txt" ? ["mode"] : [])])];
+  const columns = [...new Set([...columnsOf(file), ...WRITTEN[file] ?? []])];
   const out = open(file, columns);
 
   for (const part of parts) {

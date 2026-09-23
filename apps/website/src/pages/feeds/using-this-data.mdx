@@ -18,7 +18,7 @@ them. This page lists those decisions and the behaviour they produce.
 
 ## What you get
 
-Two feeds, from the same build:
+Three feeds, from the same build:
 
 <FeedTable />
 
@@ -27,6 +27,10 @@ through the stations it runs through as well as the ones it calls at.
 
 A feed being merged with the tube and bus timetables wants the second, which has fewer trips than the
 first. See [the National Rail only feed](#the-national-rail-only-feed).
+
+A journey planner for journeys that cross London wants the third: the second with TfL's own
+timetables for the tube, DLR, trams, river boats and cable car beside it. See
+[the rail and TfL feed](#the-rail-and-tfl-feed).
 
 Every link resolves to the most recent release, so they can be bookmarked or scripted against.
 
@@ -37,7 +41,7 @@ describe the feed rather than being part of it and somebody unzipping a GTFS fee
 
 | asset | what it is |
 |---|---|
-| `validation.json` | the validator's report, including every accepted error. One per feed, the second suffixed as its zip is |
+| `validation.json` | the validator's report, including every accepted error. One per feed, the others suffixed as their zips are |
 | `feed-meta.json` | what was built, from what, and when |
 | `enrichment-report.json` | what each external source matched and missed |
 | `provenance.json` | every field an external source wrote, and every write that lost |
@@ -286,6 +290,41 @@ Stratford service — neither of which the CIF has a field for.
 Everything else is identical to `gtfs.zip`. A station left with no calls is still published — a
 tube-only station is still somewhere a ticket can be bought to — but its boarding points are not,
 because those are built from the calls.
+
+## The rail and TfL feed
+
+`gtfs-rail-and-tfl.zip` is the National Rail only feed with TfL's own timetables for the tube, the
+DLR, the trams, the river boats and the cable car beside it, from TfL's
+[Journey Planner Timetables](https://tfl.gov.uk/info-for/open-data-users/our-open-data). It is for
+planning a journey across London on the trains that actually run: the other two feeds cross London
+on the DTD's fixed links, which say the tube takes a fixed number of minutes whatever the time of
+day.
+
+The rail half is the National Rail only feed without those tube links. Its walks, and its links
+of every other mode, stay. The TfL half covers the same days. TfL publishes an engineering works
+timetable as a service of its own on top of the one it interrupts, and on the days it applies it
+replaces that service rather than running beside it.
+
+**A TfL station inside a rail station is one of its platforms.** Liverpool Street's tube platforms
+are children of `910GLIVST`, so the rail station's minimum connection time is the interchange for
+every change there — train to tube, tube to train, and tube to tube. The rail feed charges a
+station's connection time on every arrival, so a tube station of its own, with a walk to it, would
+charge both stations' times on every change between the two. A tube station that is not inside a
+rail station is a station of its own, with a walk to the rail stations and other TfL stations near
+it, timed by distance.
+
+TfL's ids are its own. A stop is its NaPTAN ATCO code, as the rail feed's are — `9400ZZLUBST1` is a
+Baker Street platform and `940GZZLUBST` the station — and TfL's trips, routes and services are
+prefixed `tfl_`. A TfL station of its own carries a three character `stop_code` starting with a
+digit, which no CRS code does, for the [transfer patterns](#the-transfer-patterns) planner. The
+codes are numbered in the order of the stations' ids, so they are stable within a release and not
+between them.
+
+TfL's trips carry no shape. The timetables say which stops a train calls at and not the line
+between them.
+
+TfL's open data licence makes the acknowledgement "Powered by TfL Open Data" a condition of using
+the timetables, and the feed's `attributions.txt` carries it.
 
 ## The transfer patterns
 

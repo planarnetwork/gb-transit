@@ -45,6 +45,25 @@ describe("the published configs", () => {
     expect(nationalRailOnly.exclude.operators).to.not.include.members(["LO", "XR"]);
   });
 
+  describe("and the rail half of the rail and TfL feed", () => {
+
+    const railForTfl = read("gtfs.rail-and-tfl.config.yaml");
+
+    it("is the National Rail only feed without the tube's fixed links, and nothing else", () => {
+      const {out: _out, exclude: {links: _links, ...excluded}, ...rest} = nationalRailOnly;
+      const {out: _theirs, exclude: {links, ...theirExcluded}, ...theirs} = railForTfl;
+
+      expect(theirs).to.deep.equal(rest);
+      expect(theirExcluded).to.deep.equal(excluded);
+      expect(links).to.deep.equal(["TUBE"]);
+    });
+
+    it("writes somewhere of its own", () => {
+      expect([feed.out, nationalRailOnly.out]).to.not.include(railForTfl.out);
+    });
+
+  });
+
 });
 
 /**
@@ -60,7 +79,7 @@ describe("the guide to the National Rail only feed", () => {
   const guide = site("pages/feeds/using-this-data.mdx");
   const section = guide.slice(
     guide.indexOf("## The National Rail only feed"),
-    guide.indexOf("## transfers.txt")
+    guide.indexOf("## The rail and TfL feed")
   );
   const {operators, replacementBuses} = read("gtfs.national-rail-only.config.yaml").exclude;
 

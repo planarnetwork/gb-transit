@@ -1,0 +1,36 @@
+# The rail half of the rail and TfL feed: the National Rail only feed, without
+# the DTD's tube links, since TfL's own timetable is put beside it instead and
+# a link saying the tube takes 23 minutes competes with the trains that run.
+#
+# Not published as it is: scripts/combine-rail-and-tfl.mjs adds TfL to it, and
+# that is what goes out as gtfs-rail-and-tfl.zip.
+#
+# Everything above `exclude` is gtfs.config.yaml, and `exclude` is
+# gtfs.national-rail-only.config.yaml's with `links` added - the three are
+# checked against each other in apps/cif2gtfs/test/config.spec.mts.
+
+source:
+  - data/feeds
+
+out: feed-rail-for-tfl
+
+enrichers:
+  NAPTAN:
+    options:
+      names: true
+    apply:
+      - stop_lat
+      - stop_lon
+      - located
+      - stop_name
+
+extensions:
+  - STATION_GROUPS
+
+exclude:
+  modes: [metro, bus, ship]
+  operators: [ES, LT, TW, ZZ]
+  replacementBuses: [LO, XR]
+  # The fixed links the Underground's own timetable replaces. The walks, the
+  # transfers and the other modes' links stay.
+  links: [TUBE]
