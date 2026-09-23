@@ -3,6 +3,7 @@ import {
   GTFS_COLUMNS, RouteRow, ShapeRow, StopAreaRow, StopRow, StopTimeRow, TransferRow, TripRow,
   fileSchema
 } from "@gb-transit/gtfs-schema";
+import type {FeedFileName} from "@gb-transit/gtfs-loader";
 
 /**
  * The files a merge writes, and the columns of each.
@@ -53,8 +54,9 @@ export const STOPS = fileSchema<StopRow>("stops.txt", [
   "location_type", "parent_station", "platform_code", "stop_timezone", "wheelchair_boarding"
 ]);
 
-// Its own: six columns rather than the rail feed's eighteen, because a merged
-// feed has nothing to say about a DTD fixed link - but the two trip ids stay.
+// Its own: the six standard columns. The rail feed's other twelve - the mode of
+// a fixed link and when it runs - are passed through with any other column a
+// feed carries; see ExtraColumns.
 export const TRANSFERS = fileSchema<TransferRow>("transfers.txt", [
   "from_stop_id", "to_stop_id", "from_trip_id", "to_trip_id", "transfer_type", "min_transfer_time"
 ]);
@@ -73,3 +75,24 @@ export const trips = (shapes: boolean) => fileSchema<TripRow>("trips.txt", [
 ]);
 
 export const TRIPS = trips(true);
+
+/**
+ * The columns a merge writes of each file it writes, which is what a feed's own
+ * columns are compared against to find the ones to pass through.
+ */
+export function declaredColumns(shapes: boolean): Partial<Record<FeedFileName, readonly string[]>> {
+  const files = [
+    AGENCY, AREAS, ATTRIBUTIONS, FEED_INFO, STOP_AREAS, FREQUENCIES, CALENDAR, CALENDAR_DATES,
+    ROUTES, STOP_TIMES, STOPS, TRANSFERS, trips(shapes), ...(shapes ? [SHAPES] : [])
+  ];
+
+  return Object.fromEntries(files.map(file => [file.filename, file.columns as readonly string[]]));
+}
+
+/**
+ * The columns a merge leaves out on purpose, which a feed carrying them does not
+ * put back.
+ */
+export function withheldColumns(shapes: boolean): Partial<Record<FeedFileName, readonly string[]>> {
+  return shapes ? {} : {"trips.txt": ["shape_id"]};
+}

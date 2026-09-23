@@ -36,6 +36,7 @@ export type { TimetableInput } from "./Normalise.js";
 // time rather than all of them: a national feed's stop_times.txt is three
 // million rows, and holding them to index them holds them twice.
 export { readFeed, readFeedRows } from "./ReadFeed.js";
+export { readHeaders } from "./ReadHeaders.js";
 export type { FeedHandlers, ReadFeedOptions } from "./ReadFeed.js";
 export { FEED_FILES, READ_COLUMNS, feedFileOf, toRow } from "./FeedFile.js";
 export type { FeedFileName, FeedRowTypes } from "./FeedFile.js";

@@ -315,6 +315,7 @@
     "normalise",
     "readFeed",
     "readFeedRows",
+    "readHeaders",
     "readZip",
     "sizeOf",
     "toChunks",

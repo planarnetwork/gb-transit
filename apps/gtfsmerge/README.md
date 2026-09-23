@@ -40,6 +40,11 @@ The distance in kilometres within which transfers are generated for nearby stops
 gtfsmerge --transfer-distance 2 input1.zip input2.zip output.zip
 ```
 
+A column a feed carries that the merge does not write of its own is passed through as the feed
+wrote it, after the merge's own columns - the rail feed's transfers say which mode a fixed link is and
+when it runs, and those arrive in the merged feed. A column only one of the feeds has is empty in the
+rows of the others.
+
 Stops with the same id in different feeds are assumed to be the same stop, and there is no way to
 say otherwise. A GB rail feed from [`cif2gtfs`](../cif2gtfs) and a GB bus feed from
 [`transxchange2gtfs`](../transxchange2gtfs) both name a stop by its ATCO code, so they merge without

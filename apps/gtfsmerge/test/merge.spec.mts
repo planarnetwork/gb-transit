@@ -380,3 +380,76 @@ describe("the merged feed", () => {
   });
 
 });
+
+describe("columns a feed carries that the merge does not declare", () => {
+
+  let merged: string;
+
+  /**
+   * Fixture a with the rail feed's fixed link columns on its transfers, and a
+   * column on its trips that no schema here has heard of.
+   */
+  beforeAll(async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "gtfsmerge-extra"));
+    const extended = path.join(dir, "a");
+
+    fs.cpSync(path.join(fixtures, "a"), extended, {recursive: true});
+    fs.writeFileSync(path.join(extended, "transfers.txt"),
+      "from_stop_id,to_stop_id,from_trip_id,to_trip_id,transfer_type,min_transfer_time,mode,start_time\n" +
+      "910GBETA,910GBETA,TA1,TA2,4,,,\n" +
+      "910GALPHA,910GALPHA,,,2,300,WALK,06:00:00\n");
+
+    const trips = fs.readFileSync(path.join(extended, "trips.txt"), "utf8").trimEnd().split("\n");
+
+    fs.writeFileSync(path.join(extended, "trips.txt"),
+      [`${trips[0]},vehicle_note`, ...trips.slice(1).map((row, i) => `${row},note ${i}`)].join("\n") + "\n");
+
+    const extendedZip = path.join(dir, "a.zip");
+    const entries: Record<string, Uint8Array> = {};
+
+    for (const file of fs.readdirSync(extended).filter(f => f.endsWith(".txt"))) {
+      entries[file] = strToU8(fs.readFileSync(path.join(extended, file), "utf8"));
+    }
+
+    fs.writeFileSync(extendedZip, zipSync(entries));
+
+    merged = path.join(dir, "merged");
+
+    await merge({
+      inputs: [extendedZip, inputs[1]],
+      output: merged,
+      filterDatesBefore: TODAY,
+      tmp: path.join(dir, "work")
+    });
+  }, 60_000);
+
+  const read = (file: string) => {
+    const [header, ...lines] = fs.readFileSync(path.join(merged, file), "utf8").trimEnd().split("\n");
+
+    return {header: header.split(","), lines};
+  };
+
+  it("writes a column the schema knows but the merge does not declare, after its own", () => {
+    const {header, lines} = read("transfers.txt");
+
+    expect(header.slice(-2)).to.deep.equal(["mode", "start_time"]);
+    expect(lines.some(line => line.endsWith(",WALK,06:00:00"))).to.equal(true);
+  });
+
+  it("writes a column nobody here has heard of, as the feed wrote it", () => {
+    const {header, lines} = read("trips.txt");
+
+    expect(header[header.length - 1]).to.equal("vehicle_note");
+    expect(lines.filter(line => line.includes(",note "))).to.have.length.greaterThan(0);
+  });
+
+  it("leaves the column empty in the rows of the feed that does not have it", () => {
+    const {header, lines} = read("trips.txt");
+    const note = header.indexOf("vehicle_note");
+    const fromB = lines.filter(line => !line.includes(",note "));
+
+    expect(fromB.length).to.be.greaterThan(0);
+    expect(fromB.every(line => line.split(",")[note] === "")).to.equal(true);
+  });
+
+});

@@ -4,6 +4,7 @@ import {
   TransferType, TripRow
 } from "@gb-transit/gtfs-schema";
 import {readFeed} from "@gb-transit/gtfs-loader";
+import type {ReadFeedOptions} from "@gb-transit/gtfs-loader";
 import * as fs from "fs";
 
 /**
@@ -201,7 +202,8 @@ export class FeedIndex {
  */
 export async function readMergeInput(
   file: string,
-  filterBefore?: string
+  filterBefore?: string,
+  extraColumns: ReadFeedOptions["extraColumns"] = {}
 ): Promise<GTFSZip> {
   const index = new FeedIndex(filterBefore);
 
@@ -219,7 +221,7 @@ export async function readMergeInput(
     "calendar_dates.txt": row => index.calendarDate({...row}),
     "transfers.txt": row => index.transfer({...row}),
     "links.txt": row => index.link({...row})
-  });
+  }, {extraColumns});
 
   return index.results();
 }
@@ -237,7 +239,11 @@ export async function readMergeInput(
  * A merge carrying no shapes asks for no shapes, so a national bus feed's 2.5GB
  * of them is read past rather than inflated and parsed.
  */
-export function streamOf(file: string, shapes = true): FeedStream {
+export function streamOf(
+  file: string,
+  shapes = true,
+  extraColumns: ReadFeedOptions["extraColumns"] = {}
+): FeedStream {
   return async (rows, betweenChunks) => {
     await readFeed(pausing(file, betweenChunks), {
       "stop_times.txt": row => {
@@ -246,7 +252,7 @@ export function streamOf(file: string, shapes = true): FeedStream {
         }
       },
       ...(shapes ? {"shapes.txt": (row: ShapeRow) => rows.shape(row)} : {})
-    });
+    }, {extraColumns});
   };
 }
 
