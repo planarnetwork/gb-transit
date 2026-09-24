@@ -199,8 +199,8 @@ describe("ScheduleBuilder ordering contract", () => {
   });
 
   it("keeps two concurrent loads from splicing stops into each other's trains", async () => {
-    // The MySQL source loads passenger schedules and z-trains into one builder at
-    // the same time. Rows from the two queries arrive interleaved.
+    // Passenger schedules and z-trains loaded into one builder at the same time
+    // arrive interleaved.
     const builder = new ScheduleBuilder();
 
     await Promise.all([

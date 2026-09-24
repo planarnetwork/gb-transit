@@ -21,11 +21,16 @@
       "path": "../../libs/gtfs"
     },
     {
+      "path": "../../libs/gtfs-loader"
+    },
+    {
       "path": "../../libs/gtfs-output"
     }
   ],
   "exclude": [
     "**/*.spec.ts",
-    "**/*.spec.mts"
+    "**/*.spec.mts",
+    "**/testing/**",
+    "**/integration/**"
   ]
 }

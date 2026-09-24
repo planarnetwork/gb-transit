@@ -152,6 +152,22 @@ describe("CifFileSource", () => {
     expect(transfers).to.deep.include(interchange("TON", 300));
   });
 
+  /**
+   * Reading's junction is listed before the station and rated 9. The database build ranks the station
+   * first, so the file build has to as well, or the two publish different change times.
+   */
+  it("takes the transfer time from the station rather than the junction sharing its code", async () => {
+    const reading = zip("RJTTF001", {
+      MSN: [
+        at([0, "A"], [5, "READING ORR JN"], [35, "9"], [36, "RDNGORJ"], [43, "RDG"], [49, "RDG"], [63, " 3"]),
+        at([0, "A"], [5, "READING"], [35, "2"], [36, "RDNGSTN"], [43, "RDG"], [49, "RDG"], [63, "10"])
+      ],
+      MCA: []
+    });
+
+    expect(await source(reading).getTransfers()).to.deep.equal([interchange("RDG", 600)]);
+  });
+
   it("emits a fixed link in both directions, in minutes converted to seconds", async () => {
     const links = await source(refresh()).getFixedLinks();
     const walk = links.filter(l => l.mode === "WALK");

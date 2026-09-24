@@ -2,9 +2,10 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import mysql from "mysql2";
-import mysqlPromise from "mysql2/promise";
+import {Kysely, MysqlDialect, PostgresDialect} from "kysely";
 import config, {downloadUrl} from "@gb-transit/dtd-schema";
 import {BuildFeed, buildContext, dateRange, GTFSOutput, stationCoordinates} from "@gb-transit/gtfs";
+import type {BuildContext, TimetableSource} from "@gb-transit/gtfs";
 import {FileOutput, OutputGTFSZipCommand} from "@gb-transit/gtfs-output";
 import {
   DownloadAndProcessCommand,
@@ -19,15 +20,21 @@ import {CleanFaresCommand} from "./cli/CleanFaresCommand";
 import {GTFSImportCommand} from "./cli/GTFSImportCommand";
 import {ImportFeedCommand} from "./cli/ImportFeedCommand";
 import {ShowHelpCommand} from "./cli/ShowHelpCommand";
-import {DatabaseConfiguration, DatabaseConnection} from "./database/DatabaseConnection";
+import {Database} from "./database/Database";
+import {SchemaDialect} from "./database/SchemaDialect";
+import {databaseConfigured, dialectName, mysqlOptions, postgresOptions, sqliteOptions} from "./database/connection";
+import {getSchemaDialect} from "./database/dialect";
+import {nodeSqliteDialect} from "./database/NodeSqliteDatabase";
+import schema from "./database/schema";
+import gtfsSchema from "./gtfs/schema";
 import {LogTableFeedCursor} from "./source/LogTableFeedCursor";
-import {MySqlTimetableSource} from "./source/MySqlTimetableSource";
+import {KyselyTimetableSource} from "./source/KyselyTimetableSource";
 
 /**
  * Composition root for the dtd2mysql CLI: it resolves a flag to the command that
- * implements it, and owns the two connection pools everything else shares.
+ * implements it, and owns the database connection everything else shares.
  *
- * The pools are created on first use rather than at module load, because
+ * The connection is created on first use rather than at module load, because
  * `dtd2mysql --help` has to work without DATABASE_NAME set.
  */
 
@@ -47,45 +54,77 @@ function once<A, R>(fn: (arg: A) => R): (arg: A) => R {
   };
 }
 
-export function databaseConfiguration(): DatabaseConfiguration {
-  if (!process.env.DATABASE_NAME) {
-    throw new Error("Please set the DATABASE_NAME environment variable.");
+/**
+ * Load a database driver.
+ *
+ * The drivers are optional peer dependencies so that installing this does not drag in one for every
+ * database it can talk to. SQLite needs nothing, it is built into node.
+ */
+function driver(module: string) {
+  try {
+    return require(module);
   }
-
-  return {
-    host: process.env.DATABASE_HOSTNAME || "localhost",
-    user: process.env.DATABASE_USERNAME || "root",
-    password: process.env.DATABASE_PASSWORD || null,
-    database: <string>process.env.DATABASE_NAME,
-    port: +(process.env.DATABASE_PORT || 3306),
-    connectionLimit: 20,
-    multipleStatements: true,
-    // return DATE columns as YYYY-MM-DD rather than a Date at local midnight, so that reading a
-    // date out of the database does not depend on the timezone of the machine doing the reading
-    dateStrings: true
-  };
+  catch {
+    throw new Error(`The ${module} package is needed for this database but is not installed. Run npm install ${module}.`);
+  }
 }
 
 /**
- * DatabaseConfiguration types `password` as `string | null` while mysql2 types it
- * as `string | undefined`. The driver accepts null, and null is what an unset
- * DATABASE_PASSWORD resolves to.
+ * Load a driver that is only needed for some of the work, returning nothing if it is not installed
  */
-function poolOptions(): mysql.PoolOptions {
-  return databaseConfiguration() as unknown as mysql.PoolOptions;
+function optionalDriver(module: string) {
+  try {
+    return require(module);
+  }
+  catch {
+    return undefined;
+  }
+}
+
+export function schemaDialect(): SchemaDialect {
+  return getSchemaDialect(dialectName());
 }
 
 /**
- * DatabaseConnection models a pool and a connection with one type, so it declares
- * release(), which a pool does not have. Nothing calls release() on the pool.
+ * Postgres hands back date and timestamp columns as Date objects built in the local timezone, which is
+ * exactly what dateStrings avoids on MySQL. The parsers leave them as the strings everything else here
+ * expects, so reading a date does not depend on the machine doing the reading.
  */
-const getDatabaseConnection = once((_: null): DatabaseConnection =>
-  track(mysqlPromise.createPool(poolOptions()) as unknown as DatabaseConnection)
-);
+const getPostgresPool = once((_: null) => {
+  const pg = driver("pg");
 
-const getDatabaseStream = once((_: null): mysql.Pool =>
-  track(mysql.createPool(poolOptions()))
-);
+  pg.types.setTypeParser(pg.types.builtins.DATE, (value: string) => value);
+  pg.types.setTypeParser(pg.types.builtins.TIMESTAMP, (value: string) => value);
+
+  return track(new pg.Pool(postgresOptions()));
+});
+
+/**
+ * Everything talks to the database through Kysely, so that the same queries run on MySQL, Postgres
+ * and SQLite.
+ */
+const getKysely = once((_: null): Kysely<Database> => {
+  switch (dialectName()) {
+    case "mysql":
+      return new Kysely({dialect: new MysqlDialect({pool: track(mysql.createPool(mysqlOptions()))})});
+    case "sqlite": {
+      const {filename, options} = sqliteOptions();
+
+      // the file is the connection, and Kysely is what holds it: there is no pool to end
+      return trackClose(new Kysely({dialect: nodeSqliteDialect(filename, options)}));
+    }
+    case "postgres":
+      return new Kysely({
+        dialect: new PostgresDialect({
+          pool: getPostgresPool(null),
+          // only the GTFS output streams, so this stays optional and importing works without it
+          cursor: optionalDriver("pg-cursor")
+        })
+      });
+  }
+});
+
+export const kysely = () => getKysely(null);
 
 /**
  * Every pool this container has actually created.
@@ -96,36 +135,45 @@ const getDatabaseStream = once((_: null): mysql.Pool =>
  * finishing. Closing from here covers every command rather than the ones that
  * remember to.
  */
-const pools: {end(...args: any[]): any}[] = [];
+const open: (() => unknown)[] = [];
 
 function track<T extends {end(...args: any[]): any}>(pool: T): T {
-  pools.push(pool);
+  open.push(() => pool.end());
 
   return pool;
+}
+
+/**
+ * The same, for something closed by destroy() rather than end(). A pool has neither the SQLite
+ * handle's lifecycle nor its method, and a Kysely that is never closed holds the file open.
+ */
+function trackClose<T extends {destroy(): Promise<unknown>}>(db: T): T {
+  open.push(() => db.destroy());
+
+  return db;
 }
 
 export async function closeConnections(): Promise<void> {
   // A command that closes its own pool - the GTFS build does - has already been
   // here, and mysql2 throws on a second close. Nothing to report either way.
-  await Promise.all(pools.map(async pool => {
+  await Promise.all(open.map(async close => {
     try {
-      await pool.end();
+      await close();
     }
     catch (err) {
       return undefined;
     }
   }));
 
-  pools.length = 0;
+  open.length = 0;
 }
-
-const databaseConnection = () => getDatabaseConnection(null);
-const databaseStream = () => getDatabaseStream(null);
 
 const getImportFeedCommand = once((feed: "fares" | "routeing" | "timetable" | "nfm64") =>
   new ImportFeedCommand(
-    databaseConnection(),
+    kysely(),
+    schemaDialect(),
     config[feed],
+    schema[feed],
     fs.mkdtempSync(path.join(os.tmpdir(), "dtd"))
   )
 );
@@ -180,7 +228,7 @@ const getSFTP = once((_: null): Promise<PromiseSFTP> =>
  * refresh"; constructing it eagerly is what turned that into a failure instead.
  */
 export function feedCursor(): FeedCursor {
-  return process.env.DATABASE_NAME ? new LogTableFeedCursor(databaseConnection()) : NO_CURSOR;
+  return databaseConfigured() ? new LogTableFeedCursor(kysely()) : NO_CURSOR;
 }
 
 const getDownloadCommand = once(async (directory: string) =>
@@ -194,16 +242,25 @@ const getDownloadCommand = once(async (directory: string) =>
 function buildFeed(output: GTFSOutput): BuildFeed {
   const context = buildContext(process.argv);
 
-  return new BuildFeed(
-    new MySqlTimetableSource(
-      databaseConnection(),
-      databaseStream(),
-      stationCoordinates,
-      dateRange(context),
-      context.removePassingPoints
-    ),
-    output,
-    context
+  return new BuildFeed(timetableSource(context), output, context);
+}
+
+/**
+ * Where the build reads the timetable from.
+ */
+function timetableSource(context: BuildContext): TimetableSource {
+  // the build streams the stop times of a whole feed, and Kysely's Postgres dialect only streams
+  // with pg-cursor. Asked for here it names the package; left to the dialect it fails part way
+  // through a build, with a message that names neither the package nor the fix.
+  if (dialectName() === "postgres") {
+    driver("pg-cursor");
+  }
+
+  return new KyselyTimetableSource(
+    kysely(),
+    stationCoordinates,
+    dateRange(context),
+    context.removePassingPoints
   );
 }
 
@@ -231,12 +288,12 @@ async function getDownloadAndProcessCommand(
  */
 export const commands: {[flag: string]: () => CLICommand | Promise<CLICommand>} = {
   "--fares": () => getImportFeedCommand("fares"),
-  "--fares-clean": () => new CleanFaresCommand(databaseConnection()),
+  "--fares-clean": () => new CleanFaresCommand(kysely(), schemaDialect()),
   "--routeing": () => getImportFeedCommand("routeing"),
   "--timetable": () => getImportFeedCommand("timetable"),
   "--nfm64": () => getImportFeedCommand("nfm64"),
   "--gtfs": () => getBuildFeedCommand(null),
-  "--gtfs-import": () => new GTFSImportCommand(databaseConfiguration()),
+  "--gtfs-import": () => new GTFSImportCommand(kysely(), schemaDialect(), gtfsSchema),
   "--gtfs-zip": () => new OutputGTFSZipCommand(getBuildFeedCommand(null)),
   "--download-fares": () => getDownloadCommand("/fares/"),
   "--download-timetable": () => getDownloadCommand("/timetable/"),

@@ -1,0 +1,2 @@
+id	origin_code	destination_code	route_code	railcard_code	ticket_code	end_date	start_date	quote_date	use_nlc	adult_nodis_flag	adult_add_on_amount	adult_rebook_flag	child_nodis_flag	child_add_on_amount	child_rebook_flag
+1	AAAA	AAAA	11111	AAA	AAA	2025-01-01	2025-01-01	2025-01-01	AAAA	A	11111111	A	A	11111111	A

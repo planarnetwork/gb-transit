@@ -13,7 +13,7 @@ const notAdvertisedActivity = "N ";
 /**
  * Where a run of rows for one schedule is accumulated.
  *
- * One per run, not one per builder: the MySQL source loads the passenger
+ * One per run, not one per builder: a source may load the passenger
  * schedules and the z-trains concurrently into the same builder, and two
  * interleaved streams sharing a cursor would splice each other's stop times into
  * the wrong trains.
@@ -153,6 +153,21 @@ export class ScheduleBuilder {
     const cursor = newCursor();
 
     for (const row of rows) {
+      this.processRow(cursor, row);
+    }
+
+    this.flush(cursor);
+  }
+
+  /**
+   * Take rows from an async iterable, in the same order a stream would deliver
+   * them. This is what a query builder that yields rows rather than emitting
+   * them uses, where loadSchedules takes a driver's own emitter.
+   */
+  public async loadStream(rows: AsyncIterable<ScheduleStopTimeRow>): Promise<void> {
+    const cursor = newCursor();
+
+    for await (const row of rows) {
       this.processRow(cursor, row);
     }
 

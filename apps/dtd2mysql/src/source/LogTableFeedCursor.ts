@@ -1,11 +1,7 @@
+import {Kysely} from "kysely";
 import {FeedCursor} from "@gb-transit/dtd-source";
-import {DatabaseConnection} from "../database/DatabaseConnection";
-
-interface LogEntry {
-  id: number,
-  filename: string | null,
-  processed: string | null,
-}
+import {Database} from "../database/Database";
+import {LOG_TABLE} from "../database/SchemaBuilder";
 
 /**
  * The last processed file as recorded by ImportFeedCommand in the log table.
@@ -15,13 +11,18 @@ interface LogEntry {
  */
 export class LogTableFeedCursor implements FeedCursor {
 
-  constructor(private readonly db: DatabaseConnection) {}
+  constructor(private readonly db: Kysely<Database>) {}
 
   public async getLastProcessedFile(): Promise<string | undefined> {
     try {
-      const [[log]] = await this.db.query<LogEntry>("SELECT * FROM log ORDER BY id DESC LIMIT 1");
+      const [log] = await this.db
+        .selectFrom(LOG_TABLE)
+        .select("filename")
+        .orderBy("id", "desc")
+        .limit(1)
+        .execute();
 
-      return log.filename !== null ? log.filename : undefined;
+      return log?.filename ?? undefined;
     }
     catch (err) {
       return undefined;

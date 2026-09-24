@@ -24,6 +24,10 @@ import * as path from "node:path";
  *
  *   Importing twice lands the same rows. Records that generate their own id are
  *   the risk, and a collision only shows on the second import.
+ *
+ *   The feed it just wrote loads back in. --gtfs-import creates its own tables
+ *   from their own declarations, so nothing above it touches them, and a
+ *   column type only one database refuses shows up nowhere else.
  */
 const ROOT = path.resolve(import.meta.dirname, "..");
 const FIXTURE = path.join(ROOT, "apps/cif2gtfs/fixtures/mini/RJTTF001.ZIP");
@@ -48,6 +52,10 @@ function fromFiles(into) {
     "tsx", "apps/cif2gtfs/src/index.ts", "build",
     "--source", FIXTURE, "--out", into, "--today", TODAY
   ]);
+}
+
+function intoDatabase(from) {
+  yarn(["tsx", "apps/dtd2mysql/src/index.ts", "--gtfs-import", from]);
 }
 
 function same(a, b, what) {
@@ -76,6 +84,9 @@ if (import.meta.filename === process.argv[1]) {
     importFixture();
     fromDatabase(twice);
     same(database, twice, "importing twice changes nothing");
+
+    console.log("\n=== loading the feed back in ===");
+    intoDatabase(database);
   }
   finally {
     if (given === undefined) {

@@ -27,6 +27,8 @@ export class CSVParser {
   private keys: (string | undefined)[] | undefined;
   private columnNames: string[] | undefined;
   private readonly row: Row = {};
+  /** Rows read so far, not counting the header */
+  private rows = 0;
 
   /**
    * Every column the file's header names, wanted or not, once the header has been read. For a
@@ -41,10 +43,13 @@ export class CSVParser {
    *                the file has that is not wanted is never sliced out of the chunk.
    * @param onRow called once per row. The row object is REUSED between rows, so copy out what you
    *              need rather than keeping a reference to it.
+   * @param options.strict throw on a row with more or fewer fields than the header, rather than
+   *              leaving the missing columns undefined and dropping the extra fields
    */
   constructor(
     private readonly columns: readonly string[],
-    private readonly onRow: (row: Row) => void
+    private readonly onRow: (row: Row) => void,
+    private readonly options: { strict?: boolean } = {}
   ) {
     // fix the shape up front so every row shares one hidden class
     for (const column of columns) {
@@ -214,6 +219,12 @@ export class CSVParser {
         this.row[key] = this.field(from, to, quoted);
       }
     });
+
+    this.rows++;
+
+    if (this.options.strict && column !== keys.length) {
+      throw new Error(`Row ${this.rows} has ${column} fields where the header has ${keys.length}`);
+    }
 
     this.onRow(this.row);
   }

@@ -1,0 +1,2 @@
+id	origin_code	destination_code	route_code	railcard_code	ticket_code	nd_record_type	end_date	start_date	quote_date	suppress_mkr	adult_fare	child_fare	restriction_code	composite_indicator	cross_london_ind	ps_ind
+1	AAAA	AAAA	11111	AAA	AAA	A	2025-01-01	2025-01-01	2025-01-01	1	11111111	11111111	AA	A	1	A

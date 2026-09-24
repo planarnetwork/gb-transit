@@ -165,6 +165,14 @@ feed's behaviour shows up in review as a readable diff rather than as a hash tha
 change, run `UPDATE_GOLDEN=1 yarn vitest run`, read the diff, and record why it moved in
 [`BASELINE.md`](apps/cif2gtfs/fixtures/BASELINE.md) — CI requires an entry.
 
+`yarn test:integration` runs the import against a real database and compares every row it wrote
+against `apps/dtd2mysql/src/integration/expected`. `DATABASE_DIALECT` picks which one, and the
+same recorded rows are the expectation for all three: a database needing its own is a bug rather
+than something to record. `docker compose up` provides MariaDB and Postgres; SQLite needs nothing
+and runs entirely in memory with `DATABASE_NAME=:memory:`. The fares, routeing and nfm64 fixtures
+are generated from the field definitions by `yarn fixture:generate`, and are committed, so that
+baseline moves only when somebody means it to.
+
 Anything that should reach a user needs a changeset: run `yarn changeset`, pick the bump type, and
 commit the file it writes. A pull request with no changeset publishes nothing, which is the right
 answer for documentation and CI changes.
