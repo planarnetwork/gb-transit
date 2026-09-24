@@ -45,16 +45,26 @@ export class ImportFeedCommand implements CLICommand {
   }
 
   /**
-   * Extract the zip, set up the schema and do the inserts
+   * Extract the zip, set up the schema and do the inserts.
+   *
+   * The extraction is removed however the import ends: a full refresh unpacks to gigabytes, and each run
+   * extracts to a folder of its own, so one left behind by a failure is never reused or cleared.
    */
   public async doImport(filePath: string): Promise<void> {
     console.log(`Extracting ${filePath} to ${this.tmpFolder}`);
     fs.rmSync(this.tmpFolder, {recursive: true, force: true});
 
-    new AdmZip(filePath).extractAllTo(this.tmpFolder);
+    try {
+      new AdmZip(filePath).extractAllTo(this.tmpFolder);
 
-    const zipName = path.basename(filePath);
+      await this.importExtracted(path.basename(filePath));
+    }
+    finally {
+      fs.rmSync(this.tmpFolder, {recursive: true, force: true});
+    }
+  }
 
+  private async importExtracted(zipName: string): Promise<void> {
     // if the file is a not an incremental, reset the database schema
     if (zipName.charAt(4) !== "C") {
       await this.setupSchema();
@@ -74,7 +84,6 @@ export class ImportFeedCommand implements CLICommand {
     await this.removeOrphanStopTimes();
 
     await this.updateLastFile(zipName);
-    fs.rmSync(this.tmpFolder, { recursive: true });
   }
 
   /**

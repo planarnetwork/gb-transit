@@ -21,10 +21,13 @@ describe("importing a feed", () => {
   it("records the archive when every file lands", async () => {
     const db = database();
 
-    await command(db).doImport(archive(["good"]));
+    const extracted = temporary();
+
+    await command(db, extracted).doImport(archive(["good"]));
 
     expect(await filenames(db)).to.deep.equal(["RJFAF999.ZIP"]);
     expect(await codes(db)).to.deep.equal(["good"]);
+    expect(fs.existsSync(extracted)).to.equal(false);
 
     await db.destroy();
   });
@@ -32,9 +35,13 @@ describe("importing a feed", () => {
   it("does not record the archive when a file fails", async () => {
     const db = database();
 
-    await expect(command(db).doImport(archive(["good", "bad"]))).rejects.toThrow(/was not imported/);
+    const extracted = temporary();
+
+    await expect(command(db, extracted).doImport(archive(["good", "bad"]))).rejects.toThrow(/was not imported/);
 
     expect(await filenames(db)).to.deep.equal([]);
+    // a full refresh extracts to gigabytes, and a failed one is the likeliest to be run again
+    expect(fs.existsSync(extracted)).to.equal(false);
 
     await db.destroy();
   });
@@ -49,7 +56,9 @@ const filenames = (db: Kysely<any>) =>
 const codes = (db: Kysely<any>) =>
   db.selectFrom("thing").select("code").orderBy("code").execute().then(rows => rows.map(row => row.code));
 
-function command(db: Kysely<any>): ImportFeedCommand {
+const temporary = () => fs.mkdtempSync(path.join(os.tmpdir(), "dtd-import"));
+
+function command(db: Kysely<any>, extracted: string = temporary()): ImportFeedCommand {
   const schema: FeedSchema = { thing: table({ code: char(4) }, { key: ["code"] }) };
 
   return new ImportFeedCommand(
@@ -57,7 +66,7 @@ function command(db: Kysely<any>): ImportFeedCommand {
     getSchemaDialect("sqlite"),
     { THING: file },
     schema,
-    fs.mkdtempSync(path.join(os.tmpdir(), "dtd-import"))
+    extracted
   );
 }
 
