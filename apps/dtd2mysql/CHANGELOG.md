@@ -1,5 +1,81 @@
 # dtd2mysql
 
+## 11.4.0
+
+### Minor Changes
+
+- 85add7a: Let the consumer configure the database connection directly, with `DATABASE_URL` for a connection
+  string and `DATABASE_OPTIONS` for anything else, both handed to the driver as they are.
+
+  Kysely models no connection configuration of its own - every dialect takes the driver's object and
+  says nothing about how it was built - and this now follows it. The shared `DatabaseConfiguration`
+  was mysql2's shape under a neutral name: it carried `multipleStatements` and `dateStrings`, which
+  only mysql2 has, and `connectionLimit`, which pg calls `max`. MySQL took it through a double cast
+  and Postgres destructured six fields out of it and dropped the rest, so anything a driver supported
+  beyond those six was unreachable. A unix socket was the example: `socketPath` is a mysql2 option and
+  a host naming a directory is a pg one, and neither could be asked for.
+
+  The dialect comes from the URL's scheme, so `postgresql://` needs no `DATABASE_DIALECT` beside it.
+  A scheme with no dialect is an error rather than a fall back to MySQL, and so is a `DATABASE_DIALECT`
+  that contradicts the scheme. The named variables still work unchanged, so an existing install is
+  unaffected.
+
+  SQLite has no server to address, so a URL only names its file; `DATABASE_OPTIONS` carries the
+  options `node:sqlite` itself takes, such as `readOnly` and `timeout`.
+
+  `dateStrings` and the Postgres date and timestamp parsers are applied over whatever is given. They
+  are not preferences: the declared column types say a date is a string, and reading one should not
+  depend on the timezone of the machine reading it.
+
+- 85add7a: Requires Node 22.16 or later. The SQLite support uses `node:sqlite`'s `StatementSync.columns()`,
+  which Node 22 gained in 22.16; on 22.13 to 22.15 a SQLite database failed on its first query.
+- 85add7a: Run the import and the GTFS build against Postgres and SQLite as well as MySQL, chosen with
+  `DATABASE_DIALECT` and defaulting to `mysql`, so an existing install is unaffected.
+
+  The tables are declared rather than implied by the feed definitions, and both the schema and the
+  statements that fill it go through Kysely, so the same declaration produces a MySQL, Postgres or
+  SQLite table. `--fares-clean`, `--gtfs-import` and the GTFS build follow: the first two were raw
+  MySQL, and the third reads through the query builder on every database, MySQL included, streaming
+  the stop times through the driver as it did before.
+
+  `pg` and `pg-cursor` are optional peer dependencies, installed by somebody pointing at Postgres.
+  SQLite needs nothing, so a whole feed can be imported and queried with no server:
+
+  ```
+  DATABASE_DIALECT=sqlite DATABASE_NAME=./feed.sqlite dtd2mysql --timetable RJTTFxxx.ZIP
+  ```
+
+  Four things in the GTFS queries were MySQL's own spelling rather than portable SQL, and each is
+  now standard: the null safe `<=>`, `IF`, a fixed link matched on its two codes concatenated, and a
+  `GROUP BY` naming fewer columns than it selects, which MySQL answers by choosing a row for you and
+  Postgres rejects. A `char` column is also read the same way everywhere now: MySQL strips the
+  padding that fills a fixed width field out, Postgres pads it back on, so the import drops it before
+  writing the row. MySQL's rows do not move.
+
+  A value wider than its declared column stops the import of its file with an error naming the
+  column and the value, on every database. MySQL stored it truncated, which in a key is a different
+  row; Postgres would refuse it with a less useful message.
+
+  `ForeignKeyField` accepts any record with a `lastId` rather than naming the two record classes.
+
+  `ScheduleBuilder` gains `loadStream` beside `loadSchedules`, for a source that yields rows rather
+  than emitting them. The emitter path is untouched.
+
+  Fixes a bug in the import: the orphan stop time clean up ran after every feed and named three
+  timetable tables, so importing any single feed into a database that had never held a timetable
+  failed on a table that was never created. Invisible where all four feeds share one database.
+
+### Patch Changes
+
+- Updated dependencies [85add7a]
+- Updated dependencies [85add7a]
+- Updated dependencies [85add7a]
+- Updated dependencies [85add7a]
+  - @gb-transit/gtfs-loader@1.7.0
+  - @gb-transit/feed-parser@1.0.1
+  - @gb-transit/gtfs@3.7.0
+  - @gb-transit/dtd-source@1.4.0
+
 ## 11.3.0
 
 ### Minor Changes

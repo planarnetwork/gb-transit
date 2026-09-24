@@ -1,6 +1,6 @@
 {
   "name": "dtd2mysql",
-  "version": "11.3.0",
+  "version": "11.4.0",
   "description": "Command line tool to put the GB rail DTD feed into a MySQL compatible database",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

@@ -1,6 +1,6 @@
 {
   "name": "@gb-transit/feed-parser",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Declarative fixed-width and CSV record parsing for the GB rail data feeds",
   "license": "GPL-3.0",
   "repository": {
