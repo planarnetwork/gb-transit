@@ -162,7 +162,9 @@ export class TableWriter {
   }
 
   private async remove(db: Kysely<any>, rows: ParsedRecord[]): Promise<void> {
-    for (const chunk of chunks(rows, width(rows[0]?.keysValues), MAX_OR_TERMS)) {
+    const maxRows = this.dialect === "sqlite" ? MAX_OR_TERMS : Infinity;
+
+    for (const chunk of chunks(rows, width(rows[0]?.keysValues), maxRows)) {
       await db
         .deleteFrom(this.table)
         .where(eb => eb.or(chunk.map(row => this.matches(eb, row))))

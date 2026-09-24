@@ -7,7 +7,8 @@ export const MAX_PARAMETERS = 30000;
 /**
  * A statement that matches each row separately ORs a bracketed group per row, and SQLite parses that as
  * a tree it refuses beyond a depth of 1000 - which a two column key reaches at 999 rows, well inside the
- * parameter limit. Capping the rows of such a statement is the only thing that keeps it under.
+ * parameter limit. Capping the rows of such a statement is the only thing that keeps it under. MySQL
+ * and Postgres have no such limit, so the cap is SQLite's alone.
  */
 export const MAX_OR_TERMS = 500;
 

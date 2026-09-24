@@ -125,6 +125,19 @@ describe("TableWriter", () => {
     expect(queries(statements).length).to.equal(3);
   });
 
+  it("leaves a delete on MySQL or Postgres to the parameter limit alone", async () => {
+    for (const dialect of ["mysql", "postgres"] as const) {
+      const { db, statements } = recording(dialect);
+      const writer = new TableWriter(db, dialect, "my_table", false, 1200);
+
+      for (let i = 0; i < 1200; i++) {
+        await writer.apply(row(RecordAction.Delete, {}, { a: i, b: i }));
+      }
+
+      expect(queries(statements).length, dialect).to.equal(1);
+    }
+  });
+
   it("refuses to delete a row it has no key for, rather than emptying the table", async () => {
     const { db } = recording("mysql");
     const writer = new TableWriter(db, "mysql", "my_table", false, 1);
