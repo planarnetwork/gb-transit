@@ -10,7 +10,8 @@ import {
   ShortDateField,
   TextField,
   TimeField,
-  VariableLengthText
+  VariableLengthText,
+  ZeroFillIntField
 } from "@gb-transit/feed-parser";
 
 export type DialectName = "mysql" | "postgres" | "sqlite";
@@ -95,8 +96,9 @@ export interface SchemaDialect {
  */
 export function getFieldType(field: Field): FieldType {
   if (field instanceof VariableLengthText) return { type: "text", length: field.length, variableLength: true };
-  // ZeroFillIntField is a TextField, as a zero filled int is stored as the padded text
   if (field instanceof TextField)          return { type: "text", length: field.length, variableLength: false };
+  // zero filled ints are parsed as padded strings so they are stored as text
+  if (field instanceof ZeroFillIntField)   return { type: "text", length: field.length, variableLength: false };
   if (field instanceof BooleanField)       return { type: "boolean" };
   if (field instanceof ShortDateField)     return { type: "date" };
   if (field instanceof DateField)          return { type: "date" };

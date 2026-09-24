@@ -1,5 +1,5 @@
 
-import {FieldMap, fixedWidthText, ParsedRecord, Record, RecordAction} from "./Record";
+import {FieldMap, ParsedRecord, Record, RecordAction} from "./Record";
 import {FieldValue} from "../field/Field";
 
 /**
@@ -29,7 +29,7 @@ export class MultiFormatRecord implements Record {
     const action = RecordAction.Insert;
 
     for (const key in record) {
-      values[key] = record[key].extract(fixedWidthText(line, record[key]));
+      values[key] = record[key].extract(line.substr(record[key].position, record[key].length));
     }
 
     return { action, values, keysValues: values };

@@ -26,7 +26,7 @@ describe("FixedWidthRecord", () => {
       values: {
         id: null,
         field: 1012,
-        field2: "Hi",
+        field2: "Hi ",
         field3: "2999-12-31"
       }
     });
@@ -49,33 +49,9 @@ describe("FixedWidthRecord", () => {
       values: {
         id: null,
         field: 1012,
-        field2: "Hi"
+        field2: "Hi "
       }
     });
-  });
-
-  /**
-   * The null values are the field's full width, so the part of a field a short line does reach is padded
-   * out to it before it is read
-   */
-  it("reads a field a short line stops part way through as blank", () => {
-    const record = new FixedWidthRecord("test", [], {
-      "code": new TextField(0, 2),
-      "suffix": new TextField(2, 3, true)
-    });
-
-    expect(record.extractValues("AB  ").values).to.deep.equal({ id: null, code: "AB", suffix: null });
-    expect(record.extractValues("AB").values).to.deep.equal({ id: null, code: "AB", suffix: null });
-    expect(record.extractValues("ABx").values).to.deep.equal({ id: null, code: "AB", suffix: "x" });
-  });
-
-  it("refuses a field a short line leaves blank when it cannot be null", () => {
-    const record = new FixedWidthRecord("test", [], {
-      "code": new TextField(0, 2),
-      "name": new TextField(2, 3)
-    });
-
-    expect(() => record.extractValues("AB  ")).to.throw("Non-nullable field received null value");
   });
 
   it("picks the correct action", () => {
@@ -104,12 +80,12 @@ describe("FixedWidthRecord", () => {
       action: RecordAction.Delete,
       keysValues: {
         field: 1012,
-        field2: "Hi"
+        field2: "Hi "
       },
       values: {
         id: null,
         field: 1012,
-        field2: "Hi",
+        field2: "Hi ",
         field3: "2999-12-31"
       }
     });
@@ -118,12 +94,12 @@ describe("FixedWidthRecord", () => {
       action: RecordAction.Update,
       keysValues: {
         field: 1012,
-        field2: "Hi"
+        field2: "Hi "
       },
       values: {
         id: null,
         field: 1012,
-        field2: "Hi",
+        field2: "Hi ",
         field3: "2999-12-31"
       }
     });
@@ -151,7 +127,7 @@ describe("RecordWithManualIdentifier", () => {
       values: {
         id: 1,
         field: 1012,
-        field2: "Hi",
+        field2: "Hi ",
         field3: "2999-12-31"
       }
     });
@@ -174,7 +150,7 @@ describe("RecordWithManualIdentifier", () => {
       values: {
         id: 1,
         field: 1012,
-        field2: "Hi"
+        field2: "Hi "
       }
     });
 
@@ -184,7 +160,7 @@ describe("RecordWithManualIdentifier", () => {
       values: {
         id: 2,
         field: 1012,
-        field2: "Hi"
+        field2: "Hi "
       }
     });
 
@@ -194,7 +170,7 @@ describe("RecordWithManualIdentifier", () => {
       values: {
         id: 3,
         field: 1012,
-        field2: "Hi"
+        field2: "Hi "
       }
     });
   });

@@ -26,7 +26,7 @@ export abstract class Field {
    * Do some null checking then offload to the sub classes parse method
    */
   public extract(value: string): FieldValue {
-    const isNull = value === null || value === undefined || value === "" || this.nullValues.includes(value);
+    const isNull = (value === null || value === undefined) || value === "" || this.nullValues.indexOf(value) > -1;
 
     if (isNull) {
       if (this.nullable) return null;

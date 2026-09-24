@@ -7,7 +7,7 @@ import {ParsedRecord, RecordAction} from "@gb-transit/feed-parser";
 import {recording} from "./testing/recording";
 import {SchemaBuilder} from "./SchemaBuilder";
 import {sqliteSchemaDialect} from "./dialect";
-import {table, varchar} from "./Schema";
+import {char, table, varchar} from "./Schema";
 
 const row = (action: RecordAction, values: object, keysValues: object = {}): ParsedRecord =>
   ({ action, values, keysValues }) as ParsedRecord;
@@ -216,6 +216,43 @@ describe("TableWriter", () => {
     expect(await db.selectFrom("t").select("code").execute()).to.deep.equal([{ code: "ABCD" }]);
 
     await db.destroy();
+  });
+
+  /**
+   * The blanks a fixed width field is padded with are not part of the value, and the three databases
+   * disagree about them. A varchar holds what the feed wrote, trailing blanks and all.
+   */
+  it("drops the padding of a char column, and keeps a varchar as written", async () => {
+    const db = new Kysely<any>({ dialect: nodeSqliteDialect(":memory:") });
+    const declared = table({ code: char(4), name: varchar(8) }, { key: ["code"] });
+
+    await new SchemaBuilder(db, sqliteSchemaDialect, "t", declared).createSchema();
+
+    const writer = new TableWriter(db, "sqlite", "t", false, 100, declared.columns);
+
+    await writer.apply(row(RecordAction.Insert, { id: null, code: "AB  ", name: "old " }, { code: "AB  " }));
+    await writer.close();
+    await writer.apply(row(RecordAction.Update, { id: null, code: "AB  ", name: "new " }, { code: "AB  " }));
+    await writer.close();
+
+    expect(await db.selectFrom("t").select(["code", "name"]).execute())
+      .to.deep.equal([{ code: "AB", name: "new " }]);
+
+    await db.destroy();
+  });
+
+  /**
+   * MySQL would store it truncated and Postgres refuse it. Truncated it is a different value, and in a
+   * key a different row, so it is refused the same way everywhere and says where.
+   */
+  it("refuses a value wider than its column, naming the column", async () => {
+    const { db } = recording("mysql");
+    const declared = table({ code: char(4), name: varchar(8) });
+    const writer = new TableWriter(db, "mysql", "t", false, 100, declared.columns);
+
+    await expect(writer.apply(row(RecordAction.Insert, { id: null, code: "AB", name: "ninechars" })))
+      .rejects.toThrow('t.name holds 8 characters, and "ninechars" is 9');
+    await writer.apply(row(RecordAction.Insert, { id: null, code: "ABCD    ", name: "" }));
   });
 
   /**

@@ -1,5 +1,5 @@
 ---
-"@gb-transit/feed-parser": minor
+"@gb-transit/feed-parser": patch
 "@gb-transit/gtfs": minor
 "dtd2mysql": minor
 ---
@@ -24,8 +24,14 @@ Four things in the GTFS queries were MySQL's own spelling rather than portable S
 now standard: the null safe `<=>`, `IF`, a fixed link matched on its two codes concatenated, and a
 `GROUP BY` naming fewer columns than it selects, which MySQL answers by choosing a row for you and
 Postgres rejects. A `char` column is also read the same way everywhere now: MySQL strips the
-padding that fills a fixed width field out, Postgres pads it back on, so it is dropped when the
-field is read and never reaches a database. MySQL's rows do not move.
+padding that fills a fixed width field out, Postgres pads it back on, so the import drops it before
+writing the row. MySQL's rows do not move.
+
+A value wider than its declared column stops the import of its file with an error naming the
+column and the value, on every database. MySQL stored it truncated, which in a key is a different
+row; Postgres would refuse it with a less useful message.
+
+`ForeignKeyField` accepts any record with a `lastId` rather than naming the two record classes.
 
 `ScheduleBuilder` gains `loadStream` beside `loadSchedules`, for a source that yields rows rather
 than emitting them. The emitter path is untouched.

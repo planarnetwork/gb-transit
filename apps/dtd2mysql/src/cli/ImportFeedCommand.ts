@@ -257,7 +257,7 @@ export class ImportFeedCommand implements CLICommand {
     for (const record of file.recordTypes) {
       if (!index[record.name]) {
         index[record.name] = new TableWriter(
-          this.db, this.schemaDialect.name, record.name, record.orderedInserts
+          this.db, this.schemaDialect.name, record.name, record.orderedInserts, undefined, this.table(record.name).columns
         );
       }
     }

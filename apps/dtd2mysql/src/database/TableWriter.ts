@@ -1,7 +1,8 @@
 import {Expression, ExpressionBuilder, Kysely, sql} from "kysely";
 import {DialectName, isLockError} from "./SchemaDialect";
 import {chunks, MAX_OR_TERMS} from "./parameters";
-import {ParsedRecord, RecordAction} from "@gb-transit/feed-parser";
+import {FieldValue, ParsedRecord, RecordAction} from "@gb-transit/feed-parser";
+import {Columns} from "./Schema";
 
 /**
  * Buffers the rows of one table and writes them out.
@@ -22,18 +23,28 @@ export class TableWriter {
   // a record with ordered inserts has its flushes chained rather than left to interleave in the pool
   private pending: Promise<void> = Promise.resolve();
 
+  // the declared text columns, as [name, width, fixed] - the only columns a value is changed or refused in
+  private readonly text: [string, number, boolean][];
+
   constructor(
     private readonly db: Kysely<any>,
     private readonly dialect: DialectName,
     private readonly table: string,
     private readonly ordered: boolean = false,
-    private readonly flushLimit: number = 5000
-  ) {}
+    private readonly flushLimit: number = 5000,
+    columns: Columns = {}
+  ) {
+    this.text = Object.entries(columns).flatMap(([name, { type }]) =>
+      type.type === "text" ? [[name, type.length, !type.variableLength] as [string, number, boolean]] : []
+    );
+  }
 
   /**
    * Add the given row to the table
    */
-  public async apply(row: ParsedRecord): Promise<void> {
+  public async apply(parsed: ParsedRecord): Promise<void> {
+    const row = this.fitted(parsed);
+
     this.buffer[row.action].push(row);
 
     // if it's a delayed insert, also add a delete entry
@@ -44,6 +55,47 @@ export class TableWriter {
     else if (this.buffer[row.action].length >= this.flushLimit) {
       return this.flush(row.action);
     }
+  }
+
+  /**
+   * The row as its declared columns hold it.
+   *
+   * A fixed width field is padded out with blanks that are how the line reaches the next field rather
+   * than part of the value, and the databases disagree about them: MySQL strips them from a char column
+   * when it is read, Postgres pads the value back out to the column's width and SQLite returns whatever
+   * it was given. They are stripped here, which is what MySQL has always returned.
+   *
+   * A value wider than its column is refused rather than left to the database, which would truncate it
+   * on one and refuse it on another. Truncated, it is a different value - in a key, a different row.
+   */
+  private fitted(row: ParsedRecord): ParsedRecord {
+    if (this.text.length === 0) {
+      return row;
+    }
+
+    return { ...row, values: this.fit(row.values), keysValues: this.fit(row.keysValues) };
+  }
+
+  private fit(values: { [column: string]: FieldValue }): { [column: string]: FieldValue } {
+    const fitted = { ...values };
+
+    for (const [column, width, fixed] of this.text) {
+      const raw = fitted[column];
+
+      if (typeof raw !== "string") {
+        continue;
+      }
+
+      const value = fixed ? raw.trimEnd() : raw;
+
+      if (value.length > width) {
+        throw new Error(`${this.table}.${column} holds ${width} characters, and "${value}" is ${value.length}`);
+      }
+
+      fitted[column] = value;
+    }
+
+    return fitted;
   }
 
   /**
