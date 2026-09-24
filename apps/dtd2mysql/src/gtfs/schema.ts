@@ -1,4 +1,4 @@
-import {ascii, boolean, char, date, decimal, defaultTo, float, integer, nullable, time, varchar} from "../database/Schema";
+import {ascii, boolean, char, date, decimal, defaultTo, float, integer, nullable, serviceTime, time, varchar} from "../database/Schema";
 import {gtfsTable} from "../database/GTFSSchema";
 
 /**
@@ -125,13 +125,8 @@ export const shapes = gtfsTable({
  */
 export const stop_times = gtfsTable({
   trip_id: ascii(varchar(32)),
-  // Text rather than a time, because a GTFS time is not one: a call after midnight is written as the
-  // hours since the service day began, so a sleeper calls at 24:01:00 and a late one at 26:15:00.
-  // MySQL's TIME happens to hold both - it runs to 838 hours - where Postgres refuses anything past
-  // 24:00:00, which stopped the import of 430 of the 1326 calls in the fixture feed alone. Zero
-  // padded to eight characters, so ordering them as text is ordering them by time.
-  arrival_time: nullable(varchar(8)),
-  departure_time: nullable(varchar(8)),
+  arrival_time: nullable(serviceTime),
+  departure_time: nullable(serviceTime),
   stop_id: varchar(100),
   stop_sequence: integer(2),
   stop_headsign: nullable(varchar(50)),

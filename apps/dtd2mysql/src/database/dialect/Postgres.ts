@@ -25,6 +25,7 @@ export const postgresSchemaDialect: SchemaDialect = {
       case "boolean": return sql.raw("smallint");
       case "date": return sql.raw("date");
       case "time": return sql.raw("time");
+      case "serviceTime": return sql.raw("varchar(8)");
       // numeric would be returned as a string by pg, double precision matches both MySQL and the parsed field
       case "double": return sql.raw("double precision");
       // numeric is returned as a string by pg, which is what an exact value has to be to stay exact

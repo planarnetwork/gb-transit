@@ -80,6 +80,24 @@ describe("the GTFS import schema", () => {
     expect(gtfsSchema.transfers.columns.to_trip_id.default).to.equal("");
   });
 
+  /**
+   * A time after midnight is past what Postgres' TIME holds, so it is text there. MySQL's holds it, and
+   * keeps the type a consumer's queries compare and add times with.
+   */
+  it("stores a stop time as a time on MySQL and as text on Postgres", async () => {
+    const created = async (dialect: typeof mysqlSchemaDialect) => {
+      const { db, statements } = recording(dialect.name);
+
+      await new SchemaBuilder(db, dialect, "stop_times", gtfsSchema.stop_times).createSchema();
+      await db.destroy();
+
+      return statements[0];
+    };
+
+    expect(await created(mysqlSchemaDialect)).to.contain("`arrival_time` time, `departure_time` time,");
+    expect(await created(postgresSchemaDialect)).to.contain('"arrival_time" varchar(8), "departure_time" varchar(8),');
+  });
+
   it("creates every table in a real database, and compiles for the other two", async () => {
     const sqlite = new Kysely<any>({ dialect: nodeSqliteDialect(":memory:") });
 

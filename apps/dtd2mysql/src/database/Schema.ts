@@ -108,6 +108,15 @@ export const date: Column<string> = column({ type: "date" });
 
 export const time: Column<string> = column({ type: "time" });
 
+/**
+ * A GTFS time, which counts from the start of the service day rather than the clock: a call after
+ * midnight is 24:01:00, and a late one 26:15:00. Always written as HH:MM:SS.
+ *
+ * MySQL's TIME holds these, as it runs to 838 hours. Postgres' refuses anything past 24:00:00, so there
+ * it is text, eight characters, which orders the same way the times do.
+ */
+export const serviceTime: Column<string> = column({ type: "serviceTime" });
+
 /** The generated identifier of a row in another table, not a database level constraint */
 export const foreignKey: Column<number> = column({ type: "foreignKey" });
 

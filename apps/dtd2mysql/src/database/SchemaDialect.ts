@@ -25,6 +25,7 @@ export type FieldType =
   | { type: "boolean" }
   | { type: "date" }
   | { type: "time" }
+  | { type: "serviceTime" }
   | { type: "double", length: number, decimalDigits: number }
   | { type: "decimal", length: number, decimalDigits: number }
   | { type: "float" }

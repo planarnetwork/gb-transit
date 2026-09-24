@@ -18,6 +18,7 @@ export const sqliteSchemaDialect: SchemaDialect = {
       case "text": return sql.raw(field.variableLength ? `varchar(${field.length})` : `char(${field.length})`);
       case "date": return sql.raw("text");
       case "time": return sql.raw("text");
+      case "serviceTime": return sql.raw("text");
       case "boolean": return sql.raw("integer");
       case "int": return sql.raw("integer");
       case "foreignKey": return sql.raw("integer");

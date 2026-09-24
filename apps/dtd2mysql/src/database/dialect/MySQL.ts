@@ -51,6 +51,7 @@ function storageType(field: FieldType): string {
     case "boolean": return "tinyint(1) unsigned";
     case "date": return "date";
     case "time": return "time";
+    case "serviceTime": return "time";
     case "double": return `double(${field.length}, ${field.decimalDigits}) unsigned`;
     // signed, unlike the other numbers here: a decimal holds a coordinate
     case "decimal": return `decimal(${field.length}, ${field.decimalDigits})`;
