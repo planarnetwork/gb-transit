@@ -95,15 +95,14 @@ export class CifFileSource implements TimetableSource {
   }
 
   /**
-   * SELECT crs_code, crs_code, 2, minimum_change_time * 60 FROM physical_station
-   * WHERE cate_interchange_status IS NOT NULL GROUP BY crs_code
-   *
-   * Note there is no `crs_code IS NOT NULL` here, unlike getStops.
+   * The minimum change time of each station, from the rated TIPLOC getStops
+   * would choose for it. The rating is a condition on which TIPLOCs are ranked,
+   * so a station whose preferred TIPLOC has none takes its time from the next.
    */
   public async getTransfers(): Promise<Transfer[]> {
     const {stations} = await this.reference();
 
-    return groupByCrs(stations.rows.filter(row => row.cate_interchange_status !== null))
+    return groupByCrs(stations.rows.filter(row => row.crs_code !== null && row.cate_interchange_status !== null))
       .map(row => interchange(row.crs_code as string, integer(row, "minimum_change_time") * 60));
   }
 
@@ -157,7 +156,7 @@ export class CifFileSource implements TimetableSource {
  */
 function toStops(reference: Reference, coordinates: StationCoordinates): DroppableStops {
   return withoutPlaceholders(
-    groupByCrs(reference.stations.rows.filter(row => row.crs_code !== null), true)
+    groupByCrs(reference.stations.rows.filter(row => row.crs_code !== null))
       .map(row => toStop(stationRecord(row), coordinates))
   );
 }
@@ -633,19 +632,15 @@ interface Overlaid {
  * nothing and whatever remains has to be a property of the data rather than of
  * the order it arrived in. The database and the file source read the rows in
  * different orders, and a tie-break that depends on that makes them disagree.
- *
- * `preferStation` is off for transfers, which want the minimum change time of
- * whichever row the database would have grouped to. Changing that is a separate
- * question from which TIPLOC to publish.
  */
-function groupByCrs(rows: Row[], preferStation = false): Row[] {
+function groupByCrs(rows: Row[]): Row[] {
   const groups = new Map<string, Row>();
 
   for (const row of rows) {
     const crs = String(row.crs_code);
     const chosen = groups.get(crs);
 
-    if (chosen === undefined || (preferStation && better(row, chosen))) {
+    if (chosen === undefined || better(row, chosen)) {
       groups.set(crs, row);
     }
   }
