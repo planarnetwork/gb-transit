@@ -10,7 +10,8 @@ MySQL, Postgres and SQLite are supported, chosen with `DATABASE_DIALECT` and def
 
 ## Requirements
 
-Node.js 22 or later. Date handling uses `Temporal`, through
+Node.js 22.16 or later, the first 22 whose built-in SQLite has everything the SQLite support uses.
+Date handling uses `Temporal`, through
 [`temporal-polyfill`](https://www.npmjs.com/package/temporal-polyfill), which hands over to the
 built-in global on the versions that have one - Node 26 and later.
 

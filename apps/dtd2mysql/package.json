@@ -37,7 +37,7 @@
   },
   "homepage": "https://github.com/planarnetwork/gb-transit#readme",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.16"
   },
   "dependencies": {
     "@gb-transit/dtd-schema": "workspace:^",
