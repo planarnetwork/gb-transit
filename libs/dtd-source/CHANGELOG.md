@@ -1,5 +1,23 @@
 # @gb-transit/dtd-source
 
+## 1.4.0
+
+### Minor Changes
+
+- 85add7a: `DownloadAndProcessCommand` stops at the first file that fails to process and rejects with its error,
+  rather than logging it and going on to the next. The files are changes applied in order, so going on
+  recorded a later one as processed and the failed one was never taken again.
+
+### Patch Changes
+
+- 85add7a: `CifFileSource.getTransfers` takes each station's minimum change time from the TIPLOC `getStops`
+  chooses for it - the station rather than a subsidiary junction sharing its CRS - rather than from
+  whichever rated TIPLOC the file lists first, and leaves out TIPLOCs with no CRS. A feed built from
+  the files and one built from the database now agree on transfers.txt.
+- Updated dependencies [85add7a]
+  - @gb-transit/feed-parser@1.0.1
+  - @gb-transit/gtfs@3.7.0
+
 ## 1.3.0
 
 ### Minor Changes
