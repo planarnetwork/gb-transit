@@ -59,7 +59,7 @@
     "@types/byline": "4.2.36",
     "@types/pg": "8.23.1",
     "pg": "8.23.1",
-    "pg-cursor": "2.15.3",
+    "pg-cursor": "2.22.1",
     "typescript": "7.0.2"
   },
   "peerDependencies": {
