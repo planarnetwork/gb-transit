@@ -55,7 +55,7 @@ jobs:
       KNOWLEDGEBASE_API_KEY: ${{ secrets.KNOWLEDGEBASE_API_KEY }}
       GTFS_RANGE: ${{ inputs.range || '3 months' }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v5
         with:
           node-version: '26'
@@ -696,7 +696,7 @@ jobs:
       matrix:
         shard: [1, 2, 3, 4, 5, 6]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v5
         with:
           node-version: '26'
@@ -741,7 +741,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v5
         with:
           node-version: '26'
@@ -812,7 +812,7 @@ jobs:
     # than it did here. So an hour or so, and this is the room that leaves.
     timeout-minutes: 120
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v5
         with:
           node-version: '26'
