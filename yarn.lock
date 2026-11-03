@@ -2588,7 +2588,7 @@ __metadata:
     memoized-class-decorator: "npm:1.6.1"
     mysql2: "npm:3.23.1"
     pg: "npm:8.23.1"
-    pg-cursor: "npm:2.15.3"
+    pg-cursor: "npm:2.22.1"
     proj4: "npm:2.20.9"
     temporal-polyfill: "npm:1.0.6"
     typescript: "npm:7.0.2"
@@ -3627,12 +3627,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pg-cursor@npm:2.15.3":
-  version: 2.15.3
-  resolution: "pg-cursor@npm:2.15.3"
+"pg-cursor@npm:2.22.1":
+  version: 2.22.1
+  resolution: "pg-cursor@npm:2.22.1"
   peerDependencies:
     pg: ^8
-  checksum: 10c0/60ea02689af0b6bd89946a7abb123260506e6fe9be1ea3c547e7d6fbbde5a6c8ca066f4114d6bd6699a87c47c93c9c5d7bfa6ff39bb62290221f5a3c0e1516b2
+  checksum: 10c0/fb98152b01b43a5de79fb515adca26137b75ca4c96007ce7195e969c180c9922d72b1c97d9349f7213bcc1ca64d945cc15fa242c5e04eedd8c5933e31cd10e78
   languageName: node
   linkType: hard
 
