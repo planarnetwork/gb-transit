@@ -36,7 +36,7 @@ jobs:
       # publishing over OIDC is an npm feature.
       - name: Ensure npm supports trusted publishing
         run: npm install -g npm@latest
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: .yarn/cache
           key: yarn-${{ runner.os }}-${{ hashFiles('yarn.lock') }}
