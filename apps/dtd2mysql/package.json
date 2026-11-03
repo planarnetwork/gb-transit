@@ -55,7 +55,7 @@
     "temporal-polyfill": "1.0.6"
   },
   "devDependencies": {
-    "@types/adm-zip": "0.5.8",
+    "@types/adm-zip": "0.6.0",
     "@types/byline": "4.2.36",
     "@types/pg": "8.15.6",
     "pg": "8.16.3",
