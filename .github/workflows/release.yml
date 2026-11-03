@@ -48,7 +48,7 @@ jobs:
       # Pending changesets become a "Version Packages" pull request. Merging it
       # is what triggers the publish below, so the version bump and the publish
       # cannot come apart: a failed publish leaves nothing tagged.
-      - uses: changesets/action@v1
+      - uses: changesets/action@v2.1.2
         with:
           version: yarn changeset version
           publish: yarn release
