@@ -1,6 +1,6 @@
 {
   "name": "@gb-transit/gtfs-schema",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "The shape of a GTFS feed - one type per file, and the scalars they are written in",
   "license": "GPL-3.0",
   "repository": {
