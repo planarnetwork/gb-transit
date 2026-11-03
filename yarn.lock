@@ -2375,10 +2375,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"cheap-ruler@npm:3.0.2":
-  version: 3.0.2
-  resolution: "cheap-ruler@npm:3.0.2"
-  checksum: 10c0/01015bd8ae5eed326224e6c28a62f6c00b5b8e196f0040aac77912b6cf65c8f824e284f6cea4484adfc7868e521245022f1d82ca9b56e8a4a48369b575b71365
+"cheap-ruler@npm:4.1.1":
+  version: 4.1.1
+  resolution: "cheap-ruler@npm:4.1.1"
+  checksum: 10c0/c0da285f02cd366c9f7477471c22eaad93a5fce14a4973088471441f0772e510406130f7ac1f0e521598330ec4a9e9f93c0f1037e9132d87b614142b0ee3ee2d
   languageName: node
   linkType: hard
 
@@ -3203,7 +3203,7 @@ __metadata:
     "@gb-transit/gtfs-loader": "workspace:^"
     "@gb-transit/gtfs-output": "workspace:^"
     "@gb-transit/gtfs-schema": "workspace:^"
-    cheap-ruler: "npm:3.0.2"
+    cheap-ruler: "npm:4.1.1"
     fflate: "npm:^0.8.3"
     typescript: "npm:7.0.2"
   bin:
