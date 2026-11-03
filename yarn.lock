@@ -1316,9 +1316,9 @@ __metadata:
   linkType: hard
 
 "@js-joda/core@npm:^6.0.1":
-  version: 6.1.0
-  resolution: "@js-joda/core@npm:6.1.0"
-  checksum: 10c0/7713d867e08f3f57e368a38820fbdfebe848cb073cf405edfe2ad04c9fcf55d664b07ed331ffd775a4f192aa7888588a4718ca827e29d58c0be093eec1d6c40d
+  version: 6.3.2
+  resolution: "@js-joda/core@npm:6.3.2"
+  checksum: 10c0/6717d272c292e681d9090ac5694bbee1b24d6f43d21f5bab744a6cd17df90828e2a724d1295d8a6ae3e4aa92d3631fc7a2d6ae678819f6d64e8645a839194b1d
   languageName: node
   linkType: hard
 
