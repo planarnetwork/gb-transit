@@ -29,7 +29,7 @@
     "@gb-transit/dtd-schema": "workspace:^",
     "@gb-transit/feed-parser": "workspace:^",
     "@gb-transit/gtfs": "workspace:^",
-    "adm-zip": "0.6.0",
+    "adm-zip": "0.6.1",
     "byline": "5.0.0",
     "ssh2": "1.17.0",
     "temporal-polyfill": "1.0.4"
