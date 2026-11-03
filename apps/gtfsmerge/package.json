@@ -44,7 +44,7 @@
     "@gb-transit/gtfs-loader": "workspace:^",
     "@gb-transit/gtfs-output": "workspace:^",
     "@gb-transit/gtfs-schema": "workspace:^",
-    "cheap-ruler": "3.0.2"
+    "cheap-ruler": "4.1.1"
   },
   "devDependencies": {
     "fflate": "^0.8.3",
