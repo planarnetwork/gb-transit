@@ -874,7 +874,7 @@ __metadata:
   dependencies:
     "@gb-transit/gtfs-schema": "workspace:^"
     memoized-class-decorator: "npm:1.6.1"
-    proj4: "npm:2.20.9"
+    proj4: "npm:2.22.0"
     temporal-polyfill: "npm:1.0.6"
     typescript: "npm:7.0.2"
   languageName: unknown
@@ -1693,12 +1693,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:26.1.1":
-  version: 26.1.1
-  resolution: "@types/node@npm:26.1.1"
+"@types/node@npm:26.6.6":
+  version: 26.6.6
+  resolution: "@types/node@npm:26.6.6"
   dependencies:
-    undici-types: "npm:~8.3.0"
-  checksum: 10c0/25ac5093195736dd074d5027adbba85617bc951d5a41506ebd3b9073048acb7233613f3822d5f9b9447f9c0841c91f6387c46283916767e3ef79f23917452c46
+    undici-types: "npm:~8.9.0"
+  checksum: 10c0/5cb63f644f6e85a257a9cd2403cbcbe196760e2a35fd3ec9fb8b5cff663e14cc832b198cc17b53f870a2e30900ed45a1fb3f53e6589aba26b8e8c484aa672053
   languageName: node
   linkType: hard
 
@@ -2473,13 +2473,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"denque@npm:^2.1.0":
-  version: 2.1.0
-  resolution: "denque@npm:2.1.0"
-  checksum: 10c0/f9ef81aa0af9c6c614a727cb3bd13c5d7db2af1abf9e6352045b86e85873e629690f6222f4edd49d10e4ccf8f078bbeec0794fafaf61b659c0589d0c511ec363
-  languageName: node
-  linkType: hard
-
 "dequal@npm:^2.0.0":
   version: 2.0.3
   resolution: "dequal@npm:2.0.3"
@@ -2586,10 +2579,10 @@ __metadata:
     byline: "npm:5.0.0"
     kysely: "npm:0.29.7"
     memoized-class-decorator: "npm:1.6.1"
-    mysql2: "npm:3.23.1"
+    mysql2: "npm:3.24.6"
     pg: "npm:8.23.1"
     pg-cursor: "npm:2.22.1"
-    proj4: "npm:2.20.9"
+    proj4: "npm:2.22.0"
     temporal-polyfill: "npm:1.0.6"
     typescript: "npm:7.0.2"
   peerDependencies:
@@ -2859,7 +2852,7 @@ __metadata:
   resolution: "gb-transit@workspace:."
   dependencies:
     "@changesets/cli": "npm:^3.0.0"
-    "@types/node": "npm:26.1.1"
+    "@types/node": "npm:26.6.6"
     tsx: "npm:4.23.15"
     typescript: "npm:7.0.2"
     vitest: "npm:^4.1.10"
@@ -2994,7 +2987,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"iconv-lite@npm:^0.7.2":
+"iconv-lite@npm:^0.7.3":
   version: 0.7.3
   resolution: "iconv-lite@npm:0.7.3"
   dependencies:
@@ -3399,21 +3392,20 @@ __metadata:
   languageName: node
   linkType: hard
 
-"mysql2@npm:3.23.1":
-  version: 3.23.1
-  resolution: "mysql2@npm:3.23.1"
+"mysql2@npm:3.24.6":
+  version: 3.24.6
+  resolution: "mysql2@npm:3.24.6"
   dependencies:
     aws-ssl-profiles: "npm:^1.1.2"
-    denque: "npm:^2.1.0"
     generate-function: "npm:^2.3.1"
-    iconv-lite: "npm:^0.7.2"
+    iconv-lite: "npm:^0.7.3"
     long: "npm:^5.3.2"
     lru.min: "npm:^1.1.4"
     named-placeholders: "npm:^1.1.6"
     sql-escaper: "npm:^1.5.1"
   peerDependencies:
     "@types/node": ">= 8"
-  checksum: 10c0/67bd75281b6be93a8a8ce6b95640f3596e8bc3de985e56dc5c861a0090dc959cd8b97ee5b3242b1dd4b495a0ddb13683eecc4d0369aaf39058b367937919f9cd
+  checksum: 10c0/43b6353f14bf54eb216304d4b75e5f0ffcf4476bf0531f4e6fbae61f0654816ef1b6a508317a99e7c1b755e76a64b5a915a452ea1e7802b975406691e08f155e
   languageName: node
   linkType: hard
 
@@ -3847,9 +3839,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"proj4@npm:2.20.9":
-  version: 2.20.9
-  resolution: "proj4@npm:2.20.9"
+"proj4@npm:2.22.0":
+  version: 2.22.0
+  resolution: "proj4@npm:2.22.0"
   dependencies:
     mgrs: "npm:1.0.0"
     wkt-parser: "npm:^1.5.5"
@@ -3858,7 +3850,7 @@ __metadata:
   peerDependenciesMeta:
     geotiff:
       optional: true
-  checksum: 10c0/9917dc75627a3198b0226741a04e29ecd084f3613ba4a9359815fddab4f579d3135cf68d3ba914659470c45a5ca9c3d52b6f68a43365d6b9484d8603761ecdf9
+  checksum: 10c0/11452d48cda44ff6011e7af9879b4881d7010c7be763785c319819362bb13ffed986174f72cf540c8e3854691f573fcb7fe95d8a5cec3dddd2091f6f92e307a9
   languageName: node
   linkType: hard
 
@@ -4472,7 +4464,7 @@ __metadata:
     adm-zip: "npm:0.6.1"
     date-holidays: "npm:^3.27.0"
     fflate: "npm:^0.8.3"
-    proj4: "npm:2.20.9"
+    proj4: "npm:2.22.0"
     typescript: "npm:7.0.2"
     xml2js: "npm:^0.6.2"
   bin:
@@ -4697,6 +4689,13 @@ __metadata:
   version: 8.3.0
   resolution: "undici-types@npm:8.3.0"
   checksum: 10c0/c8aa7e2fbebfce519654dafadc0ece59be888d2ccaf180fb4495da875e7b536d2456345c384069c7e6f3e9c9ab7435f074957da306f142343eee86ff8048855a
+  languageName: node
+  linkType: hard
+
+"undici-types@npm:~8.9.0":
+  version: 8.9.0
+  resolution: "undici-types@npm:8.9.0"
+  checksum: 10c0/51c712c20c087368f62c6fc0f2bc49fa76bfe5dec28ff01584bb677ff29b0622569783c02d43e151143808c48c0503f804093bd2c491b10f2a830138034cb451
   languageName: node
   linkType: hard
 
