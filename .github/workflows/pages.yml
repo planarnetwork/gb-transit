@@ -132,7 +132,7 @@ jobs:
       # just has less to say.
       - run: yarn workspace @gb-transit/website run build
 
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v3
         with:
           path: apps/website/dist
