@@ -48,12 +48,18 @@ jobs:
       # Pending changesets become a "Version Packages" pull request. Merging it
       # is what triggers the publish below, so the version bump and the publish
       # cannot come apart: a failed publish leaves nothing tagged.
+      #
+      # No tags and no GitHub releases. A package release would become the
+      # repository's latest release, and the site downloads its feed from
+      # whichever release is.
       - uses: changesets/action@v2.1.2
         with:
-          version: yarn changeset version
-          publish: yarn release
-          commit: 'Version packages'
-          title: 'Version packages'
+          version-script: yarn changeset version
+          publish-script: yarn release
+          commit-message: 'Version packages'
+          pr-title: 'Version packages'
+          create-github-releases: false
+          push-git-tags: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
