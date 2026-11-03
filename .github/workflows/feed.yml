@@ -534,7 +534,7 @@ jobs:
         env:
           TFL: ${{ steps.tfl_feed.outputs.published }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: feed
@@ -708,7 +708,7 @@ jobs:
       - run: yarn install --immutable
       - run: yarn build
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: feed
 
@@ -725,7 +725,7 @@ jobs:
       # A day, not fourteen. These are read once by the job below and are worth
       # nothing afterwards. The .json beside each shard is how the merge tells
       # six shards of one run from six shards of two.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: patterns-${{ matrix.shard }}
           path: |
@@ -753,7 +753,7 @@ jobs:
       - run: yarn install --immutable
       - run: yarn build
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: patterns-*
           merge-multiple: true
@@ -774,7 +774,7 @@ jobs:
           cat transfer-patterns-meta.json
           ls -la transfer-patterns.br
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: transfer-patterns
@@ -824,7 +824,7 @@ jobs:
       - run: yarn install --immutable
       - run: yarn build
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: transfer-patterns
 
@@ -862,7 +862,7 @@ jobs:
           tar -tf station-patterns-gz.tar | wc -l
           tar -tf station-patterns-br.tar | wc -l
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: transfer-patterns-packaged
