@@ -32,7 +32,7 @@
   "dependencies": {
     "@gb-transit/gtfs-schema": "workspace:^",
     "memoized-class-decorator": "1.6.1",
-    "proj4": "2.20.9",
+    "proj4": "2.22.0",
     "temporal-polyfill": "1.0.6"
   },
   "devDependencies": {
