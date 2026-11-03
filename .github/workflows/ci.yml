@@ -25,7 +25,7 @@ jobs:
       # why this check silently passed for as long as it existed: the diff
       # failed, `|| true` swallowed it, and an empty result read as nothing
       # changed.
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       # A baseline records current behaviour, so changing one is normal - but it
@@ -131,7 +131,7 @@ jobs:
       DATABASE_PASSWORD: ${{ matrix.password }}
       DATABASE_NAME: ${{ matrix.name }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v5
         with:
           node-version: '26'
@@ -171,7 +171,7 @@ jobs:
     env:
       VALIDATOR_VERSION: 8.0.1
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v5
         with:
           node-version: '26'
@@ -206,7 +206,7 @@ jobs:
   package:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v5
         with:
           node-version: '26'
