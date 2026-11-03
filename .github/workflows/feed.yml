@@ -63,7 +63,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: .yarn/cache
           key: yarn-${{ runner.os }}-${{ hashFiles('yarn.lock') }}
@@ -102,7 +102,7 @@ jobs:
       # the set to fetch from what is already on disk, and that needs the disk
       # to persist. Until a cursor reads this directory, it is carrying a cost
       # for a later benefit.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: data/feeds
           key: dtd-feeds-${{ github.run_id }}
@@ -700,7 +700,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '26'
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: .yarn/cache
           key: yarn-${{ runner.os }}-${{ hashFiles('yarn.lock') }}
@@ -745,7 +745,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '26'
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: .yarn/cache
           key: yarn-${{ runner.os }}-${{ hashFiles('yarn.lock') }}
@@ -816,7 +816,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '26'
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: .yarn/cache
           key: yarn-${{ runner.os }}-${{ hashFiles('yarn.lock') }}
