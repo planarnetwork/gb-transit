@@ -4381,11 +4381,11 @@ __metadata:
   linkType: hard
 
 "raptor-journey-planner@npm:^5.0.1":
-  version: 5.1.0
-  resolution: "raptor-journey-planner@npm:5.1.0"
+  version: 5.2.0
+  resolution: "raptor-journey-planner@npm:5.2.0"
   dependencies:
     "@gb-transit/gtfs-loader": "npm:^1.2.0"
-  checksum: 10c0/743cae49c866bab4091043e339bafbb6d3984a2f4b9a1acc85db95a71b08c2f1e9d3351a0e28f9d5ac2b02f779c028c0979b364148b3a82b1b95744f55e79591
+  checksum: 10c0/3079cfc519b2a5250f086d074fb87b5f9858b7ceff3cb16ff37aa4ceeb7a2022d960f939d3b78e6a51c27bd243783046492c2e266051aeb386ccc5fb3a2b23f2
   languageName: node
   linkType: hard
 

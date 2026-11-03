@@ -4,7 +4,7 @@
  * Each shard has already been through `TransferPatternMerge`, which sorts a bucket with
  * `[...set].sort()` - a plain lexicographic sort of the whole line. So the order here has to be
  * that same order, and the comparison below is `<` on the joined codes rather than anything
- * cleverer. Get it wrong and `frontCode` still writes a file: one that decodes into patterns
+ * cleverer. Get it wrong and `FrontCoder` still writes a file: one that decodes into patterns
  * nobody ever found, rather than one that fails. Hence the tests.
  *
  * Linear in the output and holding one pattern per shard, rather than the deal-into-buckets and
