@@ -823,7 +823,7 @@ __metadata:
     "@gb-transit/gtfs": "workspace:^"
     "@types/adm-zip": "npm:0.5.8"
     "@types/byline": "npm:4.2.36"
-    "@types/ssh2": "npm:1.15.5"
+    "@types/ssh2": "npm:1.15.6"
     adm-zip: "npm:0.6.1"
     byline: "npm:5.0.0"
     ssh2: "npm:1.17.0"
@@ -1828,12 +1828,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/ssh2@npm:1.15.5":
-  version: 1.15.5
-  resolution: "@types/ssh2@npm:1.15.5"
+"@types/ssh2@npm:1.15.6":
+  version: 1.15.6
+  resolution: "@types/ssh2@npm:1.15.6"
   dependencies:
     "@types/node": "npm:^18.11.18"
-  checksum: 10c0/750e402ce60d6dd67011bf1a811dcbbe638da14baca30c0952b50bad646c4ef8d6fc400894e20f5d2f8882e38b4c35eb6d4f5fe2ecd1d1b1a2f9efef9cf6e773
+  checksum: 10c0/67bf0ba6a2a793e5319b5ea2cbe936624a63f5081db26b9c9a49e5283b9c59b5af00eb4d59032e1ad612b462aca4b9995e1bd84aad96ce55395354524c3d7cba
   languageName: node
   linkType: hard
 
