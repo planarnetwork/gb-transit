@@ -2264,6 +2264,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"argparse@npm:^3.0.3":
+  version: 3.0.4
+  resolution: "argparse@npm:3.0.4"
+  checksum: 10c0/845346e39e677b46f8558cece7c8dad1f7045f8b86af33356d8565b26a16940bf770a14a51d6da40ce76554a141e0e95b514d055d1da17a2f1b42df7d523fa0f
+  languageName: node
+  linkType: hard
+
 "aria-query@npm:^5.3.2":
   version: 5.3.2
   resolution: "aria-query@npm:5.3.2"
@@ -2719,16 +2726,16 @@ __metadata:
   linkType: hard
 
 "date-holidays@npm:^3.27.0":
-  version: 3.36.0
-  resolution: "date-holidays@npm:3.36.0"
+  version: 3.38.0
+  resolution: "date-holidays@npm:3.38.0"
   dependencies:
     date-holidays-parser: "npm:^3.4.7"
-    js-yaml: "npm:^5.3.0"
+    js-yaml: "npm:^5.5.0"
     lodash: "npm:^4.18.1"
     prepin: "npm:^1.0.3"
   bin:
     holidays2json: scripts/holidays2json.cjs
-  checksum: 10c0/c7e4d38f7dd19def983368635e16f7e48fe12ad12db05c1325549d1fdc9fd588d2f17f1c7cd014e8fb34f072d07b686ad7c53564b8e90532c186cac2458c44a7
+  checksum: 10c0/9eb37f6ee355c04acb1b385c3a2a55bcf87ea531c3f3a63db44f002a60b1e88eb6f38541fc32d4765bf4584dbcbb4eb1090e7f6f161321323107b5d61c09f62a
   languageName: node
   linkType: hard
 
@@ -3544,14 +3551,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"js-yaml@npm:^5.3.0":
-  version: 5.4.1
-  resolution: "js-yaml@npm:5.4.1"
+"js-yaml@npm:^5.5.0":
+  version: 5.5.0
+  resolution: "js-yaml@npm:5.5.0"
   dependencies:
-    argparse: "npm:^2.0.1"
+    argparse: "npm:^3.0.3"
   bin:
     js-yaml: bin/js-yaml.mjs
-  checksum: 10c0/efe9dfaf222809694d375ad5ecca825561d2432eb55bc0f628911c0dfa4dbce98a71dcbc3252f630208bbdf5f4e9ac363847e4a7f49845b577ae2548b8fcf147
+  checksum: 10c0/311619f44dd788657e9b81d4b5c60ff367441f364045e3796bc604a41f25819852748fb173ae82f2553d53cb609d7fdb79e0a74148892cb2c085eebe91839b53
   languageName: node
   linkType: hard
 
