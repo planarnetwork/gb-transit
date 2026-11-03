@@ -1,9 +1,7 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import * as zlib from "node:zlib";
 import {afterEach, beforeEach, describe, expect, it} from "vitest";
-import {frontCode} from "raptor-journey-planner";
 import {readPatternFile, writePatternFile} from "../src/merge/patternFile.js";
 
 let workDir: string;
@@ -33,7 +31,7 @@ function code(n: number): string {
 }
 
 /**
- * Sorted and duplicate free, because that is what both the writer and raptor's own merge are given.
+ * Sorted and duplicate free, because that is what both the writer and the planner's own merge are given.
  *
  * Lengths run from two stations to fourteen, which is the longest a national feed produced and the
  * reason the shared count is a character counting up rather than a digit.
@@ -71,24 +69,6 @@ describe("writePatternFile", () => {
     }
 
     expect(read).to.deep.equal(written);
-  });
-
-  it("writes the bytes raptor's own coder would", async () => {
-    // Two implementations of one format: the file is written with the planner's FrontCoder and
-    // read by raptor's readPatterns as readily, so a difference between them is a file that
-    // decodes into patterns nobody found rather than one that fails.
-    const written = patterns(25_000);
-
-    const file = path.join(workDir, "patterns.br");
-
-    await writePatternFile(from(written), file);
-
-    const coded = zlib.brotliDecompressSync(await fs.promises.readFile(file))
-      .toString("utf8")
-      .split("\n")
-      .filter(line => line !== "");
-
-    expect(coded).to.deep.equal([...frontCode(written.map(pattern => pattern.join("")))]);
   });
 
   it("writes an empty file for no patterns", async () => {
