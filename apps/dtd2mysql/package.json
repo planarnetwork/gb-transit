@@ -57,8 +57,8 @@
   "devDependencies": {
     "@types/adm-zip": "0.5.8",
     "@types/byline": "4.2.36",
-    "@types/pg": "8.15.6",
-    "pg": "8.16.3",
+    "@types/pg": "8.23.1",
+    "pg": "8.23.1",
     "pg-cursor": "2.15.3",
     "typescript": "7.0.2"
   },
