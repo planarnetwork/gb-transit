@@ -51,7 +51,7 @@
     "kysely": "0.29.7",
     "memoized-class-decorator": "1.6.1",
     "mysql2": "3.23.1",
-    "proj4": "2.20.9",
+    "proj4": "2.22.0",
     "temporal-polyfill": "1.0.6"
   },
   "devDependencies": {

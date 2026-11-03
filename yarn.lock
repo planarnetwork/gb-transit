@@ -874,7 +874,7 @@ __metadata:
   dependencies:
     "@gb-transit/gtfs-schema": "workspace:^"
     memoized-class-decorator: "npm:1.6.1"
-    proj4: "npm:2.20.9"
+    proj4: "npm:2.22.0"
     temporal-polyfill: "npm:1.0.6"
     typescript: "npm:7.0.2"
   languageName: unknown
@@ -2589,7 +2589,7 @@ __metadata:
     mysql2: "npm:3.23.1"
     pg: "npm:8.23.1"
     pg-cursor: "npm:2.22.1"
-    proj4: "npm:2.20.9"
+    proj4: "npm:2.22.0"
     temporal-polyfill: "npm:1.0.6"
     typescript: "npm:7.0.2"
   peerDependencies:
@@ -3847,9 +3847,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"proj4@npm:2.20.9":
-  version: 2.20.9
-  resolution: "proj4@npm:2.20.9"
+"proj4@npm:2.22.0":
+  version: 2.22.0
+  resolution: "proj4@npm:2.22.0"
   dependencies:
     mgrs: "npm:1.0.0"
     wkt-parser: "npm:^1.5.5"
@@ -3858,7 +3858,7 @@ __metadata:
   peerDependenciesMeta:
     geotiff:
       optional: true
-  checksum: 10c0/9917dc75627a3198b0226741a04e29ecd084f3613ba4a9359815fddab4f579d3135cf68d3ba914659470c45a5ca9c3d52b6f68a43365d6b9484d8603761ecdf9
+  checksum: 10c0/11452d48cda44ff6011e7af9879b4881d7010c7be763785c319819362bb13ffed986174f72cf540c8e3854691f573fcb7fe95d8a5cec3dddd2091f6f92e307a9
   languageName: node
   linkType: hard
 
@@ -4472,7 +4472,7 @@ __metadata:
     adm-zip: "npm:0.6.1"
     date-holidays: "npm:^3.27.0"
     fflate: "npm:^0.8.3"
-    proj4: "npm:2.20.9"
+    proj4: "npm:2.22.0"
     typescript: "npm:7.0.2"
     xml2js: "npm:^0.6.2"
   bin:
