@@ -768,7 +768,7 @@ __metadata:
     adm-zip: "npm:0.6.1"
     byline: "npm:5.0.0"
     ssh2: "npm:1.17.0"
-    temporal-polyfill: "npm:1.0.6"
+    temporal-polyfill: "npm:1.0.7"
     typescript: "npm:7.0.2"
   languageName: unknown
   linkType: soft
@@ -863,7 +863,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@gb-transit/gtfs-schema@workspace:libs/gtfs-schema"
   dependencies:
-    temporal-polyfill: "npm:1.0.6"
+    temporal-polyfill: "npm:1.0.7"
     typescript: "npm:7.0.2"
   languageName: unknown
   linkType: soft
@@ -875,7 +875,7 @@ __metadata:
     "@gb-transit/gtfs-schema": "workspace:^"
     memoized-class-decorator: "npm:1.6.1"
     proj4: "npm:2.22.0"
-    temporal-polyfill: "npm:1.0.6"
+    temporal-polyfill: "npm:1.0.7"
     typescript: "npm:7.0.2"
   languageName: unknown
   linkType: soft
@@ -2391,7 +2391,7 @@ __metadata:
     pg: "npm:8.23.1"
     pg-cursor: "npm:2.22.1"
     proj4: "npm:2.22.0"
-    temporal-polyfill: "npm:1.0.6"
+    temporal-polyfill: "npm:1.0.7"
     typescript: "npm:7.0.2"
   peerDependencies:
     pg: ">=8"
@@ -4018,13 +4018,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"temporal-polyfill@npm:1.0.6":
-  version: 1.0.6
-  resolution: "temporal-polyfill@npm:1.0.6"
+"temporal-polyfill@npm:1.0.7":
+  version: 1.0.7
+  resolution: "temporal-polyfill@npm:1.0.7"
   dependencies:
     temporal-spec: "npm:1.0.1"
-    temporal-utils: "npm:1.0.3"
-  checksum: 10c0/f67f3d0edf62335cc572f7680cfc9f3da6b9124fbcbc22fd016d17fcedb64ac8c7ce26886474c1ecc549a1e5fe0bc167988da5c59d51d88956a5a7e7195fb2b1
+    temporal-utils: "npm:1.0.4"
+  checksum: 10c0/d9bdd60ba0ae261c8902cd8868f4bb72e096c848db86a1fd121e4892c1df1053b016afa0dc95dab9e65d17f3b1d816aff0583504e103fb840de5c7f3259bb5f2
   languageName: node
   linkType: hard
 
@@ -4035,10 +4035,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"temporal-utils@npm:1.0.3":
-  version: 1.0.3
-  resolution: "temporal-utils@npm:1.0.3"
-  checksum: 10c0/185928a75aba0496ebbbdecbbbbd55cc817756bc39e099424e86477da01042a84ed27482bfc2168b6802fed2f01f004739f174f907e2e125b2fa060a978024b6
+"temporal-utils@npm:1.0.4":
+  version: 1.0.4
+  resolution: "temporal-utils@npm:1.0.4"
+  checksum: 10c0/cd5105d49f01794c5adfde697178364a70b56c28be60119922bbb1a96dd4d8de43537fa31883aff85e0c18b39cd2e1d2facfc794750e03621c6983f95b39da1b
   languageName: node
   linkType: hard
 
