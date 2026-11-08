@@ -52,7 +52,7 @@
     "memoized-class-decorator": "1.6.1",
     "mysql2": "3.24.6",
     "proj4": "2.22.0",
-    "temporal-polyfill": "1.0.7"
+    "temporal-polyfill": "1.0.8"
   },
   "devDependencies": {
     "@types/adm-zip": "0.6.0",
