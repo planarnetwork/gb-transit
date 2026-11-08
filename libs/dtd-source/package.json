@@ -32,7 +32,7 @@
     "adm-zip": "0.6.1",
     "byline": "5.0.0",
     "ssh2": "1.17.0",
-    "temporal-polyfill": "1.0.7"
+    "temporal-polyfill": "1.0.8"
   },
   "devDependencies": {
     "@types/adm-zip": "0.6.0",
