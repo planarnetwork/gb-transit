@@ -13,6 +13,14 @@ before committing it** - that is the whole value of the file being text.
 
 ---
 
+## NT is Northern
+
+`golden/agency.txt` moves on one row, `NT`, in two columns: `agency_name` goes from `Northern Rail`
+to `Northern` and `agency_url` from `https://www.northernrail.org/` to
+`https://www.northernrailway.co.uk/`. Northern Rail was the franchise that ended in 2016; the
+operator holding the NT code is now Northern Trains, which trades as Northern. Nothing else in the
+feed moves (#271).
+
 ## A boarding point no longer answers for its station's accessibility
 
 `golden/stops.txt` moves in one column, `wheelchair_boarding`, on 129 of its 345 rows. Every one is
