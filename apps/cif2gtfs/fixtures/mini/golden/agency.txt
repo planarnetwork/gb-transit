@@ -20,7 +20,7 @@ agency_id,agency_name,agency_url,agency_timezone,agency_lang,agency_phone,agency
 =LS,Locomotive Services,https://lsltoc.co.uk/,Europe/London,en,01225 866205,
 =LT,London Underground,https://tfl.gov.uk/modes/tube/,Europe/London,en,0343 222 1234,
 =ME,Merseyrail,https://www.merseyrail.org/,Europe/London,en,0151 555 1111,
-=NT,Northern Rail,https://www.northernrail.org/,Europe/London,en,0800 200 6060,
+=NT,Northern,https://www.northernrailway.co.uk/,Europe/London,en,0800 200 6060,
 =QC,Caledonian MacBrayne,https://www.calmac.co.uk/en-gb#/,Europe/London,en,0800 066 5000,
 =QE,Transdev,https://www.transdevbus.co.uk/,Europe/London,en,01422 553 576,
 =QF,Thames Travel,https://www.oxfordbus.co.uk/,Europe/London,en,01865 785 400,
