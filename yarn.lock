@@ -978,6 +978,15 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@hnw/date-tibetan@npm:^1.0.2":
+  version: 1.0.2
+  resolution: "@hnw/date-tibetan@npm:1.0.2"
+  dependencies:
+    astronomia: "npm:^4.1.0"
+  checksum: 10c0/705047be4ecfd00ab4b20e9e2c8402002dbf203bcf362f429941369e683fc06638946e180c3557ebe825b61f4b64b215b71e091a38f23f26c5049c37ee4fb94d
+  languageName: node
+  linkType: hard
+
 "@img/colour@npm:^1.1.0":
   version: 1.1.0
   resolution: "@img/colour@npm:1.1.0"
@@ -2113,10 +2122,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"astronomia@npm:^4.1.0, astronomia@npm:^4.1.1":
+"astronomia@npm:^4.1.0":
   version: 4.2.0
   resolution: "astronomia@npm:4.2.0"
   checksum: 10c0/789592cb9fdb52db2203968452bbae1f01971313ed08a6f71013796c79714ae402db08defaf8de97f075611d8305bb0b73bf31ad0145cea36e3fa889cc1d9c66
+  languageName: node
+  linkType: hard
+
+"astronomia@npm:^4.3.0":
+  version: 4.3.0
+  resolution: "astronomia@npm:4.3.0"
+  checksum: 10c0/7cd6ecbd05136a0e9c7dd48914a29110eea589d23ffcdeb287c78d757caf7773c9693541c5e7912adf7a23ef2c2c0dedb7ba94a4309b9f54b7084648066a4a85
   languageName: node
   linkType: hard
 
@@ -2178,7 +2194,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"caldate@npm:^2.0.5":
+"caldate@npm:^2.1.0":
   version: 2.1.0
   resolution: "caldate@npm:2.1.0"
   dependencies:
@@ -2391,56 +2407,57 @@ __metadata:
   languageName: node
   linkType: hard
 
-"date-bengali-revised@npm:^2.0.2":
-  version: 2.0.2
-  resolution: "date-bengali-revised@npm:2.0.2"
-  checksum: 10c0/c0a83ed6333a7871385a1b1bdddc992f35c69af6ba1231d28562669992916fbc1672022313213ddb34df9478973b2a2b30a931967e55acfc0d9a8200d596fd40
+"date-bengali-revised@npm:^2.1.0":
+  version: 2.1.0
+  resolution: "date-bengali-revised@npm:2.1.0"
+  checksum: 10c0/82bbf2a95b115218b3d83138643b1b9effc52a1f4d50c8c7acdff8b44108ef5becb2f9a4654d51046c637463476b5d918e7a282571d0dec426a421def0f0ab9f
   languageName: node
   linkType: hard
 
-"date-chinese@npm:^2.1.4":
-  version: 2.1.4
-  resolution: "date-chinese@npm:2.1.4"
+"date-chinese@npm:^2.2.0":
+  version: 2.2.0
+  resolution: "date-chinese@npm:2.2.0"
   dependencies:
-    astronomia: "npm:^4.1.0"
-  checksum: 10c0/1ab1e94d0dcb7fa524d0c4ce54249c3b341779870dbd9c26c008c2a17ae72668b109106cd7e9ac8d6e37d7d3bb796b48f7406b755d3aae3f1c06fdf760714610
+    astronomia: "npm:^4.3.0"
+  checksum: 10c0/6eef45bccec623fea26e32307020e3cf8b9cc52355e0d3c66b2e57e99085edc4bdc9f5c2abba4b4dda9c820de180291b44f28c3838dce0f60b9419b6a0e7dde6
   languageName: node
   linkType: hard
 
-"date-easter@npm:^1.0.3":
-  version: 1.0.3
-  resolution: "date-easter@npm:1.0.3"
-  checksum: 10c0/08734502a3264fb8c5073c22ab13e6624e7981293c72b5e3c37ea88bceae75db9ec8cd25443ea3729b096f5e062469d934f9ebf072a30229b313d1ba28e5d204
+"date-easter@npm:^1.1.0":
+  version: 1.1.0
+  resolution: "date-easter@npm:1.1.0"
+  checksum: 10c0/fd23a6d62592105b842167a04b6d0fbb67599190973b60afce4cbc2cc25a27c7f3ce3ede95ff727ade7d0f98a0454d53c65305c050ef737c758b4169c7d36fa4
   languageName: node
   linkType: hard
 
-"date-holidays-parser@npm:~3.4.7":
-  version: 3.4.7
-  resolution: "date-holidays-parser@npm:3.4.7"
+"date-holidays-parser@npm:^3.7.0":
+  version: 3.7.0
+  resolution: "date-holidays-parser@npm:3.7.0"
   dependencies:
-    astronomia: "npm:^4.1.1"
-    caldate: "npm:^2.0.5"
-    date-bengali-revised: "npm:^2.0.2"
-    date-chinese: "npm:^2.1.4"
-    date-easter: "npm:^1.0.3"
+    "@hnw/date-tibetan": "npm:^1.0.2"
+    astronomia: "npm:^4.3.0"
+    caldate: "npm:^2.1.0"
+    date-bengali-revised: "npm:^2.1.0"
+    date-chinese: "npm:^2.2.0"
+    date-easter: "npm:^1.1.0"
     deepmerge: "npm:^4.3.1"
-    jalaali-js: "npm:^1.2.7"
-    moment-timezone: "npm:^0.5.47"
-  checksum: 10c0/2e65cf1fa0b350bf0a659729a8ce1ed3fc84789fb64a2b6e1ede68758c233ce7255bb493dd0ea558ef66685b14d777b9bd8319b8fca1d0541a7b5e53c66f5bd1
+    jalaali-js: "npm:^2.0.1"
+    moment-timezone: "npm:^0.6.6"
+  checksum: 10c0/3ed042eef00e3904b26a472f3359e55855342d6386f33758926af44546a59afc620f87b953efacc3d8fdc089f614b6d7fa67a0b78865654bef44ff3c34b23def
   languageName: node
   linkType: hard
 
 "date-holidays@npm:^3.27.0":
-  version: 3.38.1
-  resolution: "date-holidays@npm:3.38.1"
+  version: 3.39.1
+  resolution: "date-holidays@npm:3.39.1"
   dependencies:
-    date-holidays-parser: "npm:~3.4.7"
+    date-holidays-parser: "npm:^3.7.0"
     js-yaml: "npm:^5.5.0"
     lodash: "npm:^4.18.1"
     prepin: "npm:^1.0.3"
   bin:
     holidays2json: scripts/holidays2json.cjs
-  checksum: 10c0/844aa7145d8f5e04bfffbaf6ba2f417eff84f8b09489ef682a80aff73356d02433647936c0f89aca4a5f79e0e07ce3a7a47da0ccbf3d3ccecd9b72aba7543338
+  checksum: 10c0/60ca2f984f4c1aebff3b2868a118e0aa9cb75f0abc779c692c74d608e207864036ac931efd8f9aeb51dae1e79fbae84c73e6a836057653d50d572135984e92b3
   languageName: node
   linkType: hard
 
@@ -3018,10 +3035,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jalaali-js@npm:^1.2.7":
-  version: 1.2.8
-  resolution: "jalaali-js@npm:1.2.8"
-  checksum: 10c0/a90e314b61a2c2eb644633659d95838ef0fed1ccd8b551482868dd5e902df683579a336893eca1215b58ae2410139185de51ebe1b7aecd6790ae4a5aa868877f
+"jalaali-js@npm:^2.0.1":
+  version: 2.0.1
+  resolution: "jalaali-js@npm:2.0.1"
+  checksum: 10c0/87bf7ec15f81d93af5b1d6f0c8535d437669345fff119df0500a43aadff8688a29c639a663cfa945f9abe53defa35a8be4d24b6de169be7ae484b36d0bea4ae3
   languageName: node
   linkType: hard
 
@@ -3335,15 +3352,6 @@ __metadata:
   dependencies:
     minipass: "npm:^7.1.2"
   checksum: 10c0/5aad75ab0090b8266069c9aabe582c021ae53eb33c6c691054a13a45db3b4f91a7fb1bd79151e6b4e9e9a86727b522527c0a06ec7d45206b745d54cd3097bcec
-  languageName: node
-  linkType: hard
-
-"moment-timezone@npm:^0.5.47":
-  version: 0.5.48
-  resolution: "moment-timezone@npm:0.5.48"
-  dependencies:
-    moment: "npm:^2.29.4"
-  checksum: 10c0/ab14ec9d94bc33f29ac18e5417b7f8aca0b17130b952c5cc9697b8fea839e5ece9313af5fd3c9703a05db472b1560ddbfc7ad2aa24aac9afd047d6da6c3c6033
   languageName: node
   linkType: hard
 
