@@ -14,7 +14,7 @@ services:
   # The integration suite runs against all three databases and CI provides both
   # of these as service containers. SQLite needs nothing.
   postgres:
-    image: postgres:18
+    image: postgres:19
     container_name: dtd2mysql-postgres
     environment:
       POSTGRES_PASSWORD: postgres
