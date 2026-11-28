@@ -1799,12 +1799,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:26.6.7":
-  version: 26.6.7
-  resolution: "@types/node@npm:26.6.7"
+"@types/node@npm:26.6.10":
+  version: 26.6.10
+  resolution: "@types/node@npm:26.6.10"
   dependencies:
     undici-types: "npm:~8.9.0"
-  checksum: 10c0/54ffee68394be0df0f92405b6df75a2f75041bbbd5386fb88292c5e9947800c109baafbc73cbc75957d8238a9487245e4ed57fd91c3e19bda675f3039a403b4b
+  checksum: 10c0/d249c40c72ee1e61aeb9633263e5ebf428359206926a2ca12435cf7112e09a49aa5ef7a787e413fdf66b9ad8f41fb474eeb4e18e31e9b49a64033393e888ce56
   languageName: node
   linkType: hard
 
@@ -2890,7 +2890,7 @@ __metadata:
   resolution: "gb-transit@workspace:."
   dependencies:
     "@changesets/cli": "npm:^3.0.0"
-    "@types/node": "npm:26.6.7"
+    "@types/node": "npm:26.6.10"
     tsx: "npm:4.23.15"
     typescript: "npm:7.0.2"
     vitest: "npm:^5.0.0"
